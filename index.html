@@ -30,7 +30,7 @@
           <img src="Patricia.avif" alt="Logo da clínica">
         </div>
         <div class="logo-text">
-          <h2>Patrícia</h2>
+          <h2>Patrícia Grando Müller</h2>
           <p>Psicoterapeuta</p>
         </div>
       </div>
@@ -75,6 +75,10 @@
       <!-- Top Bar -->
       <header class="top-header">
         <div class="header-title">
+          <button class="btn btn-secondary btn-icon-text btn-back-tab" id="btn-tab-back" title="Voltar para a aba anterior">
+            <i data-lucide="arrow-left"></i>
+            <span>Voltar</span>
+          </button>
           <h1 id="page-title">Dashboard</h1>
           <p id="page-subtitle">Visão geral do seu consultório hoje</p>
         </div>
@@ -99,9 +103,9 @@
           </div>
           <div class="top-date-picker">
             <i data-lucide="calendar-range"></i>
-            <input type="text" id="top-date-start" class="top-date-input" title="Data Inicial do Período" placeholder="dd/mm/aaaa">
+            <input type="date" id="top-date-start" class="top-date-input date-input" title="Data Inicial do Período">
             <span class="top-date-sep">até</span>
-            <input type="text" id="top-date-end" class="top-date-input" title="Data Final do Período" placeholder="dd/mm/aaaa">
+            <input type="date" id="top-date-end" class="top-date-input date-input" title="Data Final do Período">
             <button class="btn-clear-date" id="btn-reset-top-dates" title="Resetar para Mês Atual">
               <i data-lucide="rotate-ccw"></i>
             </button>
@@ -214,7 +218,8 @@
               <i data-lucide="search"></i>
               <input type="text" id="agenda-search" placeholder="Buscar por cliente ou procedimento...">
             </div>
-            <input type="text" id="agenda-filter-date" class="form-control" placeholder="dd/mm/aaaa">
+            <input type="date" id="agenda-filter-start" class="form-control agenda-filter-date date-input" title="Data inicial do período">
+            <input type="date" id="agenda-filter-end" class="form-control agenda-filter-date date-input" title="Data final do período">
             <select id="agenda-filter-status" class="form-control">
               <option value="todos">Todos os Status</option>
               <option value="Agendado">Agendado</option>
@@ -222,12 +227,20 @@
               <option value="Cancelado">Cancelado</option>
             </select>
           </div>
+          <div class="agenda-view-toggle">
+            <button class="btn btn-secondary btn-sm active" id="btn-agenda-view-calendar">Calendário</button>
+            <button class="btn btn-secondary btn-sm" id="btn-agenda-view-list">Lista</button>
+          </div>
           <button class="btn btn-primary" id="btn-new-appointment-agenda">
             <i data-lucide="plus"></i> Agendar Consulta
           </button>
         </div>
 
-        <div class="card">
+        <div class="card agenda-calendar-card" id="agenda-calendar-card">
+          <div class="agenda-calendar-grid" id="agenda-calendar-grid"></div>
+        </div>
+
+        <div class="card agenda-table-card" id="agenda-table-card">
           <div class="table-responsive">
             <table class="data-table">
               <thead>
@@ -525,7 +538,7 @@
           </div>
           <div class="form-group">
             <label for="client-dob">Data de Nascimento</label>
-            <input type="text" id="client-dob" class="form-control" placeholder="dd/mm/aaaa">
+            <input type="date" id="client-dob" class="form-control date-input">
           </div>
           <div class="form-group grid-col-span-2">
             <label for="client-notes">Observações / Historico Médico</label>
@@ -594,7 +607,7 @@
           </div>
           <div class="form-group">
             <label for="appt-date">Data da Consulta *</label>
-            <input type="text" id="appt-date" class="form-control" placeholder="dd/mm/aaaa" required>
+            <input type="date" id="appt-date" class="form-control date-input" required>
           </div>
           <div class="form-group">
             <label for="appt-time">Horário *</label>
@@ -718,7 +731,7 @@
           </div>
           <div class="form-group">
             <label for="expense-date">Data *</label>
-            <input type="text" id="expense-date" class="form-control" placeholder="dd/mm/aaaa" required>
+            <input type="date" id="expense-date" class="form-control date-input" required>
           </div>
           <div class="form-group" style="align-items:flex-start; display:flex; gap:0.5rem;">
             <input type="checkbox" id="expense-recurring" style="margin-top:0.3rem;">

@@ -6,6 +6,7 @@
 
 const APP_BRAND_NAME = 'Patrícia Psicoterapeuta';
 const APP_BRAND_SUBTITLE = 'Consultório de Psicoterapia';
+<<<<<<< HEAD
 const DEFAULT_WHATSAPP_TEMPLATE = `Ola, {{cliente}}! Tudo bem?
 
 Passando para confirmar seu agendamento:
@@ -204,6 +205,8 @@ const getLoginCredentials = () => {
     password
   };
 };
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
 // Helper para formatar moeda em Real (R$)
 const formatCurrency = (val) => {
@@ -240,6 +243,7 @@ const parseDateBR = (dateStr) => {
   return normalized;
 };
 
+<<<<<<< HEAD
 const normalizeTime24h = (timeStr) => {
   if (!timeStr) return '';
   let normalized = String(timeStr).trim();
@@ -279,6 +283,8 @@ const getContrastTextColor = (hexColor) => {
   return ((r * 299 + g * 587 + b * 114) / 1000) > 186 ? '#0f172a' : '#fff';
 };
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 // Obter a data de hoje no formato YYYY-MM-DD
 const getTodayStr = () => {
   const d = new Date();
@@ -307,6 +313,7 @@ const getLastDayOfMonthStr = () => {
   return `${year}-${monthStr}-${day}`;
 };
 
+<<<<<<< HEAD
 const formatISODate = (dateObj) => {
   if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return '';
   const year = dateObj.getFullYear();
@@ -366,6 +373,8 @@ const toHtmlWithAnamnesisFormatting = (value) => {
     .join('<br>');
 };
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 // Dados Demonstrativos Iniciais
 const INITIAL_DEMO_CLIENTS = [
   {
@@ -510,6 +519,7 @@ class ConsultorioApp {
     this.appointments = [];
     this.expenses = [];
     this.activeTab = 'dashboard';
+<<<<<<< HEAD
     this.tabHistory = [];
     this.finFilter = 'todos';
     this.agendaView = 'calendar';
@@ -539,6 +549,16 @@ class ConsultorioApp {
     this.lastCloudSyncAt = null;
     this.autoCloudAuthTried = false;
     this.autoCloudAuthInProgress = false;
+=======
+    this.finFilter = 'todos';
+    this.soundEnabled = true;
+    this.notifiedApptIds = new Set();
+
+    // Estado da Nuvem (Firebase)
+    this.db = null;
+    this.unsubClients = null;
+    this.unsubAppointments = null;
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     // Filtro Global de Período de Datas
     this.startDate = getFirstDayOfMonthStr();
@@ -547,6 +567,7 @@ class ConsultorioApp {
     // Minutos de antecedência do aviso sonoro
     this.reminderMinutes = parseInt(localStorage.getItem('consultorio_reminder_minutes')) || 15;
 
+<<<<<<< HEAD
     // Integração Google Agenda
     this.googleCalendar = {
       clientId: '',
@@ -556,12 +577,15 @@ class ConsultorioApp {
       tokenClient: null
     };
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     this.initStore();
     this.initFirebase();
     this.initDOM();
     this.initEvents();
     this.initAudioAndReminders();
     this.render();
+<<<<<<< HEAD
     this.notifyBirthdaysToday();
   }
 
@@ -1361,12 +1385,17 @@ class ConsultorioApp {
       normalized || this.formatAnamnesisText(DEFAULT_CLIENT_ANAMNESIS_TEMPLATE)
     );
     localStorage.setItem(ANAMNESIS_TEMPLATE_VERSION_STORAGE_KEY, ANAMNESIS_TEMPLATE_CURRENT_VERSION);
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   }
 
   // Inicializa a persistência no LocalStorage
   initStore() {
+<<<<<<< HEAD
     this.migrateAnamnesisTemplate();
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     const savedClients = localStorage.getItem('consultorio_clients');
     const savedAppointments = localStorage.getItem('consultorio_appointments');
     const savedExpenses = localStorage.getItem('consultorio_expenses');
@@ -1386,6 +1415,7 @@ class ConsultorioApp {
       this.expenses = [...INITIAL_DEMO_EXPENSES];
       this.saveStore();
     }
+<<<<<<< HEAD
 
     this.migrateClientRegistrationNumbers();
     this.migrateSavedClientsAnamnesis();
@@ -1433,12 +1463,15 @@ class ConsultorioApp {
         console.log('Erro ao ler configuração Google Agenda:', e);
       }
     }
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   }
 
   saveStore() {
     localStorage.setItem('consultorio_clients', JSON.stringify(this.clients));
     localStorage.setItem('consultorio_appointments', JSON.stringify(this.appointments));
     localStorage.setItem('consultorio_expenses', JSON.stringify(this.expenses));
+<<<<<<< HEAD
     localStorage.setItem('consultorio_whatsapp_templates', JSON.stringify(this.whatsAppTemplates));
     localStorage.setItem('consultorio_whatsapp_template_selected', this.whatsAppSelectedTemplateId || '');
     localStorage.setItem(APPOINTMENT_APPROACHES_STORAGE_KEY, JSON.stringify(this.appointmentApproaches));
@@ -1800,10 +1833,13 @@ class ConsultorioApp {
     this.saveStore();
     this.render();
     this.showToast(`${synced} consulta(s) enviada(s) para o Google Agenda.`, 'success');
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   }
 
   // Sincronização em Tempo Real via Firebase
   initFirebase() {
+<<<<<<< HEAD
     const cfgStr = localStorage.getItem('consultorio_firebase_config') || JSON.stringify(FIREBASE_DEFAULT_CONFIG);
     const badge = document.getElementById('cloud-sync-status');
     const text = document.getElementById('cloud-status-text');
@@ -1812,6 +1848,15 @@ class ConsultorioApp {
       if (badge) badge.className = 'cloud-status-badge offline';
       if (text) text.textContent = 'Modo Local';
       this.updateCloudSyncMeta('Modo local', 'local');
+=======
+    const cfgStr = localStorage.getItem('consultorio_firebase_config');
+    const badge = document.getElementById('cloud-sync-status');
+    const text = document.getElementById('cloud-status-text');
+
+    if (!cfgStr || typeof firebase === 'undefined') {
+      if (badge) badge.className = 'cloud-status-badge offline';
+      if (text) text.textContent = 'Modo Local';
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       return;
     }
 
@@ -1820,6 +1865,7 @@ class ConsultorioApp {
       if (!firebase.apps.length) {
         firebase.initializeApp(config);
       }
+<<<<<<< HEAD
 
       this.auth = firebase.auth();
       this.db = firebase.firestore();
@@ -1920,11 +1966,40 @@ class ConsultorioApp {
         this.render();
         this.updateCloudSyncMeta('Conectado, aguardando mudanças...', 'live');
       });
+=======
+      this.db = firebase.firestore();
+
+      if (badge) badge.className = 'cloud-status-badge online';
+      if (text) text.textContent = 'Nuvem Conectada (Tempo Real)';
+
+      // Listener em Tempo Real para Clientes
+      this.unsubClients = this.db.collection('clients').onSnapshot(snapshot => {
+        const cloudClients = [];
+        snapshot.forEach(doc => cloudClients.push(doc.data()));
+        if (cloudClients.length > 0) {
+          this.clients = cloudClients;
+          this.saveStore();
+          this.render();
+        }
+      }, err => console.log('Erro listener clientes:', err));
+
+      // Listener em Tempo Real para Consultas
+      this.unsubAppointments = this.db.collection('appointments').onSnapshot(snapshot => {
+        const cloudAppointments = [];
+        snapshot.forEach(doc => cloudAppointments.push(doc.data()));
+        if (cloudAppointments.length > 0) {
+          this.appointments = cloudAppointments;
+          this.saveStore();
+          this.render();
+        }
+      }, err => console.log('Erro listener consultas:', err));
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     } catch (e) {
       console.log('Falha ao conectar Firebase:', e);
       if (badge) badge.className = 'cloud-status-badge offline';
       if (text) text.textContent = 'Erro de Conexão Nuvem';
+<<<<<<< HEAD
       this.updateCloudSyncMeta('Erro de conexão', 'local');
     }
   }
@@ -1977,6 +2052,11 @@ class ConsultorioApp {
     el.textContent = `Atualizado ${time}`;
   }
 
+=======
+    }
+  }
+
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   // Enviar dados para a Nuvem
   syncClientToCloud(client) {
     if (this.db) {
@@ -2002,6 +2082,7 @@ class ConsultorioApp {
     }
   }
 
+<<<<<<< HEAD
   syncExpenseToCloud(expense) {
     if (this.db) {
       this.db.collection('expenses').doc(expense.id).set(expense).catch(err => console.log('Erro cloud expense:', err));
@@ -2014,6 +2095,8 @@ class ConsultorioApp {
     }
   }
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   resetDemoData() {
     this.clients = [...INITIAL_DEMO_CLIENTS];
     this.appointments = [...INITIAL_DEMO_APPOINTMENTS];
@@ -2023,7 +2106,10 @@ class ConsultorioApp {
     if (this.db) {
       this.clients.forEach(c => this.syncClientToCloud(c));
       this.appointments.forEach(a => this.syncAppointmentToCloud(a));
+<<<<<<< HEAD
       this.expenses.forEach(e => this.syncExpenseToCloud(e));
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     }
 
     this.render();
@@ -2034,6 +2120,7 @@ class ConsultorioApp {
   initDOM() {
     const startInput = document.getElementById('top-date-start');
     const endInput = document.getElementById('top-date-end');
+<<<<<<< HEAD
     const agendaStartInput = document.getElementById('agenda-filter-start');
     const agendaEndInput = document.getElementById('agenda-filter-end');
     const minsInput = document.getElementById('top-reminder-mins');
@@ -2063,6 +2150,18 @@ class ConsultorioApp {
     const anamnesisTemplateInput = document.getElementById('analytics-anamnesis-template');
     if (anamnesisTemplateInput) {
       anamnesisTemplateInput.value = this.getAnamnesisTemplate();
+=======
+    const minsInput = document.getElementById('top-reminder-mins');
+    const firebaseJsonInput = document.getElementById('cfg-firebase-json');
+
+    if (startInput) startInput.value = formatDateBR(this.startDate);
+    if (endInput) endInput.value = formatDateBR(this.endDate);
+    if (minsInput) minsInput.value = this.reminderMinutes;
+
+    const savedCfg = localStorage.getItem('consultorio_firebase_config');
+    if (savedCfg && firebaseJsonInput) {
+      firebaseJsonInput.value = savedCfg;
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     }
 
     if (window.lucide) {
@@ -2096,7 +2195,10 @@ class ConsultorioApp {
           if (this.db) {
             this.clients.forEach(c => this.syncClientToCloud(c));
             this.appointments.forEach(a => this.syncAppointmentToCloud(a));
+<<<<<<< HEAD
             this.expenses.forEach(e => this.syncExpenseToCloud(e));
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           }
 
           this.showToast('Conectado à nuvem Firebase com sucesso! Sincronizando...', 'success');
@@ -2112,20 +2214,27 @@ class ConsultorioApp {
         localStorage.removeItem('consultorio_firebase_config');
         if (this.unsubClients) this.unsubClients();
         if (this.unsubAppointments) this.unsubAppointments();
+<<<<<<< HEAD
         if (this.unsubExpenses) this.unsubExpenses();
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         this.db = null;
 
         const badge = document.getElementById('cloud-sync-status');
         const text = document.getElementById('cloud-status-text');
         if (badge) badge.className = 'cloud-status-badge offline';
         if (text) text.textContent = 'Modo Local';
+<<<<<<< HEAD
         this.updateCloudSyncMeta('Modo local', 'local');
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
         document.getElementById('cfg-firebase-json').value = '';
         this.showToast('Desconectado da nuvem. O aplicativo voltará ao modo local.', 'info');
       });
     }
 
+<<<<<<< HEAD
     const googleClientIdInput = document.getElementById('cfg-google-client-id');
     const googleCalendarIdInput = document.getElementById('cfg-google-calendar-id');
     const btnGoogleConnect = document.getElementById('btn-google-connect');
@@ -2278,6 +2387,8 @@ class ConsultorioApp {
       });
     }
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     // Minutos de Antecedência do Aviso Sonoro
     const minsInput = document.getElementById('top-reminder-mins');
     if (minsInput) {
@@ -2292,13 +2403,21 @@ class ConsultorioApp {
 
     // Filtro de Data do Topo (Editável)
     document.getElementById('top-date-start').addEventListener('change', (e) => {
+<<<<<<< HEAD
       this.startDate = e.target.value;
+=======
+      this.startDate = parseDateBR(e.target.value);
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       this.render();
       this.showToast(`Filtro atualizado: a partir de ${formatDateBR(this.startDate)}`, 'info');
     });
 
     document.getElementById('top-date-end').addEventListener('change', (e) => {
+<<<<<<< HEAD
       this.endDate = e.target.value;
+=======
+      this.endDate = parseDateBR(e.target.value);
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       this.render();
       this.showToast(`Filtro atualizado: até ${formatDateBR(this.endDate)}`, 'info');
     });
@@ -2306,8 +2425,13 @@ class ConsultorioApp {
     document.getElementById('btn-reset-top-dates').addEventListener('click', () => {
       this.startDate = getFirstDayOfMonthStr();
       this.endDate = getLastDayOfMonthStr();
+<<<<<<< HEAD
       document.getElementById('top-date-start').value = this.startDate;
       document.getElementById('top-date-end').value = this.endDate;
+=======
+      document.getElementById('top-date-start').value = formatDateBR(this.startDate);
+      document.getElementById('top-date-end').value = formatDateBR(this.endDate);
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       this.render();
       this.showToast('Período redefinido para o Mês Atual.', 'info');
     });
@@ -2339,15 +2463,19 @@ class ConsultorioApp {
       });
     });
 
+<<<<<<< HEAD
     const backButton = document.getElementById('btn-tab-back');
     if (backButton) {
       backButton.addEventListener('click', () => this.goBackTab());
     }
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     // Quick Actions Header & Sidebar
     document.getElementById('btn-quick-appointment').addEventListener('click', () => this.openAppointmentModal());
     document.getElementById('btn-header-new-appointment').addEventListener('click', () => this.openAppointmentModal());
     document.getElementById('btn-new-appointment-agenda').addEventListener('click', () => this.openAppointmentModal());
+<<<<<<< HEAD
     document.getElementById('btn-logout-session').addEventListener('click', () => this.logoutSession());
     
     document.getElementById('btn-header-new-client').addEventListener('click', () => this.openClientModal());
@@ -2499,6 +2627,13 @@ class ConsultorioApp {
       });
     }
 
+=======
+    
+    document.getElementById('btn-header-new-client').addEventListener('click', () => this.openClientModal());
+    document.getElementById('btn-new-client').addEventListener('click', () => this.openClientModal());
+    document.getElementById('btn-new-expense').addEventListener('click', () => this.openExpenseModal());
+
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     // Client Form Submit
     document.getElementById('form-client').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -2507,6 +2642,7 @@ class ConsultorioApp {
 
     document.getElementById('btn-cancel-client').addEventListener('click', () => this.closeClientModal());
     document.getElementById('btn-close-client').addEventListener('click', () => this.closeClientModal());
+<<<<<<< HEAD
     document.getElementById('btn-close-birthdays').addEventListener('click', () => this.closeBirthdaysModal());
     document.getElementById('btn-close-birthdays-footer').addEventListener('click', () => this.closeBirthdaysModal());
     document.getElementById('btn-birthdays-apply-filter').addEventListener('click', () => {
@@ -2656,6 +2792,8 @@ class ConsultorioApp {
         toggleBtn.textContent = willOpen ? 'Ocultar resposta' : 'Ver resposta';
       });
     }
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     // Appointment Form Submit
     document.getElementById('form-appointment').addEventListener('submit', (e) => {
@@ -2685,6 +2823,7 @@ class ConsultorioApp {
     document.getElementById('btn-cancel-appointment').addEventListener('click', () => this.closeAppointmentModal());
     document.getElementById('btn-close-appointment').addEventListener('click', () => this.closeAppointmentModal());
 
+<<<<<<< HEAD
     document.addEventListener('click', (e) => {
       const menuWrap = document.getElementById('session-status-wrap');
       if (menuWrap && !menuWrap.contains(e.target)) {
@@ -2692,6 +2831,8 @@ class ConsultorioApp {
       }
     });
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     // Quick Pay Form Submit
     document.getElementById('form-quick-pay').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -2731,6 +2872,7 @@ class ConsultorioApp {
 
     // Search and Filters
     document.getElementById('agenda-search').addEventListener('input', () => this.renderAgendaTable());
+<<<<<<< HEAD
     document.getElementById('agenda-filter-start').addEventListener('change', () => {
       this.agendaCalendarOffset = 0;
       this.renderAgendaTable();
@@ -2862,6 +3004,14 @@ class ConsultorioApp {
         });
       }
     }
+=======
+    document.getElementById('agenda-filter-date').addEventListener('change', () => this.renderAgendaTable());
+    document.getElementById('agenda-filter-status').addEventListener('change', () => this.renderAgendaTable());
+
+    document.getElementById('clientes-search').addEventListener('input', () => this.renderClientsTable());
+
+    document.getElementById('financeiro-search').addEventListener('input', () => this.renderFinanceiroTable());
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     // Financeiro Filter Tabs
     document.querySelectorAll('[data-fin-filter]').forEach(tabBtn => {
@@ -2878,11 +3028,15 @@ class ConsultorioApp {
     document.getElementById('input-import-backup').addEventListener('change', (e) => this.importBackup(e));
     document.getElementById('btn-report-clientes').addEventListener('click', () => this.generateAllClientsReport());
     document.getElementById('btn-print-client-individual').addEventListener('click', () => this.printCurrentClientReport());
+<<<<<<< HEAD
     document.getElementById('btn-print-client-anamnesis').addEventListener('click', () => this.printCurrentClientAnamnesis());
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     document.getElementById('btn-report-paciente').addEventListener('click', () => this.generateReport('paciente'));
     document.getElementById('btn-report-receitas').addEventListener('click', () => this.generateReport('receitas'));
     document.getElementById('btn-report-financeiro').addEventListener('click', () => this.generateReport('financeiro'));
     document.getElementById('btn-report-despesas').addEventListener('click', () => this.generateReport('despesas'));
+<<<<<<< HEAD
     const reportPatientIndividualBtn = document.getElementById('btn-report-patient-individual');
     if (reportPatientIndividualBtn) {
       reportPatientIndividualBtn.addEventListener('click', () => this.generateIndividualPatientReportFromSearch());
@@ -2929,11 +3083,16 @@ class ConsultorioApp {
       const form = document.getElementById('form-change-password');
       if (form) form.reset();
     });
+=======
+    document.getElementById('btn-copy-report').addEventListener('click', () => this.copyReport());
+    document.getElementById('btn-print-report').addEventListener('click', () => this.printReport());
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     document.getElementById('btn-reset-demo').addEventListener('click', () => {
       if (confirm('Tem certeza que deseja restaurar os dados originais de demonstração? Seus registros atuais serão substituídos.')) {
         this.resetDemoData();
       }
     });
+<<<<<<< HEAD
 
     document.addEventListener('change', (e) => {
       if (e.target && e.target.matches('.birthday-row-select')) {
@@ -3099,6 +3258,8 @@ class ConsultorioApp {
       citySelect.value = '';
       this.showToast('Nao foi possivel carregar as cidades deste estado.', 'warning');
     }
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   }
 
   // Filtra lista de consultas pelo período de datas definido no topo
@@ -3178,6 +3339,7 @@ class ConsultorioApp {
   }
 
   // Alternar abas da aplicação
+<<<<<<< HEAD
   switchTab(tabId, { skipHistory = false } = {}) {
     if (tabId === this.activeTab) return;
 
@@ -3191,6 +3353,11 @@ class ConsultorioApp {
 
     this.activeTab = tabId;
 
+=======
+  switchTab(tabId) {
+    this.activeTab = tabId;
+    
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     document.querySelectorAll('.sidebar-nav .nav-item').forEach(btn => {
       if (btn.getAttribute('data-tab') === tabId) {
         btn.classList.add('active');
@@ -3214,9 +3381,12 @@ class ConsultorioApp {
       clientes: { title: 'Clientes / Pacientes', sub: 'Cadastro e histórico completo dos seus clientes' },
       financeiro: { title: 'Controle Financeiro', sub: 'Acompanhe receitas recebidas (Total/Parcial) e pendências do período' },
       despesas: { title: 'Despesas', sub: 'Controle de gastos e relatório de saldo líquido' },
+<<<<<<< HEAD
       whatsapp: { title: 'WhatsApp', sub: 'Personalize o texto de envio para os clientes' },
       senha: { title: 'Senha', sub: 'Altere a senha de acesso ao sistema' },
       graficos: { title: 'Gráficos', sub: 'Visualize atendimentos, receitas e despesas no período' },
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       config: { title: 'Configurações', sub: 'Backup, nuvem e preferências do sistema' }
     };
 
@@ -3225,6 +3395,7 @@ class ConsultorioApp {
       document.getElementById('page-subtitle').textContent = titles[tabId].sub;
     }
 
+<<<<<<< HEAD
     const backButton = document.getElementById('btn-tab-back');
     if (backButton) {
       backButton.style.display = this.tabHistory.length > 0 ? 'inline-flex' : 'none';
@@ -3243,22 +3414,35 @@ class ConsultorioApp {
   render() {
     this.updateBadges();
     this.updateBirthdaysNotificationBadge();
+=======
+    this.render();
+  }
+
+  // Renderização Geral
+  render() {
+    this.updateBadges();
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     this.renderDashboard();
     this.renderAgendaTable();
     this.renderClientsTable();
     this.renderFinanceiroTable();
     this.renderDespesasTable();
+<<<<<<< HEAD
     this.renderPasswordTab();
     this.renderAnalyticsTab();
     this.populateClientSelectOptions();
     this.renderWhatsAppTemplateEditor();
     this.populateReportPatientSearchOptions();
+=======
+    this.populateClientSelectOptions();
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     if (window.lucide) {
       window.lucide.createIcons();
     }
   }
 
+<<<<<<< HEAD
   populateReportPatientSearchOptions() {
     const datalist = document.getElementById('report-patient-options');
     if (!datalist) return;
@@ -3444,6 +3628,8 @@ class ConsultorioApp {
     this.showToast('Você saiu da sessão.', 'info');
   }
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   // Atualiza indicadores dos menus
   updateBadges() {
     const rangeApps = this.filterByTopDateRange(this.appointments);
@@ -3460,6 +3646,7 @@ class ConsultorioApp {
   // Renderiza a visão do Dashboard
   renderDashboard() {
     const rangeApps = this.filterByTopDateRange(this.appointments);
+<<<<<<< HEAD
     const visibleExpenses = this.expenses.flatMap(exp => this.getExpenseOccurrences(exp, this.startDate, this.endDate));
 
     const completedInPeriod = new Set(
@@ -3471,6 +3658,14 @@ class ConsultorioApp {
     const totalReceived = rangeApps.reduce((sum, a) => sum + (parseFloat(a.amountPaid) || 0), 0);
     const totalExpenses = visibleExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
     const netResult = totalReceived - totalExpenses;
+=======
+
+    const completedInPeriod = rangeApps.filter(a => a.status === 'Concluído').length;
+    document.getElementById('dash-appointments-today').textContent = rangeApps.length;
+    document.getElementById('dash-appointments-sub').textContent = `${completedInPeriod} concluída(s) no período`;
+
+    const totalReceived = rangeApps.reduce((sum, a) => sum + (parseFloat(a.amountPaid) || 0), 0);
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     document.getElementById('dash-received-month').textContent = formatCurrency(totalReceived);
 
     const pendingApps = rangeApps.filter(a => (parseFloat(a.price || 0) - parseFloat(a.amountPaid || 0)) > 0);
@@ -3479,6 +3674,7 @@ class ConsultorioApp {
     document.getElementById('dash-pending-total').textContent = formatCurrency(totalPending);
     document.getElementById('dash-pending-count').textContent = `${pendingApps.length} cobrança(s) pendente(s) no período`;
 
+<<<<<<< HEAD
     const resultTotalEl = document.getElementById('dash-result-total');
     const resultSubEl = document.getElementById('dash-result-sub');
     const resultCardEl = document.getElementById('dash-card-resultado');
@@ -3503,6 +3699,8 @@ class ConsultorioApp {
       }
     }
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     document.getElementById('dash-total-clients').textContent = this.clients.length;
 
     const todayListContainer = document.getElementById('dash-today-list');
@@ -3573,6 +3771,7 @@ class ConsultorioApp {
     }
   }
 
+<<<<<<< HEAD
   // Renderiza a Tabela de Agenda ou Calendário
   renderAgendaTable() {
     const search = document.getElementById('agenda-search').value.toLowerCase();
@@ -3606,22 +3805,42 @@ class ConsultorioApp {
     if (search) {
       filtered = filtered.filter(a =>
         a.clientName.toLowerCase().includes(search) ||
+=======
+  // Renderiza a Tabela de Agenda
+  renderAgendaTable() {
+    const tbody = document.getElementById('agenda-table-body');
+    const search = document.getElementById('agenda-search').value.toLowerCase();
+    const filterDate = parseDateBR(document.getElementById('agenda-filter-date').value);
+    const filterStatus = document.getElementById('agenda-filter-status').value;
+
+    let filtered = this.filterByTopDateRange(this.appointments);
+
+    if (search) {
+      filtered = filtered.filter(a => 
+        a.clientName.toLowerCase().includes(search) || 
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         a.procedure.toLowerCase().includes(search)
       );
     }
 
+<<<<<<< HEAD
     if (filterStart && filterEnd) {
       filtered = filtered.filter(a => a.date >= filterStart && a.date <= filterEnd);
     } else if (filterStart) {
       filtered = filtered.filter(a => a.date >= filterStart);
     } else if (filterEnd) {
       filtered = filtered.filter(a => a.date <= filterEnd);
+=======
+    if (filterDate) {
+      filtered = filtered.filter(a => a.date === filterDate);
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     }
 
     if (filterStatus && filterStatus !== 'todos') {
       filtered = filtered.filter(a => a.status === filterStatus);
     }
 
+<<<<<<< HEAD
     return filtered.sort((a, b) => {
       const dateA = `${a.date} ${a.time}`;
       const dateB = `${b.date} ${b.time}`;
@@ -3631,6 +3850,13 @@ class ConsultorioApp {
 
   renderAgendaList(filtered) {
     const tbody = document.getElementById('agenda-table-body');
+=======
+    filtered.sort((a, b) => {
+      const dateA = `${a.date} ${a.time}`;
+      const dateB = `${b.date} ${b.time}`;
+      return dateB.localeCompare(dateA);
+    });
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     if (filtered.length === 0) {
       tbody.innerHTML = `
@@ -3650,7 +3876,10 @@ class ConsultorioApp {
     tbody.innerHTML = filtered.map(app => {
       const statusClass = app.paymentStatus.toLowerCase();
       const statusText = app.paymentStatus === 'Parcial' ? `Parcial (${formatCurrency(app.amountPaid)})` : app.paymentStatus;
+<<<<<<< HEAD
       const sessionStatusLabel = app.sessionStatus ? this.getSessionStatusLabel(app.sessionStatus) : '';
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       return `
         <tr>
           <td>
@@ -3666,7 +3895,10 @@ class ConsultorioApp {
               <option value="Concluído" ${app.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
               <option value="Cancelado" ${app.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
             </select>
+<<<<<<< HEAD
             ${sessionStatusLabel ? `<div style="margin-top:0.35rem;"><span class="badge badge-session-status">Sessao: ${sessionStatusLabel}</span></div>` : ''}
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           </td>
           <td>
             <span class="badge badge-${statusClass}">${statusText}</span>
@@ -3684,6 +3916,7 @@ class ConsultorioApp {
     }).join('');
   }
 
+<<<<<<< HEAD
   renderAgendaCalendar(filtered) {
     const grid = document.getElementById('agenda-calendar-grid');
     const rangeLabel = document.getElementById('agenda-calendar-range');
@@ -4208,11 +4441,16 @@ class ConsultorioApp {
     badge.setAttribute('aria-label', badge.title);
   }
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   // Renderiza Tabela de Clientes
   renderClientsTable() {
     const tbody = document.getElementById('clientes-table-body');
     const search = document.getElementById('clientes-search').value.toLowerCase();
+<<<<<<< HEAD
     const phoneFilter = document.getElementById('clientes-phone-filter')?.value || 'todos';
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     let filtered = [...this.clients];
 
@@ -4225,6 +4463,7 @@ class ConsultorioApp {
       );
     }
 
+<<<<<<< HEAD
     if (phoneFilter === 'validos') {
       filtered = filtered.filter(c => Boolean(this.normalizeWhatsAppPhone(c.phone || '')));
     } else if (phoneFilter === 'invalidos') {
@@ -4237,15 +4476,26 @@ class ConsultorioApp {
       if (aNum !== bNum) return aNum - bNum;
       return String(a.name || '').localeCompare(String(b.name || ''));
     });
+=======
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     if (filtered.length === 0) {
       tbody.innerHTML = `
         <tr>
+<<<<<<< HEAD
           <td colspan="7">
             <div class="empty-state">
               <i data-lucide="users"></i>
               <h4>Nenhum cliente encontrado</h4>
               <p>Revise os filtros de busca/telefone ou cadastre novos clientes.</p>
+=======
+          <td colspan="6">
+            <div class="empty-state">
+              <i data-lucide="users"></i>
+              <h4>Nenhum cliente encontrado</h4>
+              <p>Cadastre novos clientes clicando no botão acima.</p>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             </div>
           </td>
         </tr>
@@ -4257,7 +4507,10 @@ class ConsultorioApp {
       const clientAppts = this.appointments.filter(a => a.clientId === cli.id);
       return `
         <tr>
+<<<<<<< HEAD
           <td><strong>${cli.registrationNumber || '-'}</strong></td>
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           <td><strong>${cli.name}</strong></td>
           <td>${cli.phone}</td>
           <td>${cli.email || '-'}</td>
@@ -4374,6 +4627,7 @@ class ConsultorioApp {
   }
 
   // Renderiza Tabela Financeira
+<<<<<<< HEAD
   groupFinanceAppointments(appointments) {
     const groups = new Map();
 
@@ -4494,6 +4748,11 @@ class ConsultorioApp {
   renderFinanceiroTable() {
     const tbody = document.getElementById('financeiro-table-body');
     const search = document.getElementById('financeiro-search').value;
+=======
+  renderFinanceiroTable() {
+    const tbody = document.getElementById('financeiro-table-body');
+    const search = document.getElementById('financeiro-search').value.toLowerCase();
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     let rangeApps = this.filterByTopDateRange(this.appointments);
 
@@ -4522,6 +4781,7 @@ class ConsultorioApp {
       finSummaryCards[2].querySelector('.fin-desc').textContent = `Saldo líquido: ${formatCurrency(saldoLiquido)}`;
     }
 
+<<<<<<< HEAD
     let grouped = this.groupFinanceAppointments(rangeApps)
       .map(group => this.buildFinanceDisplayGroup(group, this.finFilter))
       .filter(Boolean);
@@ -4534,6 +4794,29 @@ class ConsultorioApp {
       tbody.innerHTML = `
         <tr>
           <td colspan="8">
+=======
+    let filtered = [...rangeApps];
+
+    if (this.finFilter === 'pendente') {
+      filtered = filtered.filter(a => a.paymentStatus !== 'Pago');
+    } else if (this.finFilter === 'pago') {
+      filtered = filtered.filter(a => a.paymentStatus === 'Pago');
+    }
+
+    if (search) {
+      filtered = filtered.filter(a => 
+        a.clientName.toLowerCase().includes(search) || 
+        a.procedure.toLowerCase().includes(search)
+      );
+    }
+
+    filtered.sort((a, b) => b.date.localeCompare(a.date));
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7">
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             <div class="empty-state">
               <i data-lucide="wallet"></i>
               <h4>Nenhum registro financeiro encontrado no período</h4>
@@ -4545,6 +4828,7 @@ class ConsultorioApp {
       return;
     }
 
+<<<<<<< HEAD
     tbody.innerHTML = grouped.map(group => {
       const pendingApp = group.latestPending || group.latestAppointment;
       const pendingAppId = pendingApp?.id || '';
@@ -4596,14 +4880,49 @@ class ConsultorioApp {
               ${pendingAppId ? `<button class="btn btn-sm btn-secondary" onclick="app.openQuickPayModal('${pendingAppId}')"><i data-lucide="credit-card"></i> Pagar</button>` : ''}
               ${group.latestAppointment ? `<button class="btn btn-sm btn-secondary" onclick="app.editAppointment('${group.latestAppointment.id}')"><i data-lucide="edit-3"></i> Editar</button>` : ''}
             </div>
+=======
+    tbody.innerHTML = filtered.map(app => {
+      const price = parseFloat(app.price || 0);
+      const amountPaid = parseFloat(app.amountPaid || 0);
+      const pendingBalance = Math.max(0, price - amountPaid);
+      const statusClass = app.paymentStatus.toLowerCase();
+
+      return `
+        <tr>
+          <td>${formatDateBR(app.date)}</td>
+          <td><strong>${app.clientName}</strong></td>
+          <td>${app.procedure}</td>
+          <td>${app.paymentMethod || 'Não informado'}</td>
+          <td>
+            <strong>Total: ${formatCurrency(price)}</strong>
+            <div style="font-size:0.78rem; color:var(--success);">Pago: ${formatCurrency(amountPaid)}</div>
+            ${pendingBalance > 0 ? `<div style="font-size:0.78rem; color:var(--warning);">A receber: ${formatCurrency(pendingBalance)}</div>` : ''}
+          </td>
+          <td>
+            <span class="badge badge-${statusClass}">${app.paymentStatus === 'Parcial' ? 'Pago Parcial' : app.paymentStatus}</span>
+          </td>
+          <td style="text-align: right;">
+            <button class="btn btn-sm btn-secondary" onclick="app.openQuickPayModal('${app.id}')" style="margin-right: 0.35rem;">
+              <i data-lucide="credit-card"></i> Pagamento
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="app.editAppointment('${app.id}')" style="margin-right: 0.35rem;">
+              <i data-lucide="edit-3"></i> Editar
+            </button>
+            <button class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="app.deleteAppointment('${app.id}')" title="Excluir lançamento">
+              <i data-lucide="trash-2"></i>
+            </button>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           </td>
         </tr>
       `;
     }).join('');
+<<<<<<< HEAD
 
     if (window.lucide) {
       window.lucide.createIcons();
     }
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   }
 
   // Preenche seletor de clientes
@@ -4611,6 +4930,7 @@ class ConsultorioApp {
     const select = document.getElementById('appt-client-id');
     const currentValue = select.value;
 
+<<<<<<< HEAD
     // Populate hidden select (used by form) and the searchable combobox list
     select.innerHTML = '<option value="">Selecione um cliente...</option>';
     const comboboxList = document.getElementById('appt-client-list');
@@ -4651,6 +4971,16 @@ class ConsultorioApp {
       });
     }
 
+=======
+    select.innerHTML = '<option value="">Selecione um cliente...</option>';
+    this.clients.sort((a, b) => a.name.localeCompare(b.name)).forEach(cli => {
+      const opt = document.createElement('option');
+      opt.value = cli.id;
+      opt.textContent = `${cli.name} (${cli.phone})`;
+      select.appendChild(opt);
+    });
+
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     select.value = currentValue;
   }
 
@@ -4658,15 +4988,20 @@ class ConsultorioApp {
   openClientModal(clientId = null) {
     document.getElementById('form-client').reset();
     document.getElementById('client-id').value = '';
+<<<<<<< HEAD
     document.getElementById('modal-client-title').textContent = 'Cadastrar Novo Paciente';
     const anamnesisSection = document.getElementById('client-anamnesis-collapsible');
     if (anamnesisSection) anamnesisSection.open = !clientId;
+=======
+    document.getElementById('modal-client-title').textContent = 'Cadastrar Novo Cliente';
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     if (clientId) {
       const cli = this.clients.find(c => c.id === clientId);
       if (cli) {
         document.getElementById('client-id').value = cli.id;
         document.getElementById('client-name').value = cli.name;
+<<<<<<< HEAD
         document.getElementById('client-phone').value = this.formatPhoneMask(cli.phone || '');
         document.getElementById('client-email').value = cli.email || '';
         document.getElementById('client-cpf').value = this.formatCpfMask(cli.cpf || '');
@@ -4717,6 +5052,15 @@ class ConsultorioApp {
         input.style.pointerEvents = 'auto';
       });
       if (anamnesisSection) anamnesisSection.open = true;
+=======
+        document.getElementById('client-phone').value = cli.phone;
+        document.getElementById('client-email').value = cli.email || '';
+        document.getElementById('client-cpf').value = cli.cpf || '';
+        document.getElementById('client-dob').value = cli.dob || '';
+        document.getElementById('client-notes').value = cli.notes || '';
+        document.getElementById('modal-client-title').textContent = 'Editar Dados do Cliente';
+      }
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     }
 
     document.getElementById('modal-client').classList.add('active');
@@ -4732,6 +5076,7 @@ class ConsultorioApp {
     const phone = document.getElementById('client-phone').value.trim();
     const email = document.getElementById('client-email').value.trim();
     const cpf = document.getElementById('client-cpf').value.trim();
+<<<<<<< HEAD
     const rg = document.getElementById('client-rg').value.trim();
     const dob = document.getElementById('client-dob').value;
     const group = document.getElementById('client-group').value;
@@ -4764,6 +5109,10 @@ class ConsultorioApp {
     const guardianConsentReminders = document.getElementById('client-guardian-consent-reminders').value;
     const notes = document.getElementById('client-notes').value.trim();
     const anamnesis = this.formatAnamnesisText(document.getElementById('client-anamnesis').value);
+=======
+    const dob = document.getElementById('client-dob').value;
+    const notes = document.getElementById('client-notes').value.trim();
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     if (!name || !phone) {
       this.showToast('Por favor, preencha o Nome e Telefone.', 'warning');
@@ -4775,6 +5124,7 @@ class ConsultorioApp {
     if (id) {
       const idx = this.clients.findIndex(c => c.id === id);
       if (idx !== -1) {
+<<<<<<< HEAD
         this.clients[idx] = {
           ...this.clients[idx],
           name,
@@ -4812,6 +5162,9 @@ class ConsultorioApp {
           notes,
           anamnesis
         };
+=======
+        this.clients[idx] = { ...this.clients[idx], name, phone, email, cpf, dob, notes };
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         savedClient = this.clients[idx];
         
         this.appointments.forEach(app => {
@@ -4826,11 +5179,15 @@ class ConsultorioApp {
     } else {
       savedClient = {
         id: 'cli-' + Date.now(),
+<<<<<<< HEAD
         registrationNumber: this.getNextClientRegistrationNumber(),
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         name,
         phone,
         email,
         cpf,
+<<<<<<< HEAD
         rg,
         dob,
         group,
@@ -4861,6 +5218,10 @@ class ConsultorioApp {
         guardianConsentReminders,
         notes,
         anamnesis,
+=======
+        dob,
+        notes,
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         createdAt: getTodayStr()
       };
       this.clients.push(savedClient);
@@ -4869,7 +5230,10 @@ class ConsultorioApp {
 
     this.saveStore();
     if (savedClient) this.syncClientToCloud(savedClient);
+<<<<<<< HEAD
     if (savedClient) this.markClientAsWhatsAppFixed(savedClient.id);
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     this.closeClientModal();
     this.render();
   }
@@ -4918,6 +5282,7 @@ class ConsultorioApp {
         <p>${cli.cpf || '-'}</p>
       </div>
       <div class="client-detail-item">
+<<<<<<< HEAD
         <label>RG</label>
         <p>${cli.rg || '-'}</p>
       </div>
@@ -4976,6 +5341,14 @@ class ConsultorioApp {
           <summary>Anamnese (Terapia de Casal)</summary>
           <div class="client-detail-anamnesis">${cli.anamnesis ? this.renderClientAnamnesisReadOnlyBubbles(cli.anamnesis, { allOpen: true }) : 'Sem anamnese cadastrada.'}</div>
         </details>
+=======
+        <label>Data de Nascimento</label>
+        <p>${cli.dob ? formatDateBR(cli.dob) : '-'}</p>
+      </div>
+      <div class="client-detail-item" style="grid-column: span 2;">
+        <label>Observações / Histórico Médico</label>
+        <p>${cli.notes || 'Sem observações cadastradas.'}</p>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       </div>
     `;
 
@@ -4985,7 +5358,11 @@ class ConsultorioApp {
       .sort((a, b) => b.date.localeCompare(a.date));
 
     if (clientAppts.length === 0) {
+<<<<<<< HEAD
       tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Nenhuma consulta registrada para este cliente.</td></tr>`;
+=======
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Nenhuma consulta registrada para este cliente.</td></tr>`;
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     } else {
       tbody.innerHTML = clientAppts.map(app => `
         <tr>
@@ -4994,10 +5371,13 @@ class ConsultorioApp {
           <td>${formatCurrency(app.price)} ${app.amountPaid < app.price ? `(Pago: ${formatCurrency(app.amountPaid)})` : ''}</td>
           <td><span class="badge badge-${app.status.toLowerCase()}">${app.status}</span></td>
           <td><span class="badge badge-${app.paymentStatus.toLowerCase()}">${app.paymentStatus === 'Parcial' ? 'Pago Parcial' : app.paymentStatus}</span></td>
+<<<<<<< HEAD
           <td>${app.notes ? app.notes.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '-'}</td>
           <td>
             <button type="button" class="btn btn-sm btn-primary" onclick="app.editAppointment('${app.id}')">Ver</button>
           </td>
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         </tr>
       `).join('');
     }
@@ -5016,6 +5396,7 @@ class ConsultorioApp {
     document.getElementById('form-appointment').reset();
     document.getElementById('appointment-id').value = '';
     document.getElementById('modal-appointment-title').textContent = 'Agendar Consulta';
+<<<<<<< HEAD
     document.getElementById('appt-date').value = getTodayStr();
     document.getElementById('appt-time').value = '10:00';
     document.getElementById('appt-duration').value = '50';
@@ -5032,12 +5413,20 @@ class ConsultorioApp {
       approachSelect.selectedIndex = 1;
       this.syncAppointmentPriceFromApproach();
     }
+=======
+    document.getElementById('appt-date').value = formatDateBR(getTodayStr());
+    document.getElementById('appt-time').value = '10:00';
+    document.getElementById('group-amount-paid').style.display = 'none';
+
+    this.populateClientSelectOptions();
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
     if (appId) {
       const app = this.appointments.find(a => a.id === appId);
       if (app) {
         document.getElementById('appointment-id').value = app.id;
         document.getElementById('appt-client-id').value = app.clientId;
+<<<<<<< HEAD
         document.getElementById('appt-date').value = app.date;
         document.getElementById('appt-time').value = app.time;
         document.getElementById('appt-duration').value = String(app.durationMinutes || 50);
@@ -5052,6 +5441,17 @@ class ConsultorioApp {
         this.selectSessionStatus(app.sessionStatus || '');
         this.populateAppointmentApproachOptions(app.procedure || '', app.price || 0);
         document.getElementById('appt-procedure').value = app.procedure || '';
+=======
+        document.getElementById('appt-date').value = formatDateBR(app.date);
+        document.getElementById('appt-time').value = app.time;
+        document.getElementById('appt-procedure').value = app.procedure;
+        document.getElementById('appt-price').value = app.price;
+        document.getElementById('appt-payment-method').value = app.paymentMethod || 'Pix';
+        document.getElementById('appt-status').value = app.status;
+        document.getElementById('appt-payment-status').value = app.paymentStatus;
+        document.getElementById('appt-amount-paid').value = app.amountPaid || 0;
+        document.getElementById('appt-notes').value = app.notes || '';
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         document.getElementById('modal-appointment-title').textContent = 'Editar Consulta & Data';
 
         if (app.paymentStatus !== 'Pendente') {
@@ -5064,6 +5464,7 @@ class ConsultorioApp {
   }
 
   closeAppointmentModal() {
+<<<<<<< HEAD
     this.closeSessionStatusMenu();
     document.getElementById('modal-appointment').classList.remove('active');
   }
@@ -5105,18 +5506,30 @@ class ConsultorioApp {
     this.closeSessionStatusMenu();
   }
 
+=======
+    document.getElementById('modal-appointment').classList.remove('active');
+  }
+
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   saveAppointmentForm() {
     const id = document.getElementById('appointment-id').value;
     const clientId = document.getElementById('appt-client-id').value;
     const date = parseDateBR(document.getElementById('appt-date').value);
+<<<<<<< HEAD
     const time = normalizeTime24h(document.getElementById('appt-time').value);
     const durationMinutes = parseInt(document.getElementById('appt-duration').value, 10) || 50;
+=======
+    const time = document.getElementById('appt-time').value;
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     const procedure = document.getElementById('appt-procedure').value.trim();
     const price = parseFloat(document.getElementById('appt-price').value);
     const paymentMethod = document.getElementById('appt-payment-method').value;
     const status = document.getElementById('appt-status').value;
+<<<<<<< HEAD
     const color = document.getElementById('appt-color').value || '#38bdf8';
     const sessionStatus = document.getElementById('appt-session-status').value || '';
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     const paymentStatus = document.getElementById('appt-payment-status').value;
     let amountPaid = parseFloat(document.getElementById('appt-amount-paid').value || 0);
     const notes = document.getElementById('appt-notes').value.trim();
@@ -5146,16 +5559,24 @@ class ConsultorioApp {
           clientName,
           date,
           time,
+<<<<<<< HEAD
           durationMinutes,
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           procedure,
           price,
           amountPaid,
           paymentMethod,
           status,
+<<<<<<< HEAD
           sessionStatus,
           paymentStatus,
           notes,
           color
+=======
+          paymentStatus,
+          notes
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         };
         savedAppt = this.appointments[idx];
         this.showToast('Consulta e data atualizadas com sucesso!', 'success');
@@ -5167,16 +5588,24 @@ class ConsultorioApp {
         clientName,
         date,
         time,
+<<<<<<< HEAD
         durationMinutes,
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         procedure,
         price,
         amountPaid,
         paymentMethod,
         status,
+<<<<<<< HEAD
         sessionStatus,
         paymentStatus,
         notes,
         color
+=======
+        paymentStatus,
+        notes
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       };
       this.appointments.push(savedAppt);
       this.showToast('Consulta agendada com sucesso!', 'success');
@@ -5184,6 +5613,7 @@ class ConsultorioApp {
 
     this.saveStore();
     if (savedAppt) this.syncAppointmentToCloud(savedAppt);
+<<<<<<< HEAD
     if (savedAppt) {
       this.upsertGoogleEventForAppointment(savedAppt).catch(err => {
         console.log('Falha ao sincronizar consulta com Google Agenda:', err);
@@ -5198,6 +5628,8 @@ class ConsultorioApp {
       }
     }
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     this.closeAppointmentModal();
     this.render();
   }
@@ -5206,6 +5638,7 @@ class ConsultorioApp {
     this.openAppointmentModal(id);
   }
 
+<<<<<<< HEAD
   selectAppointmentColor(color) {
     const input = document.getElementById('appt-color');
     if (!input) return;
@@ -5223,15 +5656,21 @@ class ConsultorioApp {
 
   deleteAppointment(id) {
     const removedAppt = this.appointments.find(a => a.id === id);
+=======
+  deleteAppointment(id) {
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     if (confirm('Tem certeza que deseja excluir esta consulta do sistema?')) {
       this.appointments = this.appointments.filter(a => a.id !== id);
       this.saveStore();
       this.deleteAppointmentFromCloud(id);
+<<<<<<< HEAD
       if (removedAppt) {
         this.deleteGoogleEventForAppointment(removedAppt).catch(err => {
           console.log('Falha ao excluir evento do Google Agenda:', err);
         });
       }
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       this.render();
       this.showToast('Consulta excluída com sucesso.', 'info');
     }
@@ -5248,6 +5687,7 @@ class ConsultorioApp {
     }
   }
 
+<<<<<<< HEAD
   normalizeWhatsAppPhone(rawPhone) {
     if (!rawPhone) return '';
     const digits = String(rawPhone).replace(/\D/g, '');
@@ -5781,11 +6221,17 @@ class ConsultorioApp {
     this.showToast('Fila de WhatsApp cancelada.', 'info');
   }
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   // Modal de Despesas
   openExpenseModal(expenseId = null) {
     document.getElementById('form-expense').reset();
     document.getElementById('expense-id').value = '';
+<<<<<<< HEAD
     document.getElementById('expense-date').value = getTodayStr();
+=======
+    document.getElementById('expense-date').value = formatDateBR(getTodayStr());
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     document.getElementById('modal-expense-title').textContent = 'Registrar Despesa';
 
     if (expenseId) {
@@ -5795,7 +6241,11 @@ class ConsultorioApp {
         document.getElementById('expense-description').value = expense.description;
         document.getElementById('expense-category').value = expense.category || 'Outros';
         document.getElementById('expense-amount').value = expense.amount;
+<<<<<<< HEAD
         document.getElementById('expense-date').value = expense.date;
+=======
+        document.getElementById('expense-date').value = formatDateBR(expense.date);
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         document.getElementById('expense-recurring').checked = Boolean(expense.recurring);
         document.getElementById('expense-notes').value = expense.notes || '';
         document.getElementById('modal-expense-title').textContent = 'Editar Despesa';
@@ -5827,6 +6277,7 @@ class ConsultorioApp {
       const idx = this.expenses.findIndex(e => e.id === id);
       if (idx !== -1) {
         this.expenses[idx] = { ...this.expenses[idx], description, category, amount, date, recurring, notes };
+<<<<<<< HEAD
         this.syncExpenseToCloud(this.expenses[idx]);
         this.showToast('Despesa atualizada com sucesso!', 'success');
       }
@@ -5834,6 +6285,12 @@ class ConsultorioApp {
       const newExpense = { id: 'exp-' + Date.now(), description, category, amount, date, recurring, notes };
       this.expenses.push(newExpense);
       this.syncExpenseToCloud(newExpense);
+=======
+        this.showToast('Despesa atualizada com sucesso!', 'success');
+      }
+    } else {
+      this.expenses.push({ id: 'exp-' + Date.now(), description, category, amount, date, recurring, notes });
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       this.showToast('Despesa cadastrada com sucesso!', 'success');
     }
 
@@ -5850,7 +6307,10 @@ class ConsultorioApp {
     if (confirm('Tem certeza que deseja excluir esta despesa?')) {
       this.expenses = this.expenses.filter(e => e.id !== id);
       this.saveStore();
+<<<<<<< HEAD
       this.deleteExpenseFromCloud(id);
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       this.render();
       this.showToast('Despesa removida.', 'info');
     }
@@ -5960,6 +6420,7 @@ class ConsultorioApp {
       } else {
         report += visibleExpenses.map(exp => `${formatDateBR(exp.occurrenceDate || exp.date)} | ${exp.category || 'Outros'} | ${exp.description}${exp.recurring ? ' (Recorrente)' : ''} | ${formatCurrency(exp.amount)}`).join('\n');
       }
+<<<<<<< HEAD
     } else if (type === 'aniversarios') {
       const reminderDays = this.getBirthdayReminderDaysAhead();
       const birthdayClients = reminderDays > 0 ? this.getUpcomingBirthdayClients(reminderDays) : this.getTodayBirthdayClients();
@@ -5974,6 +6435,8 @@ class ConsultorioApp {
           return `${client.name} | Próximo aniversário: ${nextLabel} | Telefone: ${client.phone || client.guardianPhone || '-'}`;
         }).join('\n');
       }
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     }
 
     const output = document.getElementById('report-output');
@@ -6007,6 +6470,7 @@ class ConsultorioApp {
 
   // Print arbitrary text in a simple window
   _printTextWindow(title, text) {
+<<<<<<< HEAD
     const safeTitle = escapeHtml(title);
     const safeText = escapeHtml(text);
     const html = `
@@ -6034,6 +6498,16 @@ class ConsultorioApp {
               object-fit: cover;
               object-position: left center;
             }
+=======
+    const html = `
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { font-family: Arial, Helvetica, sans-serif; padding: 20px; color: #111; }
+            .report-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+            .report-logo { height: 72px; width: auto; max-width: 220px; object-fit: contain; }
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             .report-title { margin: 0; font-size: 1.4rem; }
             .report-subtitle { margin: 4px 0 0; color: #555; }
             pre { white-space: pre-wrap; font-family: Consolas, monospace; font-size: 0.95rem; line-height: 1.4; }
@@ -6042,17 +6516,26 @@ class ConsultorioApp {
         </head>
         <body>
           <div class="report-header">
+<<<<<<< HEAD
             <div class="report-logo-wrap">
               <img src="Patricia.avif" class="report-logo" alt="Logo">
             </div>
+=======
+            <img src="Patricia.avif" class="report-logo" alt="Logo">
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             <div>
               <h1 class="report-title">${APP_BRAND_NAME}</h1>
               <p class="report-subtitle">${APP_BRAND_SUBTITLE}</p>
             </div>
           </div>
           <hr>
+<<<<<<< HEAD
           <h2>${safeTitle}</h2>
           <pre>${safeText}</pre>
+=======
+          <h2>${title}</h2>
+          <pre>${text}</pre>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         </body>
       </html>
     `;
@@ -6080,23 +6563,32 @@ class ConsultorioApp {
 
     let text = `RELATÓRIO INDIVIDUAL: ${cli.name}\n`;
     text += `Período: ${formatDateBR(this.startDate)} a ${formatDateBR(this.endDate)}\n`;
+<<<<<<< HEAD
     text += `Telefone: ${cli.phone} | E-mail: ${cli.email || '-'} | CPF: ${cli.cpf || '-'}\n`;
     text += `Data de nascimento: ${cli.dob ? formatDateBR(cli.dob) : '-'}\n\n`;
 
     text += 'ANAMNESE:\n';
     text += `${cli.anamnesis || 'Sem anamnese cadastrada.'}\n\n`;
 
+=======
+    text += `Telefone: ${cli.phone} | E-mail: ${cli.email || '-'} | CPF: ${cli.cpf || '-'}\n\n`;
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     if (clientAppts.length === 0) {
       text += 'Nenhuma consulta registrada para este paciente.';
     } else {
       text += 'Consultas:\n';
+<<<<<<< HEAD
       text += clientAppts.map(a => `${formatDateBR(a.date)} ${a.time} | ${a.procedure} | Valor: ${formatCurrency(a.price)} | Pago: ${formatCurrency(a.amountPaid)} | Status: ${a.paymentStatus} | Observações: ${a.notes || '-'} `).join('\n');
+=======
+      text += clientAppts.map(a => `${formatDateBR(a.date)} ${a.time} | ${a.procedure} | Valor: ${formatCurrency(a.price)} | Pago: ${formatCurrency(a.amountPaid)} | Status: ${a.paymentStatus}`).join('\n');
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       text += `\n\nTotal recebido pelo paciente: ${formatCurrency(totalReceived)}\nTotal a receber: ${formatCurrency(totalDue)}`;
     }
 
     this._printTextWindow(`Relatório - ${cli.name}`, text);
   }
 
+<<<<<<< HEAD
   printCurrentClientAnamnesis() {
     const modal = document.getElementById('modal-client-details');
     const clientId = modal ? modal.getAttribute('data-client-id') : null;
@@ -6118,6 +6610,8 @@ class ConsultorioApp {
     this._printTextWindow(`Anamnese - ${cli.name}`, text);
   }
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   // Generate a report for all clients (summary)
   generateAllClientsReport() {
     const rangeApps = this.filterByTopDateRange(this.appointments);
@@ -6227,11 +6721,17 @@ class ConsultorioApp {
   }
 }
 
+<<<<<<< HEAD
 // Instanciar a aplicação e aguardar o Auth decidir a visibilidade
 document.addEventListener('DOMContentLoaded', () => {
   if (!window.app) {
     window.app = new ConsultorioApp();
   }
+=======
+// Instanciar a aplicação
+document.addEventListener('DOMContentLoaded', () => {
+  window.app = new ConsultorioApp();
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')

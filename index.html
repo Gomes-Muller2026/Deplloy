@@ -1,4 +1,8 @@
+<<<<<<< HEAD
   <!DOCTYPE html>
+=======
+<!DOCTYPE html>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -18,6 +22,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Firebase SDK (Firestore Cloud Real-Time Sync) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<<<<<<< HEAD
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -59,6 +64,13 @@
   </div>
 
   <div class="app-layout app-hidden" id="app-shell">
+=======
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-layout">
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -92,6 +104,7 @@
           <i data-lucide="receipt"></i>
           <span>Despesas</span>
         </button>
+<<<<<<< HEAD
         <button class="nav-item" data-tab="whatsapp" id="nav-whatsapp">
           <i data-lucide="message-circle"></i>
           <span>WhatsApp</span>
@@ -104,6 +117,8 @@
           <i data-lucide="bar-chart-3"></i>
           <span>Gráficos</span>
         </button>
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         <button class="nav-item" data-tab="config" id="nav-config">
           <i data-lucide="settings"></i>
           <span>Configurações</span>
@@ -149,7 +164,10 @@
             <i data-lucide="cloud"></i>
             <span id="cloud-status-text">Modo Local</span>
           </div>
+<<<<<<< HEAD
           <span id="cloud-sync-last" class="cloud-sync-meta">Sem atualização</span>
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           <div class="top-date-picker">
             <i data-lucide="calendar-range"></i>
             <input type="date" id="top-date-start" class="top-date-input date-input" title="Data Inicial do Período">
@@ -161,6 +179,7 @@
           </div>
           <button class="btn btn-secondary btn-icon-text" id="btn-header-new-client">
             <i data-lucide="user-plus"></i>
+<<<<<<< HEAD
             <span>Novo Paciente</span>
           </button>
           <button class="btn btn-secondary btn-icon-text" id="btn-open-birthdays" title="Ver aniversariantes do dia">
@@ -171,6 +190,9 @@
           <button class="btn btn-secondary btn-icon-text" id="btn-logout-session" title="Sair da sessão e voltar ao login">
             <i data-lucide="log-out"></i>
             <span>Sair</span>
+=======
+            <span>Novo Cliente</span>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           </button>
           <button class="btn btn-primary btn-icon-text" id="btn-header-new-appointment">
             <i data-lucide="calendar-plus"></i>
@@ -183,7 +205,11 @@
       <section class="tab-content active" id="tab-dashboard">
         <!-- Stat Cards -->
         <div class="stats-grid">
+<<<<<<< HEAD
           <button type="button" class="stat-card card-blue" id="dash-card-consultas" aria-label="Abrir agenda de consultas de hoje">
+=======
+          <div class="stat-card card-blue">
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             <div class="stat-icon">
               <i data-lucide="calendar-check"></i>
             </div>
@@ -192,9 +218,15 @@
               <h3 class="stat-value" id="dash-appointments-today">0</h3>
               <span class="stat-sub" id="dash-appointments-sub">0 concluídas</span>
             </div>
+<<<<<<< HEAD
           </button>
 
           <button type="button" class="stat-card card-green" id="dash-card-recebido" aria-label="Abrir financeiro em recebidos do mês">
+=======
+          </div>
+
+          <div class="stat-card card-green">
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             <div class="stat-icon">
               <i data-lucide="check-circle-2"></i>
             </div>
@@ -203,9 +235,15 @@
               <h3 class="stat-value" id="dash-received-month">R$ 0,00</h3>
               <span class="stat-sub">Pagamentos confirmados</span>
             </div>
+<<<<<<< HEAD
           </button>
 
           <button type="button" class="stat-card card-amber" id="dash-card-pendente" aria-label="Abrir financeiro em lançamentos pendentes">
+=======
+          </div>
+
+          <div class="stat-card card-amber">
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             <div class="stat-icon">
               <i data-lucide="alert-circle"></i>
             </div>
@@ -214,6 +252,7 @@
               <h3 class="stat-value" id="dash-pending-total">R$ 0,00</h3>
               <span class="stat-sub" id="dash-pending-count">0 cobranças pendentes</span>
             </div>
+<<<<<<< HEAD
           </button>
 
           <button type="button" class="stat-card card-green" id="dash-card-resultado" aria-label="Abrir resultado de receitas menos despesas no período">
@@ -228,6 +267,11 @@
           </button>
 
           <button type="button" class="stat-card card-purple" id="dash-card-clientes" aria-label="Abrir lista de clientes cadastrados">
+=======
+          </div>
+
+          <div class="stat-card card-purple">
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             <div class="stat-icon">
               <i data-lucide="users"></i>
             </div>
@@ -236,7 +280,11 @@
               <h3 class="stat-value" id="dash-total-clients">0</h3>
               <span class="stat-sub">Cadastrados no sistema</span>
             </div>
+<<<<<<< HEAD
           </button>
+=======
+          </div>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         </div>
 
         <!-- Dashboard Two Columns -->
@@ -248,7 +296,11 @@
                 <h3>Agenda de Hoje & Próximas Consultas</h3>
                 <p>Compromissos agendados no consultório</p>
               </div>
+<<<<<<< HEAD
               <button class="btn btn-sm btn-ghost" id="btn-view-agenda-completa">
+=======
+              <button class="btn btn-sm btn-ghost" onclick="app.switchTab('agenda')">
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
                 Ver Agenda Completa <i data-lucide="arrow-right"></i>
               </button>
             </div>
@@ -266,7 +318,11 @@
                 <h3>Cobranças em Aberto</h3>
                 <p>Pagamentos aguardando recebimento</p>
               </div>
+<<<<<<< HEAD
               <button class="btn btn-sm btn-ghost" id="btn-view-financeiro-tudo">
+=======
+              <button class="btn btn-sm btn-ghost" onclick="app.switchTab('financeiro')">
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
                 Ver Tudo <i data-lucide="arrow-right"></i>
               </button>
             </div>
@@ -300,6 +356,7 @@
             <button class="btn btn-secondary btn-sm active" id="btn-agenda-view-calendar">Calendário</button>
             <button class="btn btn-secondary btn-sm" id="btn-agenda-view-list">Lista</button>
           </div>
+<<<<<<< HEAD
           <div class="agenda-nav-group">
             <button class="btn btn-secondary btn-sm" id="btn-agenda-prev" title="Ver datas anteriores">
               <i data-lucide="chevron-left"></i>
@@ -311,6 +368,8 @@
               <i data-lucide="chevron-right"></i>
             </button>
           </div>
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           <button class="btn btn-primary" id="btn-new-appointment-agenda">
             <i data-lucide="plus"></i> Agendar Consulta
           </button>
@@ -350,6 +409,7 @@
               <i data-lucide="search"></i>
               <input type="text" id="clientes-search" placeholder="Buscar por nome, telefone, e-mail ou CPF...">
             </div>
+<<<<<<< HEAD
             <select id="clientes-phone-filter" class="form-control" title="Filtrar por validade de telefone">
               <option value="todos">Telefones: Todos</option>
               <option value="validos">Somente WhatsApp válido</option>
@@ -359,6 +419,12 @@
           <div style="display:flex; gap:0.6rem; align-items:center;">
             <button class="btn btn-primary" id="btn-new-client">
               <i data-lucide="user-plus"></i> Cadastrar Novo Paciente
+=======
+          </div>
+          <div style="display:flex; gap:0.6rem; align-items:center;">
+            <button class="btn btn-primary" id="btn-new-client">
+              <i data-lucide="user-plus"></i> Cadastrar Novo Cliente
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             </button>
             <button class="btn btn-secondary" id="btn-report-clientes">
               <i data-lucide="file-text"></i> Relatório Total Clientes
@@ -371,7 +437,10 @@
             <table class="data-table">
               <thead>
                 <tr>
+<<<<<<< HEAD
                   <th>ID</th>
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
                   <th>Nome do Cliente</th>
                   <th>Telefone / WhatsApp</th>
                   <th>E-mail</th>
@@ -411,11 +480,19 @@
 
         <div class="filter-bar card">
           <div class="filter-tabs">
+<<<<<<< HEAD
             <button class="tab-btn active" data-fin-filter="todos" id="fin-tab-all">Todos</button>
             <button class="tab-btn" data-fin-filter="pendente" id="fin-tab-pending">
               Com saldo pendente <span class="badge-pending" id="fin-pending-badge">0</span>
             </button>
             <button class="tab-btn" data-fin-filter="pago" id="fin-tab-paid">Com valor recebido</button>
+=======
+            <button class="tab-btn active" data-fin-filter="todos" id="fin-tab-all">Todos os Lançamentos</button>
+            <button class="tab-btn" data-fin-filter="pendente" id="fin-tab-pending">
+              Em Aberto (Pendentes) <span class="badge-pending" id="fin-pending-badge">0</span>
+            </button>
+            <button class="tab-btn" data-fin-filter="pago" id="fin-tab-paid">Recebidos (Pagos)</button>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           </div>
           <div class="filter-group">
             <div class="input-icon">
@@ -430,6 +507,7 @@
             <table class="data-table">
               <thead>
                 <tr>
+<<<<<<< HEAD
                   <th>Cliente / Lançamentos</th>
                   <th>Qtd.</th>
                   <th>Total (R$)</th>
@@ -437,6 +515,15 @@
                   <th>Em aberto (R$)</th>
                   <th>Status</th>
                   <th>Último lançamento</th>
+=======
+                  <th>Data</th>
+                  <th>Cliente</th>
+                  <th>Procedimento</th>
+                  <th>Forma de Pagamento</th>
+                  <th>Valor (R$)</th>
+                  <th>Status do Pagamento</th>
+                  <th style="text-align: right;">Ações de Pagamento</th>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
                 </tr>
               </thead>
               <tbody id="financeiro-table-body">
@@ -459,6 +546,7 @@
               <button class="btn btn-secondary" id="btn-report-receitas">Relatório de Receitas</button>
               <button class="btn btn-secondary" id="btn-report-financeiro">Relatório Financeiro</button>
               <button class="btn btn-secondary" id="btn-report-despesas">Relatório de Despesas</button>
+<<<<<<< HEAD
               <button class="btn btn-secondary" id="btn-report-aniversarios">Relatório de Aniversários</button>
             </div>
             <div class="report-patient-search">
@@ -469,6 +557,8 @@
               </div>
               <button class="btn btn-secondary" id="btn-report-patient-individual">Gerar Individual</button>
               <button class="btn btn-warning" id="btn-print-patient-individual">Imprimir Individual</button>
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             </div>
             <textarea id="report-output" class="form-control" rows="14" readonly style="font-family: Consolas, monospace; white-space: pre-wrap;"></textarea>
             <div class="report-actions" style="display:flex; gap:0.6rem; margin-top:0.75rem;">
@@ -527,6 +617,7 @@
         </div>
       </section>
 
+<<<<<<< HEAD
       <!-- TAB 6: WHATSAPP -->
       <section class="tab-content" id="tab-whatsapp">
         <div class="config-grid">
@@ -678,6 +769,9 @@
       </section>
 
       <!-- TAB 9: CONFIGURAÇÕES & BACKUP -->
+=======
+      <!-- TAB 6: CONFIGURAÇÕES & BACKUP -->
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
       <section class="tab-content" id="tab-config">
         <div class="config-grid">
           <div class="card grid-col-span-2">
@@ -740,6 +834,7 @@
             </div>
           </div>
 
+<<<<<<< HEAD
           <div class="card grid-col-span-2">
             <div class="card-header">
               <h3><i data-lucide="calendar-sync"></i> Integração com Google Agenda</h3>
@@ -780,6 +875,8 @@
             </div>
           </div>
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           <div class="card">
             <div class="card-header">
               <h3><i data-lucide="refresh-cw"></i> Dados de Demonstração</h3>
@@ -796,6 +893,7 @@
     </main>
   </div>
 
+<<<<<<< HEAD
   <!-- MODAL: ANIVERSÁRIOS DO DIA -->
   <div class="modal-backdrop" id="modal-birthdays">
     <div class="modal-card modal-large">
@@ -851,11 +949,17 @@
     </div>
   </div>
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   <!-- MODAL: CLIENTE (NOVO / EDITAR) -->
   <div class="modal-backdrop" id="modal-client">
     <div class="modal-card">
       <div class="modal-header">
+<<<<<<< HEAD
         <h3 id="modal-client-title">Cadastrar Novo Paciente</h3>
+=======
+        <h3 id="modal-client-title">Cadastrar Novo Cliente</h3>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         <button class="btn-close" id="btn-close-client"><i data-lucide="x"></i></button>
       </div>
       <form id="form-client">
@@ -878,6 +982,7 @@
             <input type="text" id="client-cpf" class="form-control" placeholder="000.000.000-00">
           </div>
           <div class="form-group">
+<<<<<<< HEAD
             <label for="client-rg">RG</label>
                   <input type="text" id="client-rg" class="form-control" placeholder="00.000.000-00" maxlength="12">
           </div>
@@ -1112,6 +1217,14 @@
                 <div id="client-anamnesis-bubbles" class="anamnesis-bubbles"></div>
               </div>
             </details>
+=======
+            <label for="client-dob">Data de Nascimento</label>
+            <input type="date" id="client-dob" class="form-control date-input">
+          </div>
+          <div class="form-group grid-col-span-2">
+            <label for="client-notes">Observações / Historico Médico</label>
+            <textarea id="client-notes" class="form-control" rows="3" placeholder="Informações adicionais, alergias, restrições..."></textarea>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           </div>
         </div>
         <div class="modal-footer">
@@ -1143,8 +1256,11 @@
                 <th>Valor</th>
                 <th>Status Consulta</th>
                 <th>Pagamento</th>
+<<<<<<< HEAD
                 <th>Observações</th>
                 <th>Ações</th>
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
               </tr>
             </thead>
             <tbody id="client-history-tbody">
@@ -1155,7 +1271,10 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="btn-close-client-details-footer">Fechar</button>
+<<<<<<< HEAD
         <button type="button" class="btn btn-secondary" id="btn-print-client-anamnesis">Imprimir Anamnese</button>
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
         <button type="button" class="btn btn-primary" id="btn-print-client-individual">Imprimir Relatório Individual</button>
       </div>
     </div>
@@ -1172,12 +1291,17 @@
         <input type="hidden" id="appointment-id">
         <div class="modal-body grid-2">
           <div class="form-group grid-col-span-2">
+<<<<<<< HEAD
             <label for="appt-client-combobox">Cliente / Paciente *</label>
             <div class="combobox" id="appt-client-combobox-wrap">
               <input type="text" id="appt-client-combobox" class="form-control" placeholder="Pesquisar cliente por nome, telefone ou CPF..." aria-label="Pesquisar cliente">
               <div class="combobox-list" id="appt-client-list" role="listbox" aria-label="Resultados da pesquisa"></div>
             </div>
             <select id="appt-client-id" class="form-control visually-hidden" required>
+=======
+            <label for="appt-client-id">Cliente / Paciente *</label>
+            <select id="appt-client-id" class="form-control" required>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
               <option value="">Selecione um cliente...</option>
             </select>
           </div>
@@ -1187,6 +1311,7 @@
           </div>
           <div class="form-group">
             <label for="appt-time">Horário *</label>
+<<<<<<< HEAD
             <input type="time" id="appt-time" class="form-control date-input time-input" required>
           </div>
           <div class="form-group">
@@ -1210,6 +1335,13 @@
             </div>
             <select id="appt-procedure" class="form-control" required></select>
             <div class="field-note">Escolha a abordagem para preencher o valor sugerido; o valor da consulta continua editável.</div>
+=======
+            <input type="time" id="appt-time" class="form-control" required>
+          </div>
+          <div class="form-group grid-col-span-2">
+            <label for="appt-procedure">Procedimento / Motivo *</label>
+            <input type="text" id="appt-procedure" class="form-control" placeholder="Ex: Consulta de Rotina, Avaliação, Retorno..." required>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           </div>
           <div class="form-group">
             <label for="appt-price">Valor da Consulta (R$) *</label>
@@ -1234,6 +1366,7 @@
             </select>
           </div>
           <div class="form-group">
+<<<<<<< HEAD
             <label for="btn-session-status">Status da Sessao</label>
             <div class="session-status-wrap" id="session-status-wrap">
               <input type="hidden" id="appt-session-status" value="">
@@ -1271,6 +1404,8 @@
             <div class="field-note">Escolha uma cor para identificar o agendamento no calendário.</div>
           </div>
           <div class="form-group">
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
             <label for="appt-payment-status">Status do Pagamento *</label>
             <select id="appt-payment-status" class="form-control">
               <option value="Pendente">Em Aberto (Pendente)</option>
@@ -1284,7 +1419,11 @@
           </div>
           <div class="form-group grid-col-span-2">
             <label for="appt-notes">Observações da Consulta</label>
+<<<<<<< HEAD
             <textarea id="appt-notes" class="form-control form-control-large" rows="4" placeholder="Anotações sobre a sessão..."></textarea>
+=======
+            <textarea id="appt-notes" class="form-control" rows="2" placeholder="Anotações sobre a sessão..."></textarea>
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
           </div>
         </div>
         <div class="modal-footer">
@@ -1295,6 +1434,7 @@
     </div>
   </div>
 
+<<<<<<< HEAD
   <!-- MODAL: ENVIO WHATSAPP -->
   <div class="modal-backdrop" id="modal-whatsapp-send">
     <div class="modal-card" style="max-width: 560px;">
@@ -1331,6 +1471,8 @@
     </div>
   </div>
 
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
   <!-- MODAL: REGISTRAR/EDITAR PAGAMENTO RÁPIDO -->
   <div class="modal-backdrop" id="modal-payment-quick">
     <div class="modal-card" style="max-width: 420px;">
@@ -1424,5 +1566,8 @@
   <script src="app.js"></script>
 </body>
 </html>
+<<<<<<< HEAD
 <!-- ola...
   -->
+=======
+>>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d

@@ -1,9 +1,6 @@
-// Service Worker - Consultório Control PWA
-<<<<<<< HEAD
+﻿// Service Worker - Consultório Control PWA
 const CACHE_NAME = 'consultorio-app-v3';
-=======
-const CACHE_NAME = 'consultorio-app-v1';
->>>>>>> e2575162f2c6b752cfd374222e86772cab8eb78d
+
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<!-- saved from url=(0077)file:///C:/Users/rafae/.gemini/antigravity/scratch/consultorio-app/index.html -->
+<html lang="pt-BR"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consultório Control - Gestão de Clientes, Agenda e Finanças</title>
+  <meta name="description" content="Sistema de gestão simples e poderoso para controle de clientes, consultas e fluxo financeiro do seu consultório.">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com/">
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Firebase SDK (Firestore Cloud Real-Time Sync) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login-screen" id="login-screen" style="display: none;">
+    <div class="login-card">
+      <div class="login-brand">
+        <img src="Patricia.avif" alt="Logo da clínica" class="login-logo">
+        <div>
+          <h2>Patrícia Grando Müller</h2>
+          <p>Acesso ao sistema do consultório</p>
+        </div>
+      </div>
+      <form id="login-form" class="login-form">
+        <div class="form-group">
+          <label for="login-username">Usuário</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Digite seu usuário" required="">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Senha</label>
+          <input type="password" id="login-password" class="form-control" placeholder="Digite sua senha" required="">
+        </div>
+        <p id="login-error" class="login-error" style="display:none;"></p>
+        <button type="submit" class="btn btn-primary">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="app-layout" id="app-shell">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon">
+          <img src="Patricia.avif" alt="Logo da clínica">
+        </div>
+        <div class="logo-text">
+          <h2>Patrícia Grando Müller</h2>
+          <p>Psicoterapeuta</p>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="dashboard" id="nav-dashboard">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="layout-dashboard" aria-hidden="true" class="lucide lucide-layout-dashboard"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-tab="agenda" id="nav-agenda">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="calendar" aria-hidden="true" class="lucide lucide-calendar"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg>
+          <span>Agenda &amp; Consultas</span>
+        </button>
+        <button class="nav-item" data-tab="clientes" id="nav-clientes">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="users" aria-hidden="true" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg>
+          <span>Clientes / Pacientes</span>
+        </button>
+        <button class="nav-item" data-tab="financeiro" id="nav-financeiro">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="wallet" aria-hidden="true" class="lucide lucide-wallet"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>
+          <span>Financeiro</span>
+          <span class="badge-pending-count" id="nav-pending-badge">2</span>
+        </button>
+        <button class="nav-item" data-tab="despesas" id="nav-despesas">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="receipt" aria-hidden="true" class="lucide lucide-receipt"><path d="M12 17V7"></path><path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"></path><path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"></path></svg>
+          <span>Despesas</span>
+        </button>
+        <button class="nav-item" data-tab="whatsapp" id="nav-whatsapp">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="message-circle" aria-hidden="true" class="lucide lucide-message-circle"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path></svg>
+          <span>WhatsApp</span>
+        </button>
+        <button class="nav-item" data-tab="senha" id="nav-senha">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="key-round" aria-hidden="true" class="lucide lucide-key-round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></svg>
+          <span>Senha</span>
+        </button>
+        <button class="nav-item" data-tab="config" id="nav-config">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="settings" aria-hidden="true" class="lucide lucide-settings"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>Configurações</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="btn-quick-action" id="btn-quick-appointment">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus-circle" aria-hidden="true" class="lucide lucide-plus-circle"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>
+          <span>Nova Consulta</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-header">
+        <div class="header-title">
+          <button class="btn btn-secondary btn-icon-text btn-back-tab" id="btn-tab-back" title="Voltar para a aba anterior" style="display: inline-flex;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="arrow-left" aria-hidden="true" class="lucide lucide-arrow-left"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+            <span>Voltar</span>
+          </button>
+          <h1 id="page-title">Dashboard</h1>
+          <p id="page-subtitle">Visão geral do seu consultório no período selecionado</p>
+        </div>
+        <div class="header-actions">
+          <div class="sound-control-group">
+            <button class="btn btn-secondary btn-icon-text active-sound" id="btn-toggle-sound" title="Ativar/Desativar Avisos Sonoros">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="bell" aria-hidden="true" class="lucide lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+              <span id="sound-status-text">Avisos: ON</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-test-sound" title="Tocar som de lembrete agora para testar">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="volume-2" aria-hidden="true" class="lucide lucide-volume-2"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"></path><path d="M16 9a5 5 0 0 1 0 6"></path><path d="M19.364 18.364a9 9 0 0 0 0-12.728"></path></svg> Testar Som
+            </button>
+            <div class="reminder-mins-box" title="Defina com quantos minutos de antecedência o alarme deve tocar">
+              <span style="font-size:0.75rem;">Avisar</span>
+              <input type="number" id="top-reminder-mins" class="reminder-mins-input" value="15" min="1" max="180">
+              <span style="font-size:0.75rem;">min antes</span>
+            </div>
+          </div>
+          <div id="cloud-sync-status" class="cloud-status-badge online" title="Status da sincronização em tempo real entre dispositivos">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="cloud" aria-hidden="true" class="lucide lucide-cloud"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
+            <span id="cloud-status-text">Nuvem Conectada (Tempo Real)</span>
+          </div>
+          <div class="top-date-picker">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="calendar-range" aria-hidden="true" class="lucide lucide-calendar-range"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4"></path><path d="M3 10h18"></path><path d="M8 2v4"></path><path d="M17 14h-6"></path><path d="M13 18H7"></path><path d="M7 14h.01"></path><path d="M17 18h.01"></path></svg>
+            <input type="date" id="top-date-start" class="top-date-input date-input" title="Data Inicial do Período">
+            <span class="top-date-sep">até</span>
+            <input type="date" id="top-date-end" class="top-date-input date-input" title="Data Final do Período">
+            <button class="btn-clear-date" id="btn-reset-top-dates" title="Resetar para Mês Atual">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="rotate-ccw" aria-hidden="true" class="lucide lucide-rotate-ccw"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+          </div>
+          <button class="btn btn-secondary btn-icon-text" id="btn-header-new-client">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="user-plus" aria-hidden="true" class="lucide lucide-user-plus"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg>
+            <span>Novo Paciente</span>
+          </button>
+          <button class="btn btn-secondary btn-icon-text" id="btn-logout-session" title="Sair da sessão e voltar ao login">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="log-out" aria-hidden="true" class="lucide lucide-log-out"><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path></svg>
+            <span>Sair</span>
+          </button>
+          <button class="btn btn-primary btn-icon-text" id="btn-header-new-appointment">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="calendar-plus" aria-hidden="true" class="lucide lucide-calendar-plus"><path d="M16 19h6"></path><path d="M16 2v4"></path><path d="M19 16v6"></path><path d="M21 12.598V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8.5"></path><path d="M3 10h18"></path><path d="M8 2v4"></path></svg>
+            <span>Agendar Consulta</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB 1: DASHBOARD -->
+      <section class="tab-content active" id="tab-dashboard">
+        <!-- Stat Cards -->
+        <div class="stats-grid">
+          <button type="button" class="stat-card card-blue" id="dash-card-consultas" aria-label="Abrir agenda de consultas de hoje">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="calendar-check" aria-hidden="true" class="lucide lucide-calendar-check"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path><path d="m9 16 2 2 4-4"></path></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Consultas Hoje</span>
+              <h3 class="stat-value" id="dash-appointments-today">2</h3>
+              <span class="stat-sub" id="dash-appointments-sub">0 concluída(s) no período</span>
+            </div>
+          </button>
+
+          <button type="button" class="stat-card card-green" id="dash-card-recebido" aria-label="Abrir financeiro em recebidos do mês">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="check-circle-2" aria-hidden="true" class="lucide lucide-check-circle-2"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Recebido (Mês)</span>
+              <h3 class="stat-value" id="dash-received-month">R$&nbsp;0,00</h3>
+              <span class="stat-sub">Pagamentos confirmados</span>
+            </div>
+          </button>
+
+          <button type="button" class="stat-card card-amber" id="dash-card-pendente" aria-label="Abrir financeiro em lançamentos pendentes">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="alert-circle" aria-hidden="true" class="lucide lucide-alert-circle"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Em Aberto / Pendente</span>
+              <h3 class="stat-value" id="dash-pending-total">R$&nbsp;300,00</h3>
+              <span class="stat-sub" id="dash-pending-count">2 cobrança(s) pendente(s) no período</span>
+            </div>
+          </button>
+
+          <button type="button" class="stat-card card-green active result-negative" id="dash-card-resultado" aria-label="Abrir resultado de receitas menos despesas no período">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="scale" aria-hidden="true" class="lucide lucide-scale"><path d="M12 3v18"></path><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"></path><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"></path><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"></path><path d="M7 21h10"></path></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Resultado (Receita - Despesa)</span>
+              <h3 class="stat-value" id="dash-result-total">-R$&nbsp;1.700,00</h3>
+              <span class="stat-sub" id="dash-result-sub">Déficit de R$&nbsp;1.700,00 no período</span>
+            </div>
+          </button>
+
+          <button type="button" class="stat-card card-purple" id="dash-card-clientes" aria-label="Abrir lista de clientes cadastrados">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="users" aria-hidden="true" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Total de Clientes</span>
+              <h3 class="stat-value" id="dash-total-clients">2</h3>
+              <span class="stat-sub">Cadastrados no sistema</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Dashboard Two Columns -->
+        <div class="dashboard-grid">
+          <!-- Upcoming Appointments Card -->
+          <div class="card grid-col-span-2">
+            <div class="card-header">
+              <div>
+                <h3>Agenda de Hoje &amp; Próximas Consultas</h3>
+                <p>Compromissos agendados no consultório</p>
+              </div>
+              <button class="btn btn-sm btn-ghost" id="btn-view-agenda-completa">
+                Ver Agenda Completa <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="arrow-right" aria-hidden="true" class="lucide lucide-arrow-right"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+              </button>
+            </div>
+            <div class="card-body">
+              <div id="dash-today-list" class="appointment-list-compact">
+          <div class="appt-compact-item">
+            <div class="appt-time-box">
+              <div style="font-size:0.7rem;">24/07/2026</div>
+              15:12
+            </div>
+            <div class="appt-details">
+              <h4>Rafael Muller</h4>
+              <p>precisa de cuidados • Total: R$&nbsp;100,00 </p>
+            </div>
+            <div>
+              <span class="badge badge-agendado">Agendado</span>
+              <span class="badge badge-pendente">Pendente</span>
+            </div>
+          </div>
+        
+          <div class="appt-compact-item">
+            <div class="appt-time-box">
+              <div style="font-size:0.7rem;">27/07/2026</div>
+              13:10
+            </div>
+            <div class="appt-details">
+              <h4>Patricia Rosa Grando Muller</h4>
+              <p>cuidado • Total: R$&nbsp;200,00 </p>
+            </div>
+            <div>
+              <span class="badge badge-agendado">Agendado</span>
+              <span class="badge badge-pendente">Pendente</span>
+            </div>
+          </div>
+        </div>
+            </div>
+          </div>
+
+          <!-- Pending Payments Quick Action -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3>Cobranças em Aberto</h3>
+                <p>Pagamentos aguardando recebimento</p>
+              </div>
+              <button class="btn btn-sm btn-ghost" id="btn-view-financeiro-tudo">
+                Ver Tudo <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="arrow-right" aria-hidden="true" class="lucide lucide-arrow-right"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+              </button>
+            </div>
+            <div class="card-body">
+              <div id="dash-pending-list" class="pending-mini-list">
+          <div class="pending-mini-item">
+            <div class="pending-mini-info">
+              <h4>Rafael Muller</h4>
+              <p>24/07/2026 - precisa de cuidados</p>
+              
+            </div>
+            <div style="text-align: right;">
+              <div class="pending-mini-val">R$&nbsp;100,00</div>
+              <button class="btn btn-sm btn-success" style="margin-top: 4px;" onclick="app.openQuickPayModal(&#39;app-1784893127021&#39;)">
+                Registrar Pagamento
+              </button>
+            </div>
+          </div>
+        
+          <div class="pending-mini-item">
+            <div class="pending-mini-info">
+              <h4>Patricia Rosa Grando Muller</h4>
+              <p>27/07/2026 - cuidado</p>
+              
+            </div>
+            <div style="text-align: right;">
+              <div class="pending-mini-val">R$&nbsp;200,00</div>
+              <button class="btn btn-sm btn-success" style="margin-top: 4px;" onclick="app.openQuickPayModal(&#39;app-1784912480395&#39;)">
+                Registrar Pagamento
+              </button>
+            </div>
+          </div>
+        </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: AGENDA & CONSULTAS -->
+      <section class="tab-content" id="tab-agenda">
+        <div class="filter-bar card">
+          <div class="filter-group">
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="search" aria-hidden="true" class="lucide lucide-search"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+              <input type="text" id="agenda-search" placeholder="Buscar por cliente ou procedimento...">
+            </div>
+            <input type="date" id="agenda-filter-start" class="form-control agenda-filter-date date-input" title="Data inicial do período">
+            <input type="date" id="agenda-filter-end" class="form-control agenda-filter-date date-input" title="Data final do período">
+            <select id="agenda-filter-status" class="form-control">
+              <option value="todos">Todos os Status</option>
+              <option value="Agendado">Agendado</option>
+              <option value="Concluído">Concluído</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div class="agenda-view-toggle">
+            <button class="btn btn-secondary btn-sm active" id="btn-agenda-view-calendar">Calendário</button>
+            <button class="btn btn-secondary btn-sm" id="btn-agenda-view-list">Lista</button>
+          </div>
+          <button class="btn btn-primary" id="btn-new-appointment-agenda">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" class="lucide lucide-plus"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Agendar Consulta
+          </button>
+        </div>
+
+        <div class="card agenda-calendar-card" id="agenda-calendar-card" style="display: block;">
+          <div class="agenda-calendar-grid" id="agenda-calendar-grid" style="grid-template-columns: 80px repeat(7, minmax(0px, 1fr));"><div class="agenda-header blank"></div>
+        <div class="agenda-header">
+          <div>qua.</div>
+          <div class="agenda-header-date">01/07/2026</div>
+        </div>
+      
+        <div class="agenda-header">
+          <div>qui.</div>
+          <div class="agenda-header-date">02/07/2026</div>
+        </div>
+      
+        <div class="agenda-header">
+          <div>sex.</div>
+          <div class="agenda-header-date">03/07/2026</div>
+        </div>
+      
+        <div class="agenda-header">
+          <div>sáb.</div>
+          <div class="agenda-header-date">04/07/2026</div>
+        </div>
+      
+        <div class="agenda-header">
+          <div>dom.</div>
+          <div class="agenda-header-date">05/07/2026</div>
+        </div>
+      
+        <div class="agenda-header">
+          <div>seg.</div>
+          <div class="agenda-header-date">06/07/2026</div>
+        </div>
+      
+        <div class="agenda-header">
+          <div>ter.</div>
+          <div class="agenda-header-date">07/07/2026</div>
+        </div>
+      <div class="agenda-time-axis">07:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">08:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">09:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">10:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">11:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">12:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">13:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">14:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">15:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">16:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">17:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">18:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">19:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-time-axis">20:00</div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div><div class="agenda-cell"></div></div>
+        </div>
+
+        <div class="card agenda-table-card" id="agenda-table-card" style="display: none;">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Data / Horário</th>
+                  <th>Cliente / Paciente</th>
+                  <th>Procedimento / Motivo</th>
+                  <th>Valor</th>
+                  <th>Status Consulta</th>
+                  <th>Status Pagamento</th>
+                  <th style="text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="agenda-table-body">
+                <!-- Dynamic Content -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: CLIENTES -->
+      <section class="tab-content" id="tab-clientes">
+        <div class="filter-bar card">
+          <div class="filter-group">
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="search" aria-hidden="true" class="lucide lucide-search"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+              <input type="text" id="clientes-search" placeholder="Buscar por nome, telefone, e-mail ou CPF...">
+            </div>
+            <select id="clientes-phone-filter" class="form-control" title="Filtrar por validade de telefone">
+              <option value="todos">Telefones: Todos</option>
+              <option value="validos">Somente WhatsApp válido</option>
+              <option value="invalidos">Somente WhatsApp inválido</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:0.6rem; align-items:center;">
+            <button class="btn btn-primary" id="btn-new-client">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="user-plus" aria-hidden="true" class="lucide lucide-user-plus"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg> Cadastrar Novo Paciente
+            </button>
+            <button class="btn btn-secondary" id="btn-report-clientes">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="file-text" aria-hidden="true" class="lucide lucide-file-text"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path><path d="M14 2v5a1 1 0 0 0 1 1h5"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg> Relatório Total Clientes
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nome do Cliente</th>
+                  <th>Telefone / WhatsApp</th>
+                  <th>E-mail</th>
+                  <th>CPF</th>
+                  <th>Total de Consultas</th>
+                  <th style="text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="clientes-table-body">
+        <tr>
+          <td><strong>Patricia Rosa Grando Muller</strong></td>
+          <td>54999807726</td>
+          <td>psicoterapia.patricia@gmail.com</td>
+          <td>00171593006</td>
+          <td><span class="badge badge-agendado">1 atendimento(s)</span></td>
+          <td style="text-align: right;">
+            <button class="btn btn-sm btn-secondary" title="Ver Histórico" onclick="app.viewClientDetails(&#39;cli-1784922596158&#39;)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="eye" aria-hidden="true" class="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg> Histórico
+            </button>
+            <button class="btn btn-sm btn-secondary" title="Editar Paciente" onclick="app.editClient(&#39;cli-1784922596158&#39;)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="edit-3" aria-hidden="true" class="lucide lucide-edit-3"><path d="M13 21h8"></path><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg> Editar
+            </button>
+            <button class="btn btn-sm btn-ghost" style="color: var(--danger);" title="Excluir Paciente" onclick="app.deleteClient(&#39;cli-1784922596158&#39;)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trash-2" aria-hidden="true" class="lucide lucide-trash-2"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Excluir
+            </button>
+          </td>
+        </tr>
+      
+        <tr>
+          <td><strong>Rafael Muller</strong></td>
+          <td>54999827770</td>
+          <td>rafaelmuller100@me.com</td>
+          <td>78799260034</td>
+          <td><span class="badge badge-agendado">1 atendimento(s)</span></td>
+          <td style="text-align: right;">
+            <button class="btn btn-sm btn-secondary" title="Ver Histórico" onclick="app.viewClientDetails(&#39;cli-1784893046048&#39;)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="eye" aria-hidden="true" class="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg> Histórico
+            </button>
+            <button class="btn btn-sm btn-secondary" title="Editar Paciente" onclick="app.editClient(&#39;cli-1784893046048&#39;)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="edit-3" aria-hidden="true" class="lucide lucide-edit-3"><path d="M13 21h8"></path><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg> Editar
+            </button>
+            <button class="btn btn-sm btn-ghost" style="color: var(--danger);" title="Excluir Paciente" onclick="app.deleteClient(&#39;cli-1784893046048&#39;)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trash-2" aria-hidden="true" class="lucide lucide-trash-2"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Excluir
+            </button>
+          </td>
+        </tr>
+      </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: FINANCEIRO -->
+      <section class="tab-content" id="tab-financeiro">
+        <!-- Financial Summary Banner -->
+        <div class="fin-summary-grid">
+          <div class="fin-card">
+            <div class="fin-title">Total Geral Bruto</div>
+            <div class="fin-val" id="fin-stat-total">R$&nbsp;300,00</div>
+            <p class="fin-desc">Soma de todas as consultas no período</p>
+          </div>
+          <div class="fin-card text-success">
+            <div class="fin-title">Total Recebido (Pago)</div>
+            <div class="fin-val" id="fin-stat-received">R$&nbsp;0,00</div>
+            <p class="fin-desc" id="fin-stat-received-count">R$&nbsp;0,00 recebidos e R$&nbsp;1.700,00 descontados</p>
+          </div>
+          <div class="fin-card text-warning">
+            <div class="fin-title">Total Em Aberto (Pendente)</div>
+            <div class="fin-val" id="fin-stat-pending">R$&nbsp;300,00</div>
+            <p class="fin-desc" id="fin-stat-pending-count">Saldo líquido: -R$&nbsp;1.700,00</p>
+          </div>
+        </div>
+
+        <div class="filter-bar card">
+          <div class="filter-tabs">
+            <button class="tab-btn active" data-fin-filter="todos" id="fin-tab-all">Todos os Lançamentos</button>
+            <button class="tab-btn" data-fin-filter="pendente" id="fin-tab-pending">
+              Em Aberto (Pendentes) <span class="badge-pending" id="fin-pending-badge">2</span>
+            </button>
+            <button class="tab-btn" data-fin-filter="pago" id="fin-tab-paid">Recebidos (Pagos)</button>
+          </div>
+          <div class="filter-group">
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="search" aria-hidden="true" class="lucide lucide-search"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+              <input type="text" id="financeiro-search" placeholder="Buscar por cliente ou procedimento...">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Cliente</th>
+                  <th>Procedimento</th>
+                  <th>Forma de Pagamento</th>
+                  <th>Valor (R$)</th>
+                  <th>Status do Pagamento</th>
+                  <th style="text-align: right;">Ações de Pagamento</th>
+                </tr>
+              </thead>
+              <tbody id="financeiro-table-body">
+        <tr>
+          <td>27/07/2026</td>
+          <td><strong>Patricia Rosa Grando Muller</strong></td>
+          <td>cuidado</td>
+          <td>Pix</td>
+          <td>
+            <strong>Total: R$&nbsp;200,00</strong>
+            <div style="font-size:0.78rem; color:var(--success);">Pago: R$&nbsp;0,00</div>
+            <div style="font-size:0.78rem; color:var(--warning);">A receber: R$&nbsp;200,00</div>
+          </td>
+          <td>
+            <span class="badge badge-pendente">Pendente</span>
+          </td>
+          <td style="text-align: right;">
+            <button class="btn btn-sm btn-secondary" onclick="app.openQuickPayModal(&#39;app-1784912480395&#39;)" style="margin-right: 0.35rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="credit-card" aria-hidden="true" class="lucide lucide-credit-card"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg> Pagamento
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="app.editAppointment(&#39;app-1784912480395&#39;)" style="margin-right: 0.35rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="edit-3" aria-hidden="true" class="lucide lucide-edit-3"><path d="M13 21h8"></path><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg> Editar
+            </button>
+            <button class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="app.deleteAppointment(&#39;app-1784912480395&#39;)" title="Excluir lançamento">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trash-2" aria-hidden="true" class="lucide lucide-trash-2"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </td>
+        </tr>
+      
+        <tr>
+          <td>24/07/2026</td>
+          <td><strong>Rafael Muller</strong></td>
+          <td>precisa de cuidados</td>
+          <td>Pix</td>
+          <td>
+            <strong>Total: R$&nbsp;100,00</strong>
+            <div style="font-size:0.78rem; color:var(--success);">Pago: R$&nbsp;0,00</div>
+            <div style="font-size:0.78rem; color:var(--warning);">A receber: R$&nbsp;100,00</div>
+          </td>
+          <td>
+            <span class="badge badge-pendente">Pendente</span>
+          </td>
+          <td style="text-align: right;">
+            <button class="btn btn-sm btn-secondary" onclick="app.openQuickPayModal(&#39;app-1784893127021&#39;)" style="margin-right: 0.35rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="credit-card" aria-hidden="true" class="lucide lucide-credit-card"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg> Pagamento
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="app.editAppointment(&#39;app-1784893127021&#39;)" style="margin-right: 0.35rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="edit-3" aria-hidden="true" class="lucide lucide-edit-3"><path d="M13 21h8"></path><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg> Editar
+            </button>
+            <button class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="app.deleteAppointment(&#39;app-1784893127021&#39;)" title="Excluir lançamento">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trash-2" aria-hidden="true" class="lucide lucide-trash-2"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 1.25rem;">
+          <div class="card-header">
+            <div>
+              <h3>Emitir Relatórios</h3>
+              <p>Gere relatórios por paciente, receitas, financeiro e despesas para exportar ou imprimir.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="report-actions" style="display:flex; flex-wrap:wrap; gap:0.6rem; margin-bottom:1rem;">
+              <button class="btn btn-secondary" id="btn-report-paciente">Relatório por Paciente</button>
+              <button class="btn btn-secondary" id="btn-report-receitas">Relatório de Receitas</button>
+              <button class="btn btn-secondary" id="btn-report-financeiro">Relatório Financeiro</button>
+              <button class="btn btn-secondary" id="btn-report-despesas">Relatório de Despesas</button>
+            </div>
+            <textarea id="report-output" class="form-control" rows="14" readonly="" style="font-family: Consolas, monospace; white-space: pre-wrap;"></textarea>
+            <div class="report-actions" style="display:flex; gap:0.6rem; margin-top:0.75rem;">
+              <button class="btn btn-primary" id="btn-copy-report">Copiar Relatório</button>
+              <button class="btn btn-warning" id="btn-print-report">Imprimir</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: DESPESAS -->
+      <section class="tab-content" id="tab-despesas">
+        <div class="filter-bar card">
+          <div class="filter-group">
+            <div>
+              <h3 style="margin-bottom:0.3rem;">Controle de Despesas</h3>
+              <p style="color:var(--text-muted); font-size:0.9rem;">Cadastre gastos fixos e variáveis como mercado, aluguel e contas.</p>
+            </div>
+          </div>
+          <button class="btn btn-warning" id="btn-new-expense">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" class="lucide lucide-plus"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Nova Despesa
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="fin-summary-grid" style="margin-bottom: 1rem;">
+            <div class="fin-card">
+              <div class="fin-title">Total de Despesas</div>
+              <div class="fin-val" id="desp-total">R$&nbsp;1.700,00</div>
+              <p class="fin-desc" id="desp-count">2 lançamento(s) no período</p>
+            </div>
+            <div class="fin-card text-warning">
+              <div class="fin-title">Saldo Líquido</div>
+              <div class="fin-val" id="desp-net">-R$&nbsp;1.700,00</div>
+              <p class="fin-desc">Receitas recebidas menos despesas</p>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th>Valor (R$)</th>
+                  <th>Observações</th>
+                  <th style="text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="despesas-table-body">
+      <tr>
+        <td>05/07/2026</td>
+        <td><strong>Aluguel do consultório</strong> <span class="badge badge-parcial">Recorrente</span></td>
+        <td>Aluguel</td>
+        <td><strong>R$&nbsp;1.450,00</strong></td>
+        <td>Pagamento mensal do imóvel.</td>
+        <td style="text-align: right;">
+          <button class="btn btn-sm btn-secondary" onclick="app.editExpense(&#39;exp-1&#39;)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="edit-3" aria-hidden="true" class="lucide lucide-edit-3"><path d="M13 21h8"></path><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg> Editar
+          </button>
+          <button class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="app.deleteExpense(&#39;exp-1&#39;)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trash-2" aria-hidden="true" class="lucide lucide-trash-2"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </td>
+      </tr>
+    
+      <tr>
+        <td>05/07/2026</td>
+        <td><strong>Luz</strong> <span class="badge badge-parcial">Recorrente</span></td>
+        <td>Energia</td>
+        <td><strong>R$&nbsp;250,00</strong></td>
+        <td>-</td>
+        <td style="text-align: right;">
+          <button class="btn btn-sm btn-secondary" onclick="app.editExpense(&#39;exp-1784927698459&#39;)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="edit-3" aria-hidden="true" class="lucide lucide-edit-3"><path d="M13 21h8"></path><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg> Editar
+          </button>
+          <button class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="app.deleteExpense(&#39;exp-1784927698459&#39;)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trash-2" aria-hidden="true" class="lucide lucide-trash-2"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </td>
+      </tr>
+    </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: WHATSAPP -->
+      <section class="tab-content" id="tab-whatsapp">
+        <div class="config-grid">
+          <div class="card grid-col-span-2">
+            <div class="card-header">
+              <h3><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="message-circle" aria-hidden="true" class="lucide lucide-message-circle"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path></svg> Modelo de Mensagem do WhatsApp</h3>
+            </div>
+            <div class="card-body">
+              <p>Edite o texto que sera enviado para o cliente no momento do agendamento. Use as variaveis para preencher automaticamente os dados da consulta.</p>
+
+              <div class="grid-2" style="margin-top: 1rem;">
+                <div class="form-group">
+                  <label for="whatsapp-template-select">Modelos salvos</label>
+                  <select id="whatsapp-template-select" class="form-control"><option value="tpl-default" selected="">Padrao</option><option value="tpl-legacy-1784925251001">Modelo Antigo</option><option value="tpl-1784925284989">barras</option></select>
+                </div>
+                <div class="form-group">
+                  <label for="whatsapp-template-name">Nome do modelo</label>
+                  <input type="text" id="whatsapp-template-name" class="form-control" placeholder="Ex: Confirmacao Padrao">
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-top: 1rem;">
+                <label for="whatsapp-message-template">Mensagem de envio</label>
+                <textarea id="whatsapp-message-template" class="form-control" rows="12" placeholder="Digite aqui o texto da mensagem..."></textarea>
+              </div>
+
+              <div id="whatsapp-template-help" style="background: rgba(15,23,42,0.6); padding:0.85rem 1rem; border-radius: var(--radius-md); border:1px solid var(--border-color); font-size:0.82rem; color:var(--text-muted); margin-top:1rem;">
+                Variaveis disponiveis: <strong>{{cliente}}</strong>, <strong>{{data}}</strong>, <strong>{{hora}}</strong>, <strong>{{procedimento}}</strong>, <strong>{{valor}}</strong>, <strong>{{status}}</strong>, <strong>{{assinatura}}</strong>
+              </div>
+
+              <div class="config-actions" style="margin-top: 1rem;">
+                <button class="btn btn-secondary" id="btn-whatsapp-template-new">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" class="lucide lucide-plus"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Novo Modelo
+                </button>
+                <button class="btn btn-primary" id="btn-save-whatsapp-template">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="save" aria-hidden="true" class="lucide lucide-save"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"></path><path d="M7 3v4a1 1 0 0 0 1 1h7"></path></svg> Salvar Novo
+                </button>
+                <button class="btn btn-secondary" id="btn-update-whatsapp-template">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="edit-3" aria-hidden="true" class="lucide lucide-edit-3"><path d="M13 21h8"></path><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg> Atualizar Selecionado
+                </button>
+                <button class="btn btn-secondary" id="btn-duplicate-whatsapp-template">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="copy" aria-hidden="true" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg> Duplicar Modelo
+                </button>
+                <button class="btn btn-ghost" id="btn-delete-whatsapp-template" style="color: var(--danger);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trash-2" aria-hidden="true" class="lucide lucide-trash-2"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Excluir Selecionado
+                </button>
+                <button class="btn btn-secondary" id="btn-reset-whatsapp-template">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="rotate-ccw" aria-hidden="true" class="lucide lucide-rotate-ccw"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg> Restaurar Texto Padrao
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: SENHA -->
+      <section class="tab-content" id="tab-senha">
+        <div class="config-grid">
+          <div class="card" style="max-width: 760px;">
+            <div class="card-header">
+              <h3><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="key-round" aria-hidden="true" class="lucide lucide-key-round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></svg> Alterar Senha de Acesso</h3>
+            </div>
+            <div class="card-body">
+              <p>Use este formulário para atualizar a senha de login do sistema quando necessário.</p>
+
+              <div style="margin-top:0.75rem; margin-bottom:1rem; color:var(--text-muted); font-size:0.9rem;">
+                Usuário atual: <strong id="senha-current-user">Patricia</strong>
+              </div>
+
+              <form id="form-change-password" class="grid-2" style="gap: 1rem;">
+                <div class="form-group grid-col-span-2">
+                  <label for="senha-current">Senha atual</label>
+                  <input type="password" id="senha-current" class="form-control" placeholder="Digite a senha atual" required="">
+                </div>
+
+                <div class="form-group">
+                  <label for="senha-new">Nova senha</label>
+                  <input type="password" id="senha-new" class="form-control" placeholder="Digite a nova senha" minlength="6" required="">
+                </div>
+
+                <div class="form-group">
+                  <label for="senha-confirm">Confirmar nova senha</label>
+                  <input type="password" id="senha-confirm" class="form-control" placeholder="Repita a nova senha" minlength="6" required="">
+                </div>
+
+                <div class="grid-col-span-2" style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:0.25rem;">
+                  <button type="button" class="btn btn-secondary" id="btn-clear-password-form">Limpar</button>
+                  <button type="submit" class="btn btn-primary" id="btn-save-password">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="save" aria-hidden="true" class="lucide lucide-save"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"></path><path d="M7 3v4a1 1 0 0 0 1 1h7"></path></svg> Salvar Nova Senha
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 8: CONFIGURAÇÕES & BACKUP -->
+      <section class="tab-content" id="tab-config">
+        <div class="config-grid">
+          <div class="card grid-col-span-2">
+            <div class="card-header">
+              <h3><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="cloud-lightning" aria-hidden="true" class="lucide lucide-cloud-lightning"><path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"></path><path d="m13 12-3 5h4l-3 5"></path></svg> Sincronização Automática em Tempo Real na Nuvem (Firebase)</h3>
+            </div>
+            <div class="card-body">
+              <p>Conecte o seu aplicativo ao Firebase para sincronizar pacientes, consultas e pagamentos em <strong>tempo real entre seu computador e seu celular</strong> sem precisar fazer backups manuais!</p>
+              
+              <div class="grid-2" style="margin-top: 1.25rem;">
+                <div class="form-group grid-col-span-2">
+                  <label for="cfg-firebase-json">Cole o código de configuração do Firebase (Firebase Config JSON)</label>
+                  <textarea id="cfg-firebase-json" class="form-control" rows="5" placeholder="{
+  &quot;apiKey&quot;: &quot;AIzaSy...&quot;,
+  &quot;authDomain&quot;: &quot;seu-consultorio.firebaseapp.com&quot;,
+  &quot;projectId&quot;: &quot;seu-consultorio&quot;,
+  &quot;storageBucket&quot;: &quot;seu-consultorio.appspot.com&quot;,
+  &quot;messagingSenderId&quot;: &quot;1234567890&quot;,
+  &quot;appId&quot;: &quot;1:1234567890:web:abc123&quot;
+}"></textarea>
+                </div>
+              </div>
+
+              <div class="config-actions">
+                <button class="btn btn-primary" id="btn-save-firebase">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="cloud-lightning" aria-hidden="true" class="lucide lucide-cloud-lightning"><path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"></path><path d="m13 12-3 5h4l-3 5"></path></svg> Conectar &amp; Sincronizar em Tempo Real
+                </button>
+                <button class="btn btn-secondary" id="btn-disconnect-firebase">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="cloud-off" aria-hidden="true" class="lucide lucide-cloud-off"><path d="M10.94 5.274A7 7 0 0 1 15.71 10h1.79a4.5 4.5 0 0 1 4.222 6.057"></path><path d="M18.796 18.81A4.5 4.5 0 0 1 17.5 19H9A7 7 0 0 1 5.79 5.78"></path><path d="m2 2 20 20"></path></svg> Desconectar da Nuvem (Usar Apenas Local)
+                </button>
+              </div>
+              
+              <div id="firebase-help-box" style="background: rgba(15,23,42,0.6); padding:0.85rem 1rem; border-radius: var(--radius-md); border:1px solid var(--border-color); font-size:0.82rem; color:var(--text-muted); margin-top:1.25rem;">
+                💡 <strong>Como obter seu código em 1 minuto:</strong>
+                <ol style="margin-left: 1.2rem; margin-top:0.4rem; display:flex; flex-direction:column; gap:0.25rem;">
+                  <li>Acessem <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--primary); font-weight:600;">console.firebase.google.com</a> (grátis com sua conta Google).</li>
+                  <li>Clique em <strong>Criar um projeto</strong> (digite o nome do consultório).</li>
+                  <li>Vá em <strong>Build -&gt; Firestore Database</strong> -&gt; Clique em <em>Criar banco de dados</em> (modo teste).</li>
+                  <li>Nas Configurações do Projeto ⚙️ -&gt; Adicionar App Web () -&gt; Copie a constante <code>firebaseConfig</code> e cole aqui acima.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="database" aria-hidden="true" class="lucide lucide-database"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg> Backup &amp; Exportação de Dados</h3>
+            </div>
+            <div class="card-body">
+              <p>Mantenha os dados do seu consultório em segurança realizando backups periódicos.</p>
+              <div class="config-actions">
+                <button class="btn btn-secondary" id="btn-export-backup">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="download" aria-hidden="true" class="lucide lucide-download"><path d="M12 15V3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path></svg> Baixar Backup JSON
+                </button>
+                <label class="btn btn-secondary label-file-input">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="upload" aria-hidden="true" class="lucide lucide-upload"><path d="M12 3v12"></path><path d="m17 8-5-5-5 5"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path></svg> Restaurar Backup JSON
+                  <input type="file" id="input-import-backup" accept=".json" style="display:none;">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="refresh-cw" aria-hidden="true" class="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg> Dados de Demonstração</h3>
+            </div>
+            <div class="card-body">
+              <p>Reinicie o aplicativo com dados demonstrativos pré-configurados para testar o sistema.</p>
+              <button class="btn btn-warning" id="btn-reset-demo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="rotate-ccw" aria-hidden="true" class="lucide lucide-rotate-ccw"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg> Recarregar Dados Demonstrativos
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: CLIENTE (NOVO / EDITAR) -->
+  <div class="modal-backdrop" id="modal-client">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-client-title">Cadastrar Novo Paciente</h3>
+        <button class="btn-close" id="btn-close-client"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <form id="form-client">
+        <input type="hidden" id="client-id">
+        <div class="modal-body grid-2">
+          <div class="form-group grid-col-span-2">
+            <label for="client-name">Nome Completo *</label>
+            <input type="text" id="client-name" class="form-control" placeholder="Ex: Maria Silva" required="">
+          </div>
+          <div class="form-group">
+            <label for="client-phone">Telefone / WhatsApp *</label>
+            <input type="tel" id="client-phone" class="form-control" placeholder="(11) 99999-8888" required="">
+          </div>
+          <div class="form-group">
+            <label for="client-email">E-mail</label>
+            <input type="email" id="client-email" class="form-control" placeholder="maria@email.com">
+          </div>
+          <div class="form-group">
+            <label for="client-cpf">CPF</label>
+            <input type="text" id="client-cpf" class="form-control" placeholder="000.000.000-00">
+          </div>
+          <div class="form-group">
+            <label for="client-dob">Data de Nascimento</label>
+            <input type="date" id="client-dob" class="form-control date-input">
+          </div>
+          <div class="form-group grid-col-span-2">
+            <label for="client-notes">Observações / Historico Médico</label>
+            <textarea id="client-notes" class="form-control" rows="3" placeholder="Informações adicionais, alergias, restrições..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-client">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Cliente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALHES / HISTÓRICO DO CLIENTE -->
+  <div class="modal-backdrop" id="modal-client-details">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <h3 id="modal-client-detail-name">Detalhes do Cliente</h3>
+        <button class="btn-close" id="btn-close-client-details"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="client-detail-info" id="client-detail-info-box">
+          <!-- Rendered dynamically -->
+        </div>
+        <h4 class="section-subtitle"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="history" aria-hidden="true" class="lucide lucide-history"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg> Histórico de Consultas e Pagamentos</h4>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Procedimento</th>
+                <th>Valor</th>
+                <th>Status Consulta</th>
+                <th>Pagamento</th>
+                <th>Observações</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="client-history-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-close-client-details-footer">Fechar</button>
+        <button type="button" class="btn btn-primary" id="btn-print-client-individual">Imprimir Relatório Individual</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AGENDAMENTO (NOVO / EDITAR) -->
+  <div class="modal-backdrop" id="modal-appointment">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-appointment-title">Agendar Consulta</h3>
+        <button class="btn-close" id="btn-close-appointment"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <form id="form-appointment">
+        <input type="hidden" id="appointment-id">
+        <div class="modal-body grid-2">
+          <div class="form-group grid-col-span-2">
+            <label for="appt-client-combobox">Cliente / Paciente *</label>
+            <div class="combobox" id="appt-client-combobox-wrap">
+              <input type="text" id="appt-client-combobox" class="form-control" placeholder="Pesquisar cliente por nome, telefone ou CPF..." aria-label="Pesquisar cliente">
+              <div class="combobox-list" id="appt-client-list" role="listbox" aria-label="Resultados da pesquisa" style="display: none;"><div class="combobox-item" data-id="cli-1784922596158">Patricia Rosa Grando Muller • 54999807726 • psicoterapia.patricia@gmail.com • 00171593006</div><div class="combobox-item" data-id="cli-1784893046048">Rafael Muller • 54999827770 • rafaelmuller100@me.com • 78799260034</div></div>
+            </div>
+            <select id="appt-client-id" class="form-control visually-hidden" required=""><option value="">Selecione um cliente...</option><option value="cli-1784922596158">Patricia Rosa Grando Muller (54999807726)</option><option value="cli-1784893046048">Rafael Muller (54999827770)</option></select>
+          </div>
+          <div class="form-group">
+            <label for="appt-date">Data da Consulta *</label>
+            <input type="date" id="appt-date" class="form-control date-input" required="">
+          </div>
+          <div class="form-group">
+            <label for="appt-time">Horário *</label>
+            <input type="time" id="appt-time" class="form-control date-input time-input" required="">
+          </div>
+          <div class="form-group grid-col-span-2">
+            <label for="appt-procedure">Procedimento / Motivo *</label>
+            <input type="text" id="appt-procedure" class="form-control" placeholder="Ex: Consulta de Rotina, Avaliação, Retorno..." required="">
+          </div>
+          <div class="form-group">
+            <label for="appt-price">Valor da Consulta (R$) *</label>
+            <input type="number" step="0.01" id="appt-price" class="form-control" placeholder="0,00" required="">
+          </div>
+          <div class="form-group">
+            <label for="appt-payment-method">Forma de Pagamento</label>
+            <select id="appt-payment-method" class="form-control">
+              <option value="Pix">Pix</option>
+              <option value="Cartão de Crédito">Cartão de Crédito</option>
+              <option value="Cartão de Débito">Cartão de Débito</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Transferência">Transferência</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="appt-status">Status da Consulta</label>
+            <select id="appt-status" class="form-control">
+              <option value="Agendado">Agendado</option>
+              <option value="Concluído">Concluído</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="appt-color">Cor do Agendamento</label>
+            <input type="hidden" id="appt-color" value="#38bdf8">
+            <div class="color-palette" id="appt-color-palette" aria-label="Paleta de cores do agendamento">
+              <button type="button" class="color-swatch" data-color="#38bdf8" title="Azul claro" style="background:#38bdf8;" onclick="app.selectAppointmentColor(&#39;#38bdf8&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#0ea5e9" title="Azul" style="background:#0ea5e9;" onclick="app.selectAppointmentColor(&#39;#0ea5e9&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#06b6d4" title="Ciano" style="background:#06b6d4;" onclick="app.selectAppointmentColor(&#39;#06b6d4&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#22c55e" title="Verde" style="background:#22c55e;" onclick="app.selectAppointmentColor(&#39;#22c55e&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#84cc16" title="Verde claro" style="background:#84cc16;" onclick="app.selectAppointmentColor(&#39;#84cc16&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#f97316" title="Laranja" style="background:#f97316;" onclick="app.selectAppointmentColor(&#39;#f97316&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#ea580c" title="Laranja forte" style="background:#ea580c;" onclick="app.selectAppointmentColor(&#39;#ea580c&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#ef4444" title="Vermelho" style="background:#ef4444;" onclick="app.selectAppointmentColor(&#39;#ef4444&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#ec4899" title="Rosa" style="background:#ec4899;" onclick="app.selectAppointmentColor(&#39;#ec4899&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#8b5cf6" title="Roxo" style="background:#8b5cf6;" onclick="app.selectAppointmentColor(&#39;#8b5cf6&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#6366f1" title="Índigo" style="background:#6366f1;" onclick="app.selectAppointmentColor(&#39;#6366f1&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#64748b" title="Cinza" style="background:#64748b;" onclick="app.selectAppointmentColor(&#39;#64748b&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#0f172a" title="Preto" style="background:#0f172a;" onclick="app.selectAppointmentColor(&#39;#0f172a&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#fbbf24" title="Amarelo" style="background:#fbbf24;" onclick="app.selectAppointmentColor(&#39;#fbbf24&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#14b8a6" title="Turquesa" style="background:#14b8a6;" onclick="app.selectAppointmentColor(&#39;#14b8a6&#39;)"></button>
+              <button type="button" class="color-swatch" data-color="#db2777" title="Magenta" style="background:#db2777;" onclick="app.selectAppointmentColor(&#39;#db2777&#39;)"></button>
+            </div>
+            <div class="field-note">Escolha uma cor para identificar o agendamento no calendário.</div>
+          </div>
+          <div class="form-group">
+            <label for="appt-payment-status">Status do Pagamento *</label>
+            <select id="appt-payment-status" class="form-control">
+              <option value="Pendente">Em Aberto (Pendente)</option>
+              <option value="Parcial">Pago Parcialmente</option>
+              <option value="Pago">Recebido (Pago Total)</option>
+            </select>
+          </div>
+          <div class="form-group" id="group-amount-paid">
+            <label for="appt-amount-paid">Valor Já Pago (R$)</label>
+            <input type="number" step="0.01" id="appt-amount-paid" class="form-control" placeholder="0,00">
+          </div>
+          <div class="form-group grid-col-span-2">
+            <label for="appt-notes">Observações da Consulta</label>
+            <textarea id="appt-notes" class="form-control form-control-large" rows="4" placeholder="Anotações sobre a sessão..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-appointment">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Agendamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ENVIO WHATSAPP -->
+  <div class="modal-backdrop" id="modal-whatsapp-send">
+    <div class="modal-card" style="max-width: 560px;">
+      <div class="modal-header">
+        <div class="whatsapp-send-brand">
+          <img src="Patricia.avif" alt="Logo da clínica" class="whatsapp-send-logo">
+          <h3>Enviar Mensagem WhatsApp</h3>
+        </div>
+        <button class="btn-close" id="btn-close-whatsapp-send"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ws-send-appt-id">
+        <div class="grid-2">
+          <div class="form-group grid-col-span-2">
+            <label for="ws-send-template-search">Buscar modelo</label>
+            <input type="text" id="ws-send-template-search" class="form-control" placeholder="Digite para filtrar modelos...">
+          </div>
+          <div class="form-group grid-col-span-2">
+            <label for="ws-send-template-select">Escolha o modelo para este envio</label>
+            <select id="ws-send-template-select" class="form-control"></select>
+          </div>
+          <div class="form-group grid-col-span-2">
+            <label for="ws-send-preview">Pre-visualizacao da mensagem</label>
+            <textarea id="ws-send-preview" class="form-control" rows="10" readonly="" style="white-space: pre-wrap;"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-whatsapp-send">Cancelar</button>
+        <button type="button" class="btn btn-success" id="btn-confirm-whatsapp-send">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="send" aria-hidden="true" class="lucide lucide-send"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"></path><path d="m21.854 2.147-10.94 10.939"></path></svg> Enviar no WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR/EDITAR PAGAMENTO RÁPIDO -->
+  <div class="modal-backdrop" id="modal-payment-quick">
+    <div class="modal-card" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 id="modal-pay-title">Atualizar Pagamento</h3>
+        <button class="btn-close" id="btn-close-pay"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <form id="form-quick-pay">
+        <input type="hidden" id="pay-appt-id">
+        <div class="modal-body grid-2">
+          <div class="form-group grid-col-span-2">
+            <label>Valor Total da Consulta</label>
+            <input type="text" id="pay-total-display" class="form-control" readonly="" style="font-weight:700; color:var(--primary);">
+          </div>
+          <div class="form-group grid-col-span-2">
+            <label for="pay-status-select">Status do Pagamento</label>
+            <select id="pay-status-select" class="form-control">
+              <option value="Pago">Pago Total</option>
+              <option value="Parcial">Pago Parcial</option>
+              <option value="Pendente">Em Aberto (Pendente)</option>
+            </select>
+          </div>
+          <div class="form-group grid-col-span-2" id="pay-amount-group">
+            <label for="pay-amount-input">Valor Pago até o momento (R$)</label>
+            <input type="number" step="0.01" id="pay-amount-input" class="form-control" placeholder="0.00" required="">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-pay">Cancelar</button>
+          <button type="submit" class="btn btn-success">Salvar Pagamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DESPESA (NOVA / EDITAR) -->
+  <div class="modal-backdrop" id="modal-expense">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-expense-title">Editar Despesa</h3>
+        <button class="btn-close" id="btn-close-expense"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <form id="form-expense">
+        <input type="hidden" id="expense-id" value="exp-1">
+        <div class="modal-body grid-2">
+          <div class="form-group grid-col-span-2">
+            <label for="expense-description">Descrição *</label>
+            <input type="text" id="expense-description" class="form-control" placeholder="Ex: Mercado, Aluguel, Energia..." required="">
+          </div>
+          <div class="form-group">
+            <label for="expense-category">Categoria</label>
+            <select id="expense-category" class="form-control">
+              <option value="Mercado">Mercado</option>
+              <option value="Aluguel">Aluguel</option>
+              <option value="Energia">Energia</option>
+              <option value="Internet">Internet</option>
+              <option value="Transporte">Transporte</option>
+              <option value="Folha de Pagamento">Folha de Pagamento</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="expense-amount">Valor (R$) *</label>
+            <input type="number" step="0.01" id="expense-amount" class="form-control" placeholder="0,00" required="">
+          </div>
+          <div class="form-group">
+            <label for="expense-date">Data *</label>
+            <input type="date" id="expense-date" class="form-control date-input" required="">
+          </div>
+          <div class="form-group" style="align-items:flex-start; display:flex; gap:0.5rem;">
+            <input type="checkbox" id="expense-recurring" style="margin-top:0.3rem;">
+            <label for="expense-recurring" style="margin:0;">Recorrente mensal</label>
+          </div>
+          <div class="form-group grid-col-span-2">
+            <label for="expense-notes">Observações</label>
+            <textarea id="expense-notes" class="form-control" rows="3" placeholder="Detalhes da despesa..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-expense">Cancelar</button>
+          <button type="submit" class="btn btn-warning">Salvar Despesa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS CONTAINER -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- JS Implementation -->
+  <script src="app.js"></script>
+
+
+</body></html>

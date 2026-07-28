@@ -270,6 +270,70 @@ class ConsultorioApp {
       });
     }
 
+    const resolveDashboardTarget = (cardId) => {
+      if (!cardId) return null;
+      const map = {
+        'dash-card-consultas': 'agenda',
+        'dash-card-recebido': 'financeiro',
+        'dash-card-pendente': 'financeiro',
+        'dash-card-resultado': 'financeiro',
+        'dash-card-clientes': 'clientes'
+      };
+      return map[cardId] || null;
+    };
+
+    const globalClickGuard = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const appointmentTrigger = target.closest('#btn-header-new-appointment, #btn-new-appointment-agenda');
+      if (appointmentTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.openAppointmentModal();
+        return;
+      }
+
+      const clientTrigger = target.closest('#btn-header-new-client, #btn-new-client');
+      if (clientTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.openClientModal();
+        return;
+      }
+
+      const dashAgendaTrigger = target.closest('#btn-view-agenda-completa');
+      if (dashAgendaTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.clearDashboardQuickFilters();
+        this.switchTab('agenda');
+        return;
+      }
+
+      const dashFinanceiroTrigger = target.closest('#btn-view-financeiro-tudo');
+      if (dashFinanceiroTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.financeViewFilter = 'all';
+        this.switchTab('financeiro');
+        return;
+      }
+
+      const statCard = target.closest('.stat-card');
+      if (statCard && statCard.id) {
+        const targetTab = resolveDashboardTarget(statCard.id);
+        if (targetTab) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.handleDashboardCardClick(statCard.id, targetTab);
+        }
+      }
+    };
+
+    document.addEventListener('click', globalClickGuard, true);
+    document.addEventListener('touchstart', globalClickGuard, { capture: true, passive: false });
+
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab') || 'dashboard';
@@ -603,6 +667,7 @@ class ConsultorioApp {
     if (loginScreen) {
       loginScreen.style.zIndex = '9999';
       loginScreen.style.pointerEvents = 'auto';
+      loginScreen.style.visibility = 'visible';
     }
     if (appShell) {
       appShell.style.display = 'none';
@@ -630,6 +695,8 @@ class ConsultorioApp {
     if (appShell) appShell.classList.remove('app-hidden');
     if (loginScreen) {
       loginScreen.style.pointerEvents = 'none';
+      loginScreen.style.zIndex = '-1';
+      loginScreen.style.visibility = 'hidden';
     }
     if (appShell) {
       appShell.style.display = '';

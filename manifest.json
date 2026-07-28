@@ -1,6 +1,5 @@
 {
   "name": "Consultório Control",
-  "oi": "oi",
   "short_name": "Consultório",
   "description": "Sistema de gestão de clientes, agenda de consultas e pagamentos do consultório",
   "start_url": "./index.html",

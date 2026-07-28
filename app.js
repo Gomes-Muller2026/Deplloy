@@ -255,6 +255,20 @@ class ConsultorioApp {
     const btnViewFin = document.getElementById('btn-view-financeiro-tudo');
     if (btnViewFin) btnViewFin.addEventListener('click', () => this.switchTab('financeiro'));
 
+    const dashboardCardMap = {
+      'dash-card-consultas': 'agenda',
+      'dash-card-recebido': 'financeiro',
+      'dash-card-pendente': 'financeiro',
+      'dash-card-resultado': 'financeiro',
+      'dash-card-clientes': 'clientes'
+    };
+
+    Object.keys(dashboardCardMap).forEach((id) => {
+      const card = document.getElementById(id);
+      if (!card) return;
+      card.addEventListener('click', () => this.switchTab(dashboardCardMap[id]));
+    });
+
     const reportHandlers = {
       'btn-report-paciente': () => this.generatePatientReport(),
       'btn-report-receitas': () => this.generateReceitasReport(),

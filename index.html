@@ -84,6 +84,22 @@
         </div>
 
         <div class="header-actions">
+          <div class="sound-control-group">
+            <button class="btn btn-secondary btn-icon-text active-sound" id="btn-toggle-sound" title="Ativar/Desativar avisos sonoros">
+              <i data-lucide="bell"></i>
+              <span id="sound-status-text">Avisos: ON</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-test-sound" title="Tocar som de lembrete agora para testar">
+              <i data-lucide="volume-2"></i>
+              <span>Testar Som</span>
+            </button>
+            <div class="reminder-mins-box" title="Defina com quantos minutos de antecedencia o alarme deve tocar">
+              <span style="font-size:0.75rem;">Avisar</span>
+              <input type="number" id="top-reminder-mins" class="reminder-mins-input" value="15" min="1" max="180">
+              <span style="font-size:0.75rem;">min antes</span>
+            </div>
+          </div>
+
           <div id="cloud-sync-status" class="cloud-status-badge offline">
             <i data-lucide="cloud"></i>
             <span id="cloud-status-text">Modo Local</span>
@@ -274,6 +290,10 @@
               <i data-lucide="search"></i>
               <input type="text" id="financeiro-search" placeholder="Buscar por cliente...">
             </div>
+          </div>
+          <div class="finance-filter-indicator is-hidden" id="finance-filter-indicator" aria-live="polite">
+            <span class="finance-filter-chip" id="finance-filter-label">Filtro: Todos</span>
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-clear-finance-filter">Limpar filtro</button>
           </div>
         </div>
 

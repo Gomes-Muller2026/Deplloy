@@ -7,6 +7,8 @@ const LOGIN_DEFAULT_USERNAME = 'Patricia';
 const LOGIN_DEFAULT_PASSWORD = 'Flora1658';
 const LOGIN_USER_STORAGE_KEY = 'consultorio_login_user';
 const LOGIN_PASSWORD_STORAGE_KEY = 'consultorio_login_password';
+const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
+const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
 
 const getTodayStr = () => {
   const d = new Date();
@@ -71,6 +73,9 @@ class ConsultorioApp {
     this.expenses = [];
     this.currentTab = 'dashboard';
     this.localLoginUnlocked = false;
+    this.financeViewFilter = 'all';
+    this.soundEnabled = true;
+    this.reminderMinutes = 15;
     this.loadStore();
   }
 
@@ -116,7 +121,69 @@ class ConsultorioApp {
 
     this.syncTopDatesToAgendaFilters();
     this.ensureAppointmentProcedureOptions();
+    this.loadSoundSettings();
+    this.updateSoundControlsUI();
     this.updateCloudSyncMeta('Modo local', 'local');
+  }
+
+  loadSoundSettings() {
+    try {
+      const rawEnabled = localStorage.getItem(SOUND_ENABLED_STORAGE_KEY);
+      const rawMinutes = localStorage.getItem(REMINDER_MINS_STORAGE_KEY);
+      this.soundEnabled = rawEnabled == null ? true : rawEnabled === '1';
+      const parsedMinutes = Number(rawMinutes);
+      this.reminderMinutes = Number.isFinite(parsedMinutes) ? Math.min(180, Math.max(1, parsedMinutes)) : 15;
+    } catch (err) {
+      this.soundEnabled = true;
+      this.reminderMinutes = 15;
+    }
+  }
+
+  saveSoundSettings() {
+    try {
+      localStorage.setItem(SOUND_ENABLED_STORAGE_KEY, this.soundEnabled ? '1' : '0');
+      localStorage.setItem(REMINDER_MINS_STORAGE_KEY, String(this.reminderMinutes));
+    } catch (err) {
+      console.log('Falha ao salvar configuracao de avisos:', err);
+    }
+  }
+
+  updateSoundControlsUI() {
+    const toggleBtn = document.getElementById('btn-toggle-sound');
+    const statusText = document.getElementById('sound-status-text');
+    const minutesInput = document.getElementById('top-reminder-mins');
+
+    if (toggleBtn) toggleBtn.classList.toggle('sound-off', !this.soundEnabled);
+    if (statusText) statusText.textContent = this.soundEnabled ? 'Avisos: ON' : 'Avisos: OFF';
+    if (minutesInput) minutesInput.value = String(this.reminderMinutes);
+  }
+
+  playReminderSound() {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(660, now + 0.25);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.14, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.34);
+
+      osc.onended = () => {
+        if (audioCtx && typeof audioCtx.close === 'function') audioCtx.close();
+      };
+    } catch (err) {
+      this.showToast('Nao foi possivel tocar o som neste dispositivo.', 'warning');
+    }
   }
 
   ensureAppointmentProcedureOptions() {
@@ -170,6 +237,7 @@ class ConsultorioApp {
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab') || 'dashboard';
+        if (tab === 'financeiro') this.financeViewFilter = 'all';
         this.switchTab(tab);
       });
     });
@@ -250,10 +318,58 @@ class ConsultorioApp {
     const financeiroSearch = document.getElementById('financeiro-search');
     if (financeiroSearch) financeiroSearch.addEventListener('input', () => this.renderFinanceiroTable());
 
+    const btnToggleSound = document.getElementById('btn-toggle-sound');
+    if (btnToggleSound) {
+      btnToggleSound.addEventListener('click', () => {
+        this.soundEnabled = !this.soundEnabled;
+        this.saveSoundSettings();
+        this.updateSoundControlsUI();
+        this.showToast(this.soundEnabled ? 'Avisos sonoros ativados.' : 'Avisos sonoros desativados.', 'info');
+      });
+    }
+
+    const btnTestSound = document.getElementById('btn-test-sound');
+    if (btnTestSound) {
+      btnTestSound.addEventListener('click', () => {
+        this.playReminderSound();
+        this.showToast('Som de teste reproduzido.', 'success');
+      });
+    }
+
+    const reminderInput = document.getElementById('top-reminder-mins');
+    if (reminderInput) {
+      reminderInput.addEventListener('change', () => {
+        const value = Number(reminderInput.value);
+        const safeValue = Number.isFinite(value) ? Math.min(180, Math.max(1, Math.round(value))) : 15;
+        this.reminderMinutes = safeValue;
+        reminderInput.value = String(safeValue);
+        this.saveSoundSettings();
+        this.showToast(`Aviso configurado para ${safeValue} min antes.`, 'success');
+      });
+    }
+
+    const clearFinanceFilterBtn = document.getElementById('btn-clear-finance-filter');
+    if (clearFinanceFilterBtn) {
+      clearFinanceFilterBtn.addEventListener('click', () => {
+        this.financeViewFilter = 'all';
+        this.renderFinanceiroTable();
+      });
+    }
+
     const btnViewAgenda = document.getElementById('btn-view-agenda-completa');
-    if (btnViewAgenda) btnViewAgenda.addEventListener('click', () => this.switchTab('agenda'));
+    if (btnViewAgenda) {
+      btnViewAgenda.addEventListener('click', () => {
+        this.clearDashboardQuickFilters();
+        this.switchTab('agenda');
+      });
+    }
     const btnViewFin = document.getElementById('btn-view-financeiro-tudo');
-    if (btnViewFin) btnViewFin.addEventListener('click', () => this.switchTab('financeiro'));
+    if (btnViewFin) {
+      btnViewFin.addEventListener('click', () => {
+        this.financeViewFilter = 'all';
+        this.switchTab('financeiro');
+      });
+    }
 
     const dashboardCardMap = {
       'dash-card-consultas': 'agenda',
@@ -266,7 +382,7 @@ class ConsultorioApp {
     Object.keys(dashboardCardMap).forEach((id) => {
       const card = document.getElementById(id);
       if (!card) return;
-      card.addEventListener('click', () => this.switchTab(dashboardCardMap[id]));
+      card.addEventListener('click', () => this.handleDashboardCardClick(id, dashboardCardMap[id]));
     });
 
     const reportHandlers = {
@@ -291,6 +407,59 @@ class ConsultorioApp {
         this.showToast('Painel de aniversarios simplificado: use a busca de clientes por data de nascimento.', 'info');
       });
     }
+  }
+
+  clearDashboardQuickFilters() {
+    const agendaSearch = document.getElementById('agenda-search');
+    const agendaStatus = document.getElementById('agenda-filter-status');
+    const financeSearch = document.getElementById('financeiro-search');
+
+    if (agendaSearch) agendaSearch.value = '';
+    if (agendaStatus) agendaStatus.value = 'todos';
+    if (financeSearch) financeSearch.value = '';
+  }
+
+  handleDashboardCardClick(cardId, targetTab) {
+    if (cardId === 'dash-card-consultas') {
+      const today = getTodayStr();
+      const agendaSearch = document.getElementById('agenda-search');
+      const agendaStart = document.getElementById('agenda-filter-start');
+      const agendaEnd = document.getElementById('agenda-filter-end');
+      const agendaStatus = document.getElementById('agenda-filter-status');
+
+      if (agendaSearch) agendaSearch.value = '';
+      if (agendaStart) agendaStart.value = today;
+      if (agendaEnd) agendaEnd.value = today;
+      if (agendaStatus) agendaStatus.value = 'todos';
+      this.switchTab('agenda');
+      return;
+    }
+
+    if (cardId === 'dash-card-recebido') {
+      const financeSearch = document.getElementById('financeiro-search');
+      if (financeSearch) financeSearch.value = '';
+      this.financeViewFilter = 'paid';
+      this.switchTab('financeiro');
+      return;
+    }
+
+    if (cardId === 'dash-card-pendente') {
+      const financeSearch = document.getElementById('financeiro-search');
+      if (financeSearch) financeSearch.value = '';
+      this.financeViewFilter = 'pending';
+      this.switchTab('financeiro');
+      return;
+    }
+
+    if (cardId === 'dash-card-resultado') {
+      const financeSearch = document.getElementById('financeiro-search');
+      if (financeSearch) financeSearch.value = '';
+      this.financeViewFilter = 'all';
+      this.switchTab('financeiro');
+      return;
+    }
+
+    this.switchTab(targetTab);
   }
 
   switchTab(tabId) {
@@ -640,6 +809,23 @@ class ConsultorioApp {
     const tbody = document.getElementById('financeiro-table-body');
     if (!tbody) return;
 
+    const filterIndicator = document.getElementById('finance-filter-indicator');
+    const filterLabel = document.getElementById('finance-filter-label');
+
+    const filterLabels = {
+      all: 'Filtro: Todos',
+      paid: 'Filtro: Recebidos',
+      pending: 'Filtro: Pendentes'
+    };
+
+    if (filterLabel) {
+      filterLabel.textContent = filterLabels[this.financeViewFilter] || filterLabels.all;
+    }
+    if (filterIndicator) {
+      const shouldShow = this.financeViewFilter === 'paid' || this.financeViewFilter === 'pending';
+      filterIndicator.classList.toggle('is-hidden', !shouldShow);
+    }
+
     const search = String((document.getElementById('financeiro-search') || {}).value || '').toLowerCase().trim();
     const grouped = {};
 
@@ -663,6 +849,13 @@ class ConsultorioApp {
     if (search) {
       rows = rows.filter((r) => String(r.clientName || '').toLowerCase().includes(search));
     }
+
+    if (this.financeViewFilter === 'pending') {
+      rows = rows.filter((r) => r.pending > 0);
+    } else if (this.financeViewFilter === 'paid') {
+      rows = rows.filter((r) => r.paid > 0);
+    }
+
     rows.sort((a, b) => b.pending - a.pending);
 
     if (!rows.length) {

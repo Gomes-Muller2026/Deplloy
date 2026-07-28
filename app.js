@@ -18,6 +18,28 @@ const getTodayStr = () => {
   return `${y}-${m}-${day}`;
 };
 
+const parseIsoDate = (isoDate) => {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate))) return null;
+  const [y, m, d] = String(isoDate).split('-').map((v) => Number(v));
+  return new Date(y, m - 1, d);
+};
+
+const addDaysIso = (isoDate, days) => {
+  const base = parseIsoDate(isoDate);
+  if (!base) return isoDate;
+  base.setDate(base.getDate() + Number(days || 0));
+  const y = base.getFullYear();
+  const m = String(base.getMonth() + 1).padStart(2, '0');
+  const d = String(base.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const weekdayShortPt = (isoDate) => {
+  const d = parseIsoDate(isoDate);
+  if (!d) return '-';
+  return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+};
+
 const formatDateBR = (isoDate) => {
   if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate))) return '-';
   const [y, m, d] = String(isoDate).split('-');
@@ -76,6 +98,8 @@ class ConsultorioApp {
     this.financeViewFilter = 'all';
     this.soundEnabled = true;
     this.reminderMinutes = 15;
+    this.agendaViewMode = 'list';
+    this.agendaCalendarStartDate = getTodayStr();
     this.loadStore();
   }
 
@@ -271,6 +295,9 @@ class ConsultorioApp {
     const btnHeaderNewAppointment = document.getElementById('btn-header-new-appointment');
     if (btnHeaderNewAppointment) btnHeaderNewAppointment.addEventListener('click', () => this.openAppointmentModal());
 
+    const btnNewAppointmentAgenda = document.getElementById('btn-new-appointment-agenda');
+    if (btnNewAppointmentAgenda) btnNewAppointmentAgenda.addEventListener('click', () => this.openAppointmentModal());
+
     const formClient = document.getElementById('form-client');
     if (formClient) formClient.addEventListener('submit', (e) => { e.preventDefault(); this.saveClientForm(); });
 
@@ -309,6 +336,47 @@ class ConsultorioApp {
     if (agendaStart) agendaStart.addEventListener('change', () => this.renderAgendaTable());
     if (agendaEnd) agendaEnd.addEventListener('change', () => this.renderAgendaTable());
     if (agendaStatus) agendaStatus.addEventListener('change', () => this.renderAgendaTable());
+
+    const btnAgendaViewList = document.getElementById('btn-agenda-view-list');
+    const btnAgendaViewCalendar = document.getElementById('btn-agenda-view-calendar');
+    const btnAgendaPrev = document.getElementById('btn-agenda-prev');
+    const btnAgendaToday = document.getElementById('btn-agenda-today');
+    const btnAgendaNext = document.getElementById('btn-agenda-next');
+
+    if (btnAgendaViewList) {
+      btnAgendaViewList.addEventListener('click', () => {
+        this.agendaViewMode = 'list';
+        this.updateAgendaViewModeUI();
+      });
+    }
+
+    if (btnAgendaViewCalendar) {
+      btnAgendaViewCalendar.addEventListener('click', () => {
+        this.agendaViewMode = 'calendar';
+        this.updateAgendaViewModeUI();
+      });
+    }
+
+    if (btnAgendaPrev) {
+      btnAgendaPrev.addEventListener('click', () => {
+        this.agendaCalendarStartDate = addDaysIso(this.agendaCalendarStartDate, -7);
+        this.renderAgendaTable();
+      });
+    }
+
+    if (btnAgendaNext) {
+      btnAgendaNext.addEventListener('click', () => {
+        this.agendaCalendarStartDate = addDaysIso(this.agendaCalendarStartDate, 7);
+        this.renderAgendaTable();
+      });
+    }
+
+    if (btnAgendaToday) {
+      btnAgendaToday.addEventListener('click', () => {
+        this.agendaCalendarStartDate = getTodayStr();
+        this.renderAgendaTable();
+      });
+    }
 
     const clientesSearch = document.getElementById('clientes-search');
     const clientesPhoneFilter = document.getElementById('clientes-phone-filter');
@@ -694,7 +762,17 @@ class ConsultorioApp {
     const tbody = document.getElementById('agenda-table-body');
     const calendarGrid = document.getElementById('agenda-calendar-grid');
     const rangeLabel = document.getElementById('agenda-calendar-range');
+    const agendaStartInput = document.getElementById('agenda-filter-start');
+    const agendaEndInput = document.getElementById('agenda-filter-end');
     const filtered = this.filterAppointmentsForAgenda();
+
+    if (this.agendaViewMode === 'calendar' && agendaStartInput && agendaEndInput) {
+      this.agendaCalendarStartDate = agendaStartInput.value || this.agendaCalendarStartDate || getTodayStr();
+      agendaStartInput.value = this.agendaCalendarStartDate;
+      agendaEndInput.value = addDaysIso(this.agendaCalendarStartDate, 4);
+    }
+
+    this.updateAgendaViewModeUI();
 
     if (rangeLabel) {
       const start = (document.getElementById('agenda-filter-start') || {}).value || '-';
@@ -704,25 +782,59 @@ class ConsultorioApp {
 
     if (calendarGrid) {
       if (!filtered.length) {
-        calendarGrid.innerHTML = '<div class="empty-state"><p>Nenhum agendamento no periodo.</p></div>';
+        calendarGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;"><p>Nenhum agendamento no periodo.</p></div>';
       } else {
+        const start = agendaStartInput && agendaStartInput.value ? agendaStartInput.value : this.agendaCalendarStartDate;
+        const days = Array.from({ length: 5 }, (_, idx) => addDaysIso(start, idx));
+        const hours = Array.from({ length: 14 }, (_, idx) => 7 + idx);
+
         const grouped = {};
         filtered.forEach((a) => {
-          grouped[a.date] = grouped[a.date] || [];
-          grouped[a.date].push(a);
+          const h = Number(String(a.time || '00:00').split(':')[0] || 0);
+          const key = `${a.date}|${String(h).padStart(2, '0')}`;
+          grouped[key] = grouped[key] || [];
+          grouped[key].push(a);
         });
-        const dates = Object.keys(grouped).sort().slice(0, 7);
-        calendarGrid.innerHTML = dates.map((date) => `
-          <div class="card" style="padding:0.75rem; margin-bottom:0.5rem;">
-            <h4 style="margin:0 0 0.5rem 0; font-size:0.95rem;">${formatDateBR(date)}</h4>
-            ${grouped[date].sort((x, y) => String(x.time).localeCompare(String(y.time))).map((a) => `
-              <div style="display:flex; justify-content:space-between; gap:0.5rem; font-size:0.88rem; margin-bottom:0.35rem;">
-                <span><strong>${safeText(a.time || '--:--')}</strong> ${safeText(a.clientName || '-')}</span>
-                <span>${safeText(a.status || 'Agendado')}</span>
+
+        const headerHtml = ['<div class="agenda-header blank"></div>']
+          .concat(days.map((date) => `
+            <div class="agenda-header">
+              <div>${safeText(weekdayShortPt(date))}</div>
+              <div class="agenda-header-date">${formatDateBR(date)}</div>
+            </div>
+          `))
+          .join('');
+
+        const bodyHtml = hours.map((hour) => {
+          const hourLabel = `${String(hour).padStart(2, '0')}:00`;
+          const rowCells = days.map((date) => {
+            const key = `${date}|${String(hour).padStart(2, '0')}`;
+            const events = (grouped[key] || []).sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
+            if (!events.length) return '<div class="agenda-cell"></div>';
+
+            return `
+              <div class="agenda-cell">
+                ${events.map((a) => {
+                  const statusClass = String(a.paymentStatus || '').toLowerCase().includes('pago')
+                    ? 'agenda-event-pago'
+                    : (String(a.paymentStatus || '').toLowerCase().includes('parcial') ? 'agenda-event-parcial' : 'agenda-event-pendente');
+                  return `
+                    <div class="agenda-event ${statusClass}">
+                      <div class="agenda-event-time">${safeText(a.time || '--:--')}</div>
+                      <div class="agenda-event-title">${safeText(a.clientName || '-')}</div>
+                      <div class="agenda-event-procedure">${safeText(a.procedure || 'Consulta')}</div>
+                      <div class="agenda-event-payment">${safeText(a.paymentStatus || 'Pendente')}</div>
+                    </div>
+                  `;
+                }).join('')}
               </div>
-            `).join('')}
-          </div>
-        `).join('');
+            `;
+          }).join('');
+
+          return `<div class="agenda-time-axis">${hourLabel}</div>${rowCells}`;
+        }).join('');
+
+        calendarGrid.innerHTML = headerHtml + bodyHtml;
       }
     }
 
@@ -761,6 +873,22 @@ class ConsultorioApp {
         </tr>
       `;
     }).join('');
+  }
+
+  updateAgendaViewModeUI() {
+    const calendarCard = document.getElementById('agenda-calendar-card');
+    const tableCard = document.getElementById('agenda-table-card');
+    const btnList = document.getElementById('btn-agenda-view-list');
+    const btnCalendar = document.getElementById('btn-agenda-view-calendar');
+    const calendarToolbar = document.getElementById('agenda-calendar-toolbar');
+
+    const isCalendar = this.agendaViewMode === 'calendar';
+    if (calendarCard) calendarCard.style.display = isCalendar ? 'block' : 'none';
+    if (tableCard) tableCard.style.display = isCalendar ? 'none' : 'block';
+    if (calendarToolbar) calendarToolbar.style.display = isCalendar ? 'flex' : 'none';
+
+    if (btnList) btnList.classList.toggle('active', !isCalendar);
+    if (btnCalendar) btnCalendar.classList.toggle('active', isCalendar);
   }
 
   renderClientsTable() {

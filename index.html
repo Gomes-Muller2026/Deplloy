@@ -217,19 +217,29 @@
             </select>
           </div>
           <div class="agenda-view-toggle">
-            <button class="btn btn-secondary btn-sm" type="button">Calendario</button>
-            <button class="btn btn-secondary btn-sm" type="button">Lista</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-list">Lista</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-calendar">Calendario</button>
           </div>
+          <button class="btn btn-primary" id="btn-new-appointment-agenda" type="button"><i data-lucide="plus"></i> Agendar Consulta</button>
+        </div>
+
+        <div class="card agenda-calendar-toolbar" id="agenda-calendar-toolbar">
           <div class="agenda-nav-group">
-            <button class="btn btn-secondary btn-sm" type="button">Anterior</button>
-            <div class="agenda-calendar-range" id="agenda-calendar-range">Periodo</div>
-            <button class="btn btn-secondary btn-sm" type="button">Proxima</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-prev">Anterior</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-today"><i data-lucide="rotate-ccw"></i> Voltar</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-next">Proxima</button>
+          </div>
+          <div class="agenda-calendar-range" id="agenda-calendar-range">Periodo</div>
+        </div>
+
+        <div class="card agenda-calendar-card" id="agenda-calendar-card" style="display:none;">
+          <div class="card-body">
+            <div id="agenda-calendar-grid" class="agenda-calendar-grid"></div>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card agenda-table-card" id="agenda-table-card">
           <div class="card-body">
-            <div id="agenda-calendar-grid" class="appointment-list-compact" style="margin-bottom: 1rem;"></div>
             <div class="table-responsive">
               <table class="data-table">
                 <thead>

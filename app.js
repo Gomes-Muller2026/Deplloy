@@ -1446,3 +1446,4 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch((err) => console.log('[PWA] Falha Service Worker:', err));
   }
 });
+// OLA

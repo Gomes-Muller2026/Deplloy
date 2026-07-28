@@ -1,4 +1,5 @@
-﻿/**
+﻿// oi
+/**
  * Consultório Control - Bootstrap estável + módulos essenciais
  * Restaura login, navegação, clientes, agenda e financeiro básicos.
  */

@@ -1,6 +1,6 @@
 ﻿/**
- * Consultorio Control - Bootstrap estavel + modulos essenciais
- * Restaura login, navegacao, clientes, agenda e financeiro basicos.
+ * Consultório Control - Bootstrap estável + módulos essenciais
+ * Restaura login, navegação, clientes, agenda e financeiro básicos.
  */
 
 const LOGIN_DEFAULT_USERNAME = 'Patricia';
@@ -168,7 +168,7 @@ class ConsultorioApp {
       localStorage.setItem(SOUND_ENABLED_STORAGE_KEY, this.soundEnabled ? '1' : '0');
       localStorage.setItem(REMINDER_MINS_STORAGE_KEY, String(this.reminderMinutes));
     } catch (err) {
-      console.log('Falha ao salvar configuracao de avisos:', err);
+      console.log('Falha ao salvar configuração de avisos:', err);
     }
   }
 
@@ -206,7 +206,7 @@ class ConsultorioApp {
         if (audioCtx && typeof audioCtx.close === 'function') audioCtx.close();
       };
     } catch (err) {
-      this.showToast('Nao foi possivel tocar o som neste dispositivo.', 'warning');
+      this.showToast('Não foi possível tocar o som neste dispositivo.', 'warning');
     }
   }
 
@@ -218,8 +218,8 @@ class ConsultorioApp {
     const defaults = [
       'Consulta Individual',
       'Terapia de Casal',
-      'Sessao de Retorno',
-      'Avaliacao Inicial'
+      'Sessão de Retorno',
+      'Avaliação Inicial'
     ];
 
     select.innerHTML = ['<option value="">Selecione uma abordagem</option>']
@@ -247,7 +247,7 @@ class ConsultorioApp {
           this.render();
           this.showToast('Login realizado com sucesso!', 'success');
         } else {
-          this.showLoginScreen('Usuario ou senha incorretos.');
+          this.showLoginScreen('Usuário ou senha incorretos.');
         }
       });
     }
@@ -480,7 +480,7 @@ class ConsultorioApp {
     if (birthdaysBtn) {
       birthdaysBtn.addEventListener('click', () => {
         this.switchTab('clientes');
-        this.showToast('Painel de aniversarios simplificado: use a busca de clientes por data de nascimento.', 'info');
+        this.showToast('Painel de aniversários simplificado: use a busca de clientes por data de nascimento.', 'info');
       });
     }
   }
@@ -541,6 +541,23 @@ class ConsultorioApp {
   switchTab(tabId) {
     const targetId = document.getElementById(`tab-${tabId}`) ? tabId : 'dashboard';
     this.currentTab = targetId;
+
+    const pageTitle = document.getElementById('page-title');
+    const pageSubtitle = document.getElementById('page-subtitle');
+    const tabMeta = {
+      dashboard: { title: 'Consultório Control', subtitle: 'Gestão de clientes, agenda e financeiro' },
+      agenda: { title: 'Agenda & Consultas', subtitle: 'Gerencie horários, sessões e atendimentos do período' },
+      clientes: { title: 'Clientes', subtitle: 'Cadastros, contatos e histórico de pacientes' },
+      financeiro: { title: 'Financeiro', subtitle: 'Recebimentos, pendências e relatórios do período' },
+      despesas: { title: 'Despesas', subtitle: 'Controle de gastos operacionais do consultório' },
+      whatsapp: { title: 'WhatsApp', subtitle: 'Modelos e envios de mensagens para os clientes' },
+      senha: { title: 'Senha', subtitle: 'Atualize o acesso com segurança' },
+      graficos: { title: 'Gráficos', subtitle: 'Visualizações e indicadores do consultório' },
+      config: { title: 'Configurações', subtitle: 'Ajustes gerais e integrações do sistema' }
+    };
+    const meta = tabMeta[this.currentTab] || tabMeta.dashboard;
+    if (pageTitle) pageTitle.textContent = meta.title;
+    if (pageSubtitle) pageSubtitle.textContent = meta.subtitle;
 
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {
       btn.classList.toggle('active', btn.getAttribute('data-tab') === this.currentTab);
@@ -615,8 +632,8 @@ class ConsultorioApp {
 
   logoutSession() {
     this.localLoginUnlocked = false;
-    this.showLoginScreen('Sessao encerrada. Faca login novamente para continuar.');
-    this.showToast('Voce saiu da sessao.', 'info');
+    this.showLoginScreen('Sessão encerrada. Faça login novamente para continuar.');
+    this.showToast('Você saiu da sessão.', 'info');
   }
 
   initFirebase() {
@@ -701,12 +718,12 @@ class ConsultorioApp {
     };
 
     setText('dash-consultas-hoje', todayApps.length);
-    setText('dash-consultas-hoje-sub', `${doneToday} concluidas`);
+    setText('dash-consultas-hoje-sub', `${doneToday} concluídas`);
     setText('dash-received-month', formatCurrency(received));
     setText('dash-pending-total', formatCurrency(pending));
-    setText('dash-pending-count', `${this.appointments.filter((a) => toNumber(a.price) - toNumber(a.amountPaid) > 0).length} cobrancas pendentes`);
+    setText('dash-pending-count', `${this.appointments.filter((a) => toNumber(a.price) - toNumber(a.amountPaid) > 0).length} cobranças pendentes`);
     setText('dash-result-total', formatCurrency(result));
-    setText('dash-result-sub', result > 0 ? `Superavit de ${formatCurrency(result)}` : (result < 0 ? `Deficit de ${formatCurrency(Math.abs(result))}` : 'Equilibrio no periodo'));
+    setText('dash-result-sub', result > 0 ? `Superávit de ${formatCurrency(result)}` : (result < 0 ? `Déficit de ${formatCurrency(Math.abs(result))}` : 'Equilíbrio no período'));
     setText('dash-total-clients', this.clients.length);
     setText('nav-pending-badge', this.appointments.filter((a) => toNumber(a.price) - toNumber(a.amountPaid) > 0).length);
 
@@ -743,10 +760,10 @@ class ConsultorioApp {
         .filter((a) => toNumber(a.price) - toNumber(a.amountPaid) > 0)
         .slice(0, 6);
       if (!pend.length) {
-        dashPending.innerHTML = '<div class="empty-state"><p>Sem cobrancas pendentes.</p></div>';
+        dashPending.innerHTML = '<div class="empty-state"><p>Sem cobranças pendentes.</p></div>';
       } else {
         dashPending.innerHTML = pend.map((a) => `
-          <div class="dash-bubble-item is-pending" role="group" aria-label="Cobranca pendente de ${safeText(a.clientName || '-')}">
+          <div class="dash-bubble-item is-pending" role="group" aria-label="Cobrança pendente de ${safeText(a.clientName || '-')}">
             <div class="dash-bubble-content">
               <strong>${safeText(a.clientName || '-')}</strong>
               <p>${formatDateBR(a.date)} - Em aberto</p>
@@ -777,12 +794,12 @@ class ConsultorioApp {
     if (rangeLabel) {
       const start = (document.getElementById('agenda-filter-start') || {}).value || '-';
       const end = (document.getElementById('agenda-filter-end') || {}).value || '-';
-      rangeLabel.textContent = `${formatDateBR(start)} ate ${formatDateBR(end)}`;
+      rangeLabel.textContent = `${formatDateBR(start)} até ${formatDateBR(end)}`;
     }
 
     if (calendarGrid) {
       if (!filtered.length) {
-        calendarGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;"><p>Nenhum agendamento no periodo.</p></div>';
+        calendarGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;"><p>Nenhum agendamento no período.</p></div>';
       } else {
         const start = agendaStartInput && agendaStartInput.value ? agendaStartInput.value : this.agendaCalendarStartDate;
         const days = Array.from({ length: 5 }, (_, idx) => addDaysIso(start, idx));
@@ -845,7 +862,7 @@ class ConsultorioApp {
         <tr>
           <td colspan="8">
             <div class="empty-state">
-              <p>Nenhum agendamento encontrado no periodo.</p>
+              <p>Nenhum agendamento encontrado no período.</p>
             </div>
           </td>
         </tr>
@@ -880,12 +897,10 @@ class ConsultorioApp {
     const tableCard = document.getElementById('agenda-table-card');
     const btnList = document.getElementById('btn-agenda-view-list');
     const btnCalendar = document.getElementById('btn-agenda-view-calendar');
-    const calendarToolbar = document.getElementById('agenda-calendar-toolbar');
 
     const isCalendar = this.agendaViewMode === 'calendar';
     if (calendarCard) calendarCard.style.display = isCalendar ? 'block' : 'none';
     if (tableCard) tableCard.style.display = isCalendar ? 'none' : 'block';
-    if (calendarToolbar) calendarToolbar.style.display = isCalendar ? 'flex' : 'none';
 
     if (btnList) btnList.classList.toggle('active', !isCalendar);
     if (btnCalendar) btnCalendar.classList.toggle('active', isCalendar);
@@ -1096,7 +1111,7 @@ class ConsultorioApp {
     const date = String((document.getElementById('expense-date') || {}).value || '').trim();
 
     if (!description || amount <= 0 || !date) {
-      this.showToast('Preencha descricao, valor e data da despesa.', 'warning');
+      this.showToast('Preencha descrição, valor e data da despesa.', 'warning');
       return;
     }
 
@@ -1222,7 +1237,7 @@ class ConsultorioApp {
     this.appointments = this.appointments.filter((a) => a.clientId !== clientId);
     this.saveStore();
     this.render();
-    this.showToast('Paciente excluido com sucesso.', 'success');
+    this.showToast('Paciente excluído com sucesso.', 'success');
   }
 
   openAppointmentModal(appointmentId = '') {
@@ -1281,13 +1296,13 @@ class ConsultorioApp {
     const price = toNumber((document.getElementById('appt-price') || {}).value || 0);
 
     if (!clientId || !date || !time || !procedure || price <= 0) {
-      this.showToast('Preencha cliente, data, horario, abordagem e valor da consulta.', 'warning');
+      this.showToast('Preencha cliente, data, horário, abordagem e valor da consulta.', 'warning');
       return;
     }
 
     const client = this.clients.find((c) => c.id === clientId);
     if (!client) {
-      this.showToast('Cliente selecionado invalido.', 'warning');
+      this.showToast('Cliente selecionado inválido.', 'warning');
       return;
     }
 
@@ -1324,7 +1339,7 @@ class ConsultorioApp {
     this.appointments = this.appointments.filter((a) => a.id !== appointmentId);
     this.saveStore();
     this.render();
-    this.showToast('Consulta excluida com sucesso.', 'success');
+    this.showToast('Consulta excluída com sucesso.', 'success');
   }
 
   deleteExpense(expenseId) {
@@ -1332,7 +1347,7 @@ class ConsultorioApp {
     this.expenses = this.expenses.filter((e) => e.id !== expenseId);
     this.saveStore();
     this.render();
-    this.showToast('Despesa excluida com sucesso.', 'success');
+    this.showToast('Despesa excluída com sucesso.', 'success');
   }
 
   sendAppointmentWhatsApp(appointmentId) {
@@ -1343,16 +1358,16 @@ class ConsultorioApp {
     const rawPhone = (client && client.phone) || '';
     const phone = this.normalizeWhatsAppPhone(rawPhone);
     if (!phone) {
-      this.showToast('Cliente sem telefone valido para WhatsApp.', 'warning');
+      this.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
       return;
     }
 
     const text = [
-      `Ola, ${(client && client.name) || appointment.clientName || 'cliente'}!`,
+      `Olá, ${(client && client.name) || appointment.clientName || 'cliente'}!`,
       '',
       'Passando para confirmar seu agendamento:',
       `Data: ${formatDateBR(appointment.date)}`,
-      `Horario: ${appointment.time || ''}`,
+      `Horário: ${appointment.time || ''}`,
       `Procedimento: ${appointment.procedure || 'Consulta'}`,
       `Valor: ${formatCurrency(appointment.price || 0)}`
     ].join('\n');
@@ -1408,10 +1423,10 @@ class ConsultorioApp {
     const total = this.clients.length;
     const withPhone = this.clients.filter((c) => this.normalizeWhatsAppPhone(c.phone || '')).length;
     const lines = [
-      'RELATORIO DE PACIENTES',
+      'RELATÓRIO DE PACIENTES',
       '',
       `Total de pacientes: ${total}`,
-      `Com WhatsApp valido: ${withPhone}`,
+      `Com WhatsApp válido: ${withPhone}`,
       '',
       'Lista:',
       ...this.clients
@@ -1419,7 +1434,7 @@ class ConsultorioApp {
         .sort((a, b) => Number(a.registrationNumber || 0) - Number(b.registrationNumber || 0))
         .map((c) => `- ${c.registrationNumber || '-'} | ${c.name || '-'} | ${c.phone || '-'}`)
     ];
-    this.openReportWindow('Relatorio de Pacientes', lines.join('\n'));
+    this.openReportWindow('Relatório de Pacientes', lines.join('\n'));
   }
 
   generateReceitasReport() {
@@ -1428,14 +1443,14 @@ class ConsultorioApp {
     const paid = rangeAppointments.reduce((sum, a) => sum + toNumber(a.amountPaid), 0);
     const pending = Math.max(0, total - paid);
     const lines = [
-      'RELATORIO DE RECEITAS',
+      'RELATÓRIO DE RECEITAS',
       '',
-      `Periodo: ${formatDateBR(this.getTopRange().start || '')} ate ${formatDateBR(this.getTopRange().end || '')}`,
-      `Total lancado: ${formatCurrency(total)}`,
+      `Período: ${formatDateBR(this.getTopRange().start || '')} até ${formatDateBR(this.getTopRange().end || '')}`,
+      `Total lançado: ${formatCurrency(total)}`,
       `Total recebido: ${formatCurrency(paid)}`,
       `Total em aberto: ${formatCurrency(pending)}`
     ];
-    this.openReportWindow('Relatorio de Receitas', lines.join('\n'));
+    this.openReportWindow('Relatório de Receitas', lines.join('\n'));
   }
 
   generateFinanceiroReport() {
@@ -1449,7 +1464,7 @@ class ConsultorioApp {
       grouped[key].pending += Math.max(0, toNumber(a.price) - toNumber(a.amountPaid));
     });
 
-    const lines = ['RELATORIO FINANCEIRO', ''];
+    const lines = ['RELATÓRIO FINANCEIRO', ''];
     Object.keys(grouped)
       .map((k) => grouped[k])
       .sort((a, b) => b.pending - a.pending)
@@ -1457,31 +1472,31 @@ class ConsultorioApp {
         lines.push(`${g.name} | Total: ${formatCurrency(g.total)} | Pago: ${formatCurrency(g.paid)} | Aberto: ${formatCurrency(g.pending)}`);
       });
 
-    this.openReportWindow('Relatorio Financeiro', lines.join('\n'));
+    this.openReportWindow('Relatório Financeiro', lines.join('\n'));
   }
 
   generateDespesasReport() {
     const rangeExpenses = this.filterItemsByTopRange(this.expenses, 'date');
     const total = rangeExpenses.reduce((sum, e) => sum + toNumber(e.amount), 0);
     const lines = [
-      'RELATORIO DE DESPESAS',
+      'RELATÓRIO DE DESPESAS',
       '',
-      `Periodo: ${formatDateBR(this.getTopRange().start || '')} ate ${formatDateBR(this.getTopRange().end || '')}`,
+      `Período: ${formatDateBR(this.getTopRange().start || '')} até ${formatDateBR(this.getTopRange().end || '')}`,
       `Total de despesas: ${formatCurrency(total)}`,
       '',
-      'Lancamentos:',
+      'Lançamentos:',
       ...rangeExpenses
         .slice()
         .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
         .map((e) => `- ${formatDateBR(e.date)} | ${e.description || '-'} | ${e.category || '-'} | ${formatCurrency(e.amount)}`)
     ];
-    this.openReportWindow('Relatorio de Despesas', lines.join('\n'));
+    this.openReportWindow('Relatório de Despesas', lines.join('\n'));
   }
 
   generateAniversariosReport() {
     const clientsWithDob = this.clients.filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(String(c.dob || '')));
     const lines = [
-      'RELATORIO DE ANIVERSARIOS',
+      'RELATÓRIO DE ANIVERSÁRIOS',
       '',
       ...clientsWithDob
         .slice()
@@ -1493,13 +1508,13 @@ class ConsultorioApp {
       lines.push('Nenhum paciente com data de nascimento cadastrada.');
     }
 
-    this.openReportWindow('Relatorio de Aniversarios', lines.join('\n'));
+    this.openReportWindow('Relatório de Aniversários', lines.join('\n'));
   }
 
   generatePacienteIndividualReport(autoPrint = false) {
     const search = String((document.getElementById('report-patient-search') || {}).value || '').trim().toLowerCase();
     if (!search) {
-      this.showToast('Digite o nome, telefone ou ID do paciente para gerar o relatorio individual.', 'warning');
+      this.showToast('Digite o nome, telefone ou ID do paciente para gerar o relatório individual.', 'warning');
       return;
     }
 
@@ -1510,7 +1525,7 @@ class ConsultorioApp {
     );
 
     if (!patient) {
-      this.showToast('Paciente nao encontrado para relatorio individual.', 'warning');
+      this.showToast('Paciente não encontrado para relatório individual.', 'warning');
       return;
     }
 
@@ -1523,7 +1538,7 @@ class ConsultorioApp {
     const pending = Math.max(0, total - paid);
 
     const lines = [
-      `RELATORIO INDIVIDUAL - ${patient.name || '-'}`,
+      `RELATÓRIO INDIVIDUAL - ${patient.name || '-'}`,
       '',
       `Telefone: ${patient.phone || '-'}`,
       `E-mail: ${patient.email || '-'}`,
@@ -1534,11 +1549,11 @@ class ConsultorioApp {
       `Valor pago: ${formatCurrency(paid)}`,
       `Valor em aberto: ${formatCurrency(pending)}`,
       '',
-      'Historico:',
+      'Histórico:',
       ...patientAppointments.map((a) => `- ${formatDateBR(a.date)} ${a.time || ''} | ${a.procedure || '-'} | ${formatCurrency(a.price)} | Pago: ${formatCurrency(a.amountPaid || 0)} | ${a.status || '-'}`)
     ];
 
-    this.openReportWindow(`Relatorio - ${patient.name || 'Paciente'}`, lines.join('\n'), autoPrint);
+    this.openReportWindow(`Relatório - ${patient.name || 'Paciente'}`, lines.join('\n'), autoPrint);
   }
 
   render() {
@@ -1564,7 +1579,7 @@ window.app = new Proxy(appInstance, {
       return typeof value === 'function' ? value.bind(target) : value;
     }
     return function noopHandler() {
-      console.log(`Acao temporariamente indisponivel: ${String(prop)}`);
+      console.log(`Ação temporariamente indisponível: ${String(prop)}`);
     };
   }
 });
@@ -1582,4 +1597,4 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch((err) => console.log('[PWA] Falha Service Worker:', err));
   }
 });
-// OLA
+    // inicialização

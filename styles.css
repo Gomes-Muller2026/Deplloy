@@ -1784,6 +1784,38 @@ select.form-control {
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
+.money-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 108px;
+  padding: 0.35rem 0.72rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  border: 1px solid transparent;
+  box-shadow: 0 6px 14px rgba(2, 6, 23, 0.24);
+}
+
+.money-pill-total {
+  color: #bfe9ff;
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(14, 165, 233, 0.2);
+}
+
+.money-pill-paid {
+  color: #bbf7d0;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.money-pill-pending {
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.2);
+}
+
 
 /* Sound Button Styling */
 .active-sound {

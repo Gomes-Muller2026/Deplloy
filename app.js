@@ -881,9 +881,9 @@ class ConsultorioApp {
         <tr>
           <td>${safeText(r.clientName)}</td>
           <td>${r.qty}</td>
-          <td>${formatCurrency(r.total)}</td>
-          <td>${formatCurrency(r.paid)}</td>
-          <td>${formatCurrency(r.pending)}</td>
+          <td><span class="money-pill money-pill-total">${formatCurrency(r.total)}</span></td>
+          <td><span class="money-pill money-pill-paid">${formatCurrency(r.paid)}</span></td>
+          <td><span class="money-pill money-pill-pending">${formatCurrency(r.pending)}</span></td>
           <td>${status}</td>
           <td>
             <button class="btn btn-sm btn-secondary" onclick="app.switchTab('agenda')">Ver agenda</button>

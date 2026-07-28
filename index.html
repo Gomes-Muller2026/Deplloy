@@ -55,7 +55,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="logo-icon">
-          <img src="Patricia.avif" alt="Logo da clinica">
+          <img src="./icon-512.png" alt="Logo da clinica">
         </div>
         <div class="logo-text">
           <h2>Patricia Grando Muller</h2>
@@ -95,7 +95,7 @@
             </button>
             <div class="reminder-mins-box" title="Defina com quantos minutos de antecedencia o alarme deve tocar">
               <span style="font-size:0.75rem;">Avisar</span>
-              <input type="number" id="top-reminder-mins" class="reminder-mins-input" value="15" min="1" max="180">
+              <input type="number" id="top-reminder-mins" class="reminder-mins-input" value="15" min="1">
               <span style="font-size:0.75rem;">min antes</span>
             </div>
           </div>
@@ -125,7 +125,7 @@
 
       <section class="tab-content active" id="tab-dashboard">
         <div class="stats-grid">
-          <button type="button" class="stat-card card-blue" id="dash-card-consultas" aria-label="Consultas de hoje">
+          <button type="button" class="stat-card card-blue" id="dash-card-consultas" aria-label="Consultas de hoje" onclick="app.handleDashboardCardClick('dash-card-consultas', 'agenda')" title="Abrir agenda de consultas de hoje">
             <div class="stat-icon"><i data-lucide="calendar-check"></i></div>
             <div class="stat-info">
               <span class="stat-label">Consultas Hoje</span>
@@ -134,7 +134,7 @@
             </div>
           </button>
 
-          <button type="button" class="stat-card card-green" id="dash-card-recebido" aria-label="Recebido no periodo">
+          <button type="button" class="stat-card card-green" id="dash-card-recebido" aria-label="Recebido no periodo" onclick="app.handleDashboardCardClick('dash-card-recebido', 'financeiro')" title="Abrir financeiro com recebidos">
             <div class="stat-icon"><i data-lucide="check-circle-2"></i></div>
             <div class="stat-info">
               <span class="stat-label">Recebido</span>
@@ -143,7 +143,7 @@
             </div>
           </button>
 
-          <button type="button" class="stat-card card-amber" id="dash-card-pendente" aria-label="Pendencias">
+          <button type="button" class="stat-card card-amber" id="dash-card-pendente" aria-label="Pendencias" onclick="app.handleDashboardCardClick('dash-card-pendente', 'financeiro')" title="Abrir financeiro com pendencias">
             <div class="stat-icon"><i data-lucide="alert-circle"></i></div>
             <div class="stat-info">
               <span class="stat-label">Em Aberto</span>
@@ -152,7 +152,7 @@
             </div>
           </button>
 
-          <button type="button" class="stat-card card-green" id="dash-card-resultado" aria-label="Resultado do periodo">
+          <button type="button" class="stat-card card-green" id="dash-card-resultado" aria-label="Resultado do periodo" onclick="app.handleDashboardCardClick('dash-card-resultado', 'financeiro')" title="Abrir financeiro com resultado geral">
             <div class="stat-icon"><i data-lucide="line-chart"></i></div>
             <div class="stat-info">
               <span class="stat-label">Resultado</span>
@@ -161,7 +161,7 @@
             </div>
           </button>
 
-          <button type="button" class="stat-card card-purple" id="dash-card-clientes" aria-label="Total de clientes">
+          <button type="button" class="stat-card card-purple" id="dash-card-clientes" aria-label="Total de clientes" onclick="app.handleDashboardCardClick('dash-card-clientes', 'clientes')" title="Abrir lista de clientes">
             <div class="stat-icon"><i data-lucide="users"></i></div>
             <div class="stat-info">
               <span class="stat-label">Total de Clientes</span>

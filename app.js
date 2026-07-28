@@ -132,7 +132,7 @@ class ConsultorioApp {
       const rawMinutes = localStorage.getItem(REMINDER_MINS_STORAGE_KEY);
       this.soundEnabled = rawEnabled == null ? true : rawEnabled === '1';
       const parsedMinutes = Number(rawMinutes);
-      this.reminderMinutes = Number.isFinite(parsedMinutes) ? Math.min(180, Math.max(1, parsedMinutes)) : 15;
+      this.reminderMinutes = Number.isFinite(parsedMinutes) ? Math.max(1, parsedMinutes) : 15;
     } catch (err) {
       this.soundEnabled = true;
       this.reminderMinutes = 15;
@@ -340,7 +340,7 @@ class ConsultorioApp {
     if (reminderInput) {
       reminderInput.addEventListener('change', () => {
         const value = Number(reminderInput.value);
-        const safeValue = Number.isFinite(value) ? Math.min(180, Math.max(1, Math.round(value))) : 15;
+        const safeValue = Number.isFinite(value) ? Math.max(1, Math.round(value)) : 15;
         this.reminderMinutes = safeValue;
         reminderInput.value = String(safeValue);
         this.saveSoundSettings();
@@ -382,7 +382,15 @@ class ConsultorioApp {
     Object.keys(dashboardCardMap).forEach((id) => {
       const card = document.getElementById(id);
       if (!card) return;
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-disabled', 'false');
       card.addEventListener('click', () => this.handleDashboardCardClick(id, dashboardCardMap[id]));
+      card.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        this.handleDashboardCardClick(id, dashboardCardMap[id]);
+      });
     });
 
     const reportHandlers = {

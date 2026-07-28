@@ -34,6 +34,18 @@ const addDaysIso = (isoDate, days) => {
   return `${y}-${m}-${d}`;
 };
 
+const getWeekStartMondayIso = (isoDate) => {
+  const base = parseIsoDate(isoDate);
+  if (!base) return isoDate;
+  const day = base.getDay();
+  const delta = day === 0 ? -6 : 1 - day;
+  base.setDate(base.getDate() + delta);
+  const y = base.getFullYear();
+  const m = String(base.getMonth() + 1).padStart(2, '0');
+  const d = String(base.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 const weekdayShortPt = (isoDate) => {
   const d = parseIsoDate(isoDate);
   if (!d) return '-';
@@ -99,7 +111,7 @@ class ConsultorioApp {
     this.soundEnabled = true;
     this.reminderMinutes = 15;
     this.agendaViewMode = 'calendar';
-    this.agendaCalendarStartDate = getTodayStr();
+    this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
     this.loadStore();
   }
 
@@ -296,14 +308,11 @@ class ConsultorioApp {
 
     const btnHeaderNewClient = document.getElementById('btn-header-new-client');
     const btnNewClient = document.getElementById('btn-new-client');
-    if (btnHeaderNewClient) btnHeaderNewClient.addEventListener('click', () => this.openClientModal());
-    if (btnNewClient) btnNewClient.addEventListener('click', () => this.openClientModal());
+    void btnHeaderNewClient;
+    void btnNewClient;
 
     const btnHeaderNewAppointment = document.getElementById('btn-header-new-appointment');
-    if (btnHeaderNewAppointment) btnHeaderNewAppointment.addEventListener('click', () => this.openAppointmentModal());
-
-    const btnNewAppointmentAgenda = document.getElementById('btn-new-appointment-agenda');
-    if (btnNewAppointmentAgenda) btnNewAppointmentAgenda.addEventListener('click', () => this.openAppointmentModal());
+    void btnHeaderNewAppointment;
 
     const formClient = document.getElementById('form-client');
     if (formClient) formClient.addEventListener('submit', (e) => { e.preventDefault(); this.saveClientForm(); });
@@ -380,7 +389,7 @@ class ConsultorioApp {
 
     if (btnAgendaToday) {
       btnAgendaToday.addEventListener('click', () => {
-        this.agendaCalendarStartDate = getTodayStr();
+        this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
         this.renderAgendaTable();
       });
     }
@@ -432,19 +441,9 @@ class ConsultorioApp {
     }
 
     const btnViewAgenda = document.getElementById('btn-view-agenda-completa');
-    if (btnViewAgenda) {
-      btnViewAgenda.addEventListener('click', () => {
-        this.clearDashboardQuickFilters();
-        this.switchTab('agenda');
-      });
-    }
+    void btnViewAgenda;
     const btnViewFin = document.getElementById('btn-view-financeiro-tudo');
-    if (btnViewFin) {
-      btnViewFin.addEventListener('click', () => {
-        this.financeViewFilter = 'all';
-        this.switchTab('financeiro');
-      });
-    }
+    void btnViewFin;
 
     const dashboardCardMap = {
       'dash-card-consultas': 'agenda',
@@ -796,9 +795,10 @@ class ConsultorioApp {
     const filtered = this.filterAppointmentsForAgenda();
 
     if (this.agendaViewMode === 'calendar' && agendaStartInput && agendaEndInput) {
-      this.agendaCalendarStartDate = agendaStartInput.value || this.agendaCalendarStartDate || getTodayStr();
+      const selectedDate = agendaStartInput.value || this.agendaCalendarStartDate || getTodayStr();
+      this.agendaCalendarStartDate = getWeekStartMondayIso(selectedDate);
       agendaStartInput.value = this.agendaCalendarStartDate;
-      agendaEndInput.value = addDaysIso(this.agendaCalendarStartDate, 4);
+      agendaEndInput.value = addDaysIso(this.agendaCalendarStartDate, 6);
     }
 
     this.updateAgendaViewModeUI();
@@ -814,7 +814,7 @@ class ConsultorioApp {
         calendarGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;"><p>Nenhum agendamento no período.</p></div>';
       } else {
         const start = agendaStartInput && agendaStartInput.value ? agendaStartInput.value : this.agendaCalendarStartDate;
-        const days = Array.from({ length: 5 }, (_, idx) => addDaysIso(start, idx));
+        const days = Array.from({ length: 7 }, (_, idx) => addDaysIso(start, idx));
         const hours = Array.from({ length: 14 }, (_, idx) => 7 + idx);
 
         const grouped = {};
@@ -1048,18 +1048,42 @@ class ConsultorioApp {
       const status = r.pending > 0 ? (r.paid > 0 ? 'Parcial' : 'Pendente') : 'Pago';
       return `
         <tr>
-          <td>${safeText(r.clientName)}</td>
+          <td>
+            <button class="finance-client-link" type="button" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')">${safeText(r.clientName)}</button>
+          </td>
           <td>${r.qty}</td>
           <td><span class="money-pill money-pill-total">${formatCurrency(r.total)}</span></td>
-          <td><span class="money-pill money-pill-paid">${formatCurrency(r.paid)}</span></td>
           <td><span class="money-pill money-pill-pending">${formatCurrency(r.pending)}</span></td>
-          <td>${status}</td>
+          <td><span class="money-pill money-pill-paid">${formatCurrency(r.paid)}</span></td>
           <td>
-            <button class="btn btn-sm btn-secondary" onclick="app.switchTab('agenda')">Ver agenda</button>
+            <button class="finance-status-link" type="button" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')">${safeText(status)}</button>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-secondary" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')">Editar</button>
           </td>
         </tr>
       `;
     }).join('');
+  }
+
+  openLatestAppointmentByClient(clientId) {
+    const key = String(clientId || '').trim();
+    if (!key) {
+      this.showToast('Cliente inválido para edição.', 'warning');
+      return;
+    }
+
+    const matches = this.appointments
+      .filter((a) => String(a.clientId || '') === key)
+      .sort((a, b) => `${b.date || ''} ${b.time || ''}`.localeCompare(`${a.date || ''} ${a.time || ''}`));
+
+    if (!matches.length) {
+      this.showToast('Nenhuma consulta encontrada para este cliente.', 'warning');
+      return;
+    }
+
+    this.switchTab('agenda');
+    this.openAppointmentModal(matches[0].id);
   }
 
   renderDespesasTable() {

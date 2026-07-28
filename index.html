@@ -116,11 +116,11 @@
             </button>
           </div>
 
-          <button class="btn btn-secondary btn-icon-text" id="btn-header-new-client"><i data-lucide="user-plus"></i><span>Novo Paciente</span></button>
+          <button class="btn btn-secondary btn-icon-text" id="btn-header-new-client" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="user-plus"></i><span>Novo Paciente</span></button>
           <button class="btn btn-secondary btn-icon-text" id="btn-open-birthdays"><i data-lucide="cake"></i><span>Aniversários</span><span class="btn-notification-badge">0</span></button>
           <button class="btn btn-secondary btn-icon-text" id="btn-logout-session"><i data-lucide="log-out"></i><span>Sair</span></button>
           <button class="btn btn-secondary btn-icon-text" id="btn-header-back" style="display:none;"><i data-lucide="arrow-left"></i><span>Voltar</span></button>
-          <button class="btn btn-primary btn-icon-text" id="btn-header-new-appointment"><i data-lucide="calendar-plus"></i><span>Agendar Consulta</span></button>
+          <button class="btn btn-primary btn-icon-text" id="btn-header-new-appointment" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="calendar-plus"></i><span>Agendar Consulta</span></button>
         </div>
       </header>
 
@@ -179,7 +179,7 @@
                 <h3>Agenda de Hoje e Próximas Consultas</h3>
                 <p>Compromissos agendados no consultório</p>
               </div>
-              <button class="btn btn-sm btn-ghost" id="btn-view-agenda-completa">Ver Agenda Completa <i data-lucide="arrow-right"></i></button>
+              <button class="btn btn-sm btn-ghost" id="btn-view-agenda-completa" onclick="app.clearDashboardQuickFilters();app.switchTab('agenda')" ontouchstart="app.clearDashboardQuickFilters();app.switchTab('agenda')">Ver Agenda Completa <i data-lucide="arrow-right"></i></button>
             </div>
             <div class="card-body">
               <div id="dash-today-list" class="appointment-list-compact"></div>
@@ -192,7 +192,7 @@
                 <h3>Cobranças em Aberto</h3>
                 <p>Pagamentos aguardando recebimento</p>
               </div>
-              <button class="btn btn-sm btn-ghost" id="btn-view-financeiro-tudo">Ver Tudo <i data-lucide="arrow-right"></i></button>
+              <button class="btn btn-sm btn-ghost" id="btn-view-financeiro-tudo" onclick="app.financeViewFilter='all';app.switchTab('financeiro')" ontouchstart="app.financeViewFilter='all';app.switchTab('financeiro')">Ver Tudo <i data-lucide="arrow-right"></i></button>
             </div>
             <div class="card-body">
               <div id="dash-pending-list" class="pending-mini-list"></div>
@@ -221,7 +221,7 @@
             <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-calendar">Calendário</button>
             <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-list">Lista</button>
           </div>
-          <button class="btn btn-primary" id="btn-new-appointment-agenda" type="button"><i data-lucide="plus"></i> Agendar Consulta</button>
+          <button class="btn btn-primary" id="btn-new-appointment-agenda" type="button" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="plus"></i> Agendar Consulta</button>
         </div>
 
         <div class="card agenda-calendar-card" id="agenda-calendar-card" style="display:none;">
@@ -270,7 +270,7 @@
               <option value="invalidos">Sem WhatsApp válido</option>
             </select>
           </div>
-          <button class="btn btn-primary" id="btn-new-client"><i data-lucide="user-plus"></i> Novo Paciente</button>
+          <button class="btn btn-primary" id="btn-new-client" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="user-plus"></i> Novo Paciente</button>
         </div>
 
         <div class="card">
@@ -313,9 +313,9 @@
                 <tr>
                   <th>Cliente / Lançamentos</th>
                   <th>Qtd.</th>
-                  <th>Total</th>
+                  <th>Valor</th>
+                  <th>Agendado</th>
                   <th>Pago</th>
-                  <th>Em aberto</th>
                   <th>Status</th>
                   <th>Ações</th>
                 </tr>

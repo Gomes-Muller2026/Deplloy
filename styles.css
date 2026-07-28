@@ -1381,6 +1381,7 @@ input[type="date"]:focus {
 
 #tab-agenda .filter-bar {
   gap: 0.75rem;
+  position: relative;
 }
 
 #tab-agenda #agenda-search {
@@ -1428,10 +1429,15 @@ input[type="date"]:focus {
 
 #tab-agenda .filter-bar .agenda-view-toggle {
   margin-left: auto;
+  position: relative;
+  z-index: 2;
 }
 
 #tab-agenda .filter-bar #btn-new-appointment-agenda {
   margin-left: 0.25rem;
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
 }
 
 .finance-filter-indicator {
@@ -1526,6 +1532,10 @@ input[type="date"]:focus {
     margin-left: 0;
   }
 
+  #tab-agenda .filter-bar #btn-new-appointment-agenda {
+    margin-left: 0;
+  }
+
   .agenda-calendar-toolbar {
     flex-direction: column;
     align-items: flex-start;
@@ -1553,7 +1563,7 @@ input[type="date"]:focus {
 
 .agenda-calendar-grid {
   display: grid;
-  grid-template-columns: 80px repeat(5, minmax(0, 1fr));
+  grid-template-columns: 80px repeat(7, minmax(0, 1fr));
   gap: 1px;
   background-color: var(--border-color);
   border-radius: var(--radius-lg);
@@ -1913,6 +1923,22 @@ select.form-control {
   cursor: pointer;
 }
 
+/* Keep native select dropdowns dark to match the app theme */
+select,
+select.form-control,
+select.form-control option,
+select.form-control optgroup {
+  background-color: #1f2937;
+  color: #e5e7eb;
+}
+
+select.form-control option:checked,
+select.form-control option:hover,
+select.form-control option:focus {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
 /* Status Badges */
 .badge {
   display: inline-flex;
@@ -1990,19 +2016,49 @@ select.form-control {
 }
 
 #tab-financeiro .data-table th:nth-child(4) {
-  color: #86efac;
-  text-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+  color: #fcd34d;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.34);
 }
 
 #tab-financeiro .data-table th:nth-child(5) {
-  color: #fcd34d;
-  text-shadow: 0 0 10px rgba(245, 158, 11, 0.34);
+  color: #86efac;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
 }
 
 #tab-financeiro .data-table td:nth-child(3) .money-pill,
 #tab-financeiro .data-table td:nth-child(4) .money-pill,
 #tab-financeiro .data-table td:nth-child(5) .money-pill {
   margin: 0 auto;
+}
+
+.finance-client-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.finance-client-link:hover {
+  color: #7dd3fc;
+  text-decoration: underline;
+}
+
+.finance-status-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+  cursor: pointer;
+}
+
+.finance-status-link:hover {
+  color: #7dd3fc;
+  text-decoration: underline;
 }
 
 

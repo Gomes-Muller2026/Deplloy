@@ -823,6 +823,10 @@ input[type="date"]:focus {
   display: none;
 }
 
+.tab-content {
+  display: none;
+}
+
 .tab-content.active {
   display: block;
 }

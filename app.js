@@ -603,6 +603,7 @@ class ConsultorioApp {
     if (loginScreen) {
       loginScreen.style.zIndex = '9999';
       loginScreen.style.pointerEvents = 'auto';
+      loginScreen.style.visibility = 'visible';
     }
     if (appShell) {
       appShell.style.display = 'none';
@@ -630,6 +631,8 @@ class ConsultorioApp {
     if (appShell) appShell.classList.remove('app-hidden');
     if (loginScreen) {
       loginScreen.style.pointerEvents = 'none';
+      loginScreen.style.zIndex = '-1';
+      loginScreen.style.visibility = 'hidden';
     }
     if (appShell) {
       appShell.style.display = '';

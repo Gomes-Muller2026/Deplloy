@@ -98,7 +98,7 @@ class ConsultorioApp {
     this.financeViewFilter = 'all';
     this.soundEnabled = true;
     this.reminderMinutes = 15;
-    this.agendaViewMode = 'list';
+    this.agendaViewMode = 'calendar';
     this.agendaCalendarStartDate = getTodayStr();
     this.loadStore();
   }
@@ -268,6 +268,13 @@ class ConsultorioApp {
 
     const logoutBtn = document.getElementById('btn-logout-session');
     if (logoutBtn) logoutBtn.addEventListener('click', () => this.logoutSession());
+
+    const btnHeaderBack = document.getElementById('btn-header-back');
+    if (btnHeaderBack) {
+      btnHeaderBack.addEventListener('click', () => {
+        this.switchTab('dashboard');
+      });
+    }
 
     const resetDatesBtn = document.getElementById('btn-reset-top-dates');
     if (resetDatesBtn) {
@@ -559,6 +566,11 @@ class ConsultorioApp {
     if (pageTitle) pageTitle.textContent = meta.title;
     if (pageSubtitle) pageSubtitle.textContent = meta.subtitle;
 
+    const btnHeaderBack = document.getElementById('btn-header-back');
+    if (btnHeaderBack) {
+      btnHeaderBack.style.display = this.currentTab === 'agenda' ? 'inline-flex' : 'none';
+    }
+
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {
       btn.classList.toggle('active', btn.getAttribute('data-tab') === this.currentTab);
     });
@@ -836,9 +848,14 @@ class ConsultorioApp {
                     ? 'agenda-event-pago'
                     : (String(a.paymentStatus || '').toLowerCase().includes('parcial') ? 'agenda-event-parcial' : 'agenda-event-pendente');
                   return `
-                    <div class="agenda-event ${statusClass}">
+                    <div class="agenda-event ${statusClass}" role="button" tabindex="0" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
                       <div class="agenda-event-time">${safeText(a.time || '--:--')}</div>
-                      <div class="agenda-event-title">${safeText(a.clientName || '-')}</div>
+                      <div class="agenda-event-title-row">
+                        <div class="agenda-event-title">${safeText(a.clientName || '-')}</div>
+                        <button class="agenda-event-whatsapp" type="button" title="Enviar confirmação no WhatsApp" onclick="event.stopPropagation();app.sendAppointmentWhatsApp('${a.id}')">
+                          <i data-lucide="message-circle"></i>
+                        </button>
+                      </div>
                       <div class="agenda-event-procedure">${safeText(a.procedure || 'Consulta')}</div>
                       <div class="agenda-event-payment">${safeText(a.paymentStatus || 'Pendente')}</div>
                     </div>
@@ -860,7 +877,7 @@ class ConsultorioApp {
     if (!filtered.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8">
+          <td colspan="7">
             <div class="empty-state">
               <p>Nenhum agendamento encontrado no período.</p>
             </div>
@@ -873,23 +890,32 @@ class ConsultorioApp {
     tbody.innerHTML = filtered.map((a) => {
       const payment = String(a.paymentStatus || 'Pendente');
       const status = String(a.status || 'Agendado');
+      const statusClass = String(status).toLowerCase().includes('concl')
+        ? 'badge-concluido'
+        : (String(status).toLowerCase().includes('cancel') ? 'badge-cancelado' : 'badge-agendado');
+      const paymentClass = String(payment).toLowerCase().includes('pago')
+        ? 'badge-pago'
+        : (String(payment).toLowerCase().includes('parcial') ? 'badge-parcial' : 'badge-pendente');
       return `
         <tr>
-          <td>${formatDateBR(a.date)}</td>
-          <td>${safeText(a.time || '')}</td>
+          <td><strong>${formatDateBR(a.date)}</strong><br><span style="color:var(--text-muted);font-size:0.82rem;">${safeText(a.time || '--:--')} hs</span></td>
           <td>${safeText(a.clientName || '-')}</td>
           <td>${safeText(a.procedure || '-')}</td>
-          <td>${formatCurrency(a.price || 0)}</td>
-          <td>${safeText(payment)}</td>
-          <td>${safeText(status)}</td>
-          <td>
-            <button class="btn btn-sm btn-secondary" onclick="app.openAppointmentModal('${a.id}')">Editar</button>
-            <button class="btn btn-sm btn-secondary" onclick="app.sendAppointmentWhatsApp('${a.id}')">WhatsApp</button>
-            <button class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="app.deleteAppointment('${a.id}')">Excluir</button>
+          <td><strong>${formatCurrency(a.price || 0)}</strong></td>
+          <td><span class="badge ${statusClass}">${safeText(status)}</span></td>
+          <td><span class="badge ${paymentClass}">${safeText(payment)}</span></td>
+          <td style="text-align: right;">
+            <button class="btn btn-sm btn-secondary" onclick="app.openAppointmentModal('${a.id}')"><i data-lucide="pencil"></i> Editar</button>
+            <button class="btn btn-sm btn-secondary" onclick="app.sendAppointmentWhatsApp('${a.id}')"><i data-lucide="message-circle"></i> WhatsApp</button>
+            <button class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="app.deleteAppointment('${a.id}')"><i data-lucide="trash-2"></i></button>
           </td>
         </tr>
       `;
     }).join('');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
   }
 
   updateAgendaViewModeUI() {

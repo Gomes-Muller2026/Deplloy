@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Logo da clínica">
+  <rect x="8" y="8" width="176" height="176" rx="28" fill="#6d1839"/>
+
+  <g fill="none" stroke="#f2c53d" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="96" cy="96" r="58" stroke-width="6"/>
+
+    <path d="M96 48v78" stroke-width="5"/>
+    <path d="M96 65c-8 0-14-7-14-16" stroke-width="5"/>
+    <path d="M96 65c8 0 14-7 14-16" stroke-width="5"/>
+
+    <path d="M96 77c-17 0-30-11-38-27" stroke-width="5"/>
+    <path d="M96 77c17 0 30-11 38-27" stroke-width="5"/>
+
+    <path d="M96 88c-24 0-42-12-52-31" stroke-width="5"/>
+    <path d="M96 88c24 0 42-12 52-31" stroke-width="5"/>
+
+    <path d="M96 100c-22 0-40 11-51 31" stroke-width="5"/>
+    <path d="M96 100c22 0 40 11 51 31" stroke-width="5"/>
+
+    <path d="M80 58l-10-8" stroke-width="4"/>
+    <path d="M68 68l-11-6" stroke-width="4"/>
+    <path d="M58 80l-12-3" stroke-width="4"/>
+    <path d="M51 96H38" stroke-width="4"/>
+    <path d="M58 114l-12 3" stroke-width="4"/>
+    <path d="M68 126l-11 6" stroke-width="4"/>
+
+    <path d="M112 58l10-8" stroke-width="4"/>
+    <path d="M124 68l11-6" stroke-width="4"/>
+    <path d="M134 80l12-3" stroke-width="4"/>
+    <path d="M141 96h13" stroke-width="4"/>
+    <path d="M134 114l12 3" stroke-width="4"/>
+    <path d="M124 126l11 6" stroke-width="4"/>
+  </g>
+
+  <g fill="#f2c53d">
+    <ellipse cx="73" cy="45" rx="4" ry="7" transform="rotate(-35 73 45)"/>
+    <ellipse cx="85" cy="38" rx="4" ry="7" transform="rotate(-18 85 38)"/>
+    <ellipse cx="99" cy="36" rx="4" ry="7" transform="rotate(6 99 36)"/>
+    <ellipse cx="112" cy="39" rx="4" ry="7" transform="rotate(21 112 39)"/>
+    <ellipse cx="123" cy="46" rx="4" ry="7" transform="rotate(38 123 46)"/>
+
+    <ellipse cx="62" cy="60" rx="4" ry="7" transform="rotate(-52 62 60)"/>
+    <ellipse cx="53" cy="76" rx="4" ry="7" transform="rotate(-68 53 76)"/>
+    <ellipse cx="49" cy="96" rx="4" ry="7" transform="rotate(-90 49 96)"/>
+    <ellipse cx="53" cy="116" rx="4" ry="7" transform="rotate(-112 53 116)"/>
+    <ellipse cx="62" cy="132" rx="4" ry="7" transform="rotate(-128 62 132)"/>
+
+    <ellipse cx="130" cy="60" rx="4" ry="7" transform="rotate(52 130 60)"/>
+    <ellipse cx="139" cy="76" rx="4" ry="7" transform="rotate(68 139 76)"/>
+    <ellipse cx="143" cy="96" rx="4" ry="7" transform="rotate(90 143 96)"/>
+    <ellipse cx="139" cy="116" rx="4" ry="7" transform="rotate(112 139 116)"/>
+    <ellipse cx="130" cy="132" rx="4" ry="7" transform="rotate(128 130 132)"/>
+
+    <ellipse cx="80" cy="74" rx="3.5" ry="6" transform="rotate(-25 80 74)"/>
+    <ellipse cx="112" cy="74" rx="3.5" ry="6" transform="rotate(25 112 74)"/>
+    <ellipse cx="76" cy="95" rx="3.5" ry="6" transform="rotate(-18 76 95)"/>
+    <ellipse cx="116" cy="95" rx="3.5" ry="6" transform="rotate(18 116 95)"/>
+    <ellipse cx="82" cy="115" rx="3.5" ry="6" transform="rotate(-25 82 115)"/>
+    <ellipse cx="110" cy="115" rx="3.5" ry="6" transform="rotate(25 110 115)"/>
+  </g>
+</svg>

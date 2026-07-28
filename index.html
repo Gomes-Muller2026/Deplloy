@@ -126,7 +126,7 @@
 
       <section class="tab-content active" id="tab-dashboard">
         <div class="stats-grid">
-          <button type="button" class="stat-card card-blue" id="dash-card-consultas" aria-label="Consultas de hoje" onclick="app.handleDashboardCardClick('dash-card-consultas', 'agenda')" title="Abrir agenda de consultas de hoje">
+          <button type="button" class="stat-card card-blue" id="dash-card-consultas" data-action="dashboard-card" data-target="agenda" aria-label="Consultas de hoje" onclick="app.handleDashboardCardClick('dash-card-consultas', 'agenda')" title="Abrir agenda de consultas de hoje">
             <div class="stat-icon"><i data-lucide="calendar-check"></i></div>
             <div class="stat-info">
               <span class="stat-label">Consultas Hoje</span>
@@ -135,7 +135,7 @@
             </div>
           </button>
 
-          <button type="button" class="stat-card card-green" id="dash-card-recebido" aria-label="Recebido no período" onclick="app.handleDashboardCardClick('dash-card-recebido', 'financeiro')" title="Abrir financeiro com recebidos">
+          <button type="button" class="stat-card card-green" id="dash-card-recebido" data-action="dashboard-card" data-target="financeiro" aria-label="Recebido no período" onclick="app.handleDashboardCardClick('dash-card-recebido', 'financeiro')" title="Abrir financeiro com recebidos">
             <div class="stat-icon"><i data-lucide="check-circle-2"></i></div>
             <div class="stat-info">
               <span class="stat-label">Recebido</span>
@@ -144,7 +144,7 @@
             </div>
           </button>
 
-          <button type="button" class="stat-card card-amber" id="dash-card-pendente" aria-label="Pendências" onclick="app.handleDashboardCardClick('dash-card-pendente', 'financeiro')" title="Abrir financeiro com pendências">
+          <button type="button" class="stat-card card-amber" id="dash-card-pendente" data-action="dashboard-card" data-target="financeiro" aria-label="Pendências" onclick="app.handleDashboardCardClick('dash-card-pendente', 'financeiro')" title="Abrir financeiro com pendências">
             <div class="stat-icon"><i data-lucide="alert-circle"></i></div>
             <div class="stat-info">
               <span class="stat-label">Em Aberto</span>
@@ -153,7 +153,7 @@
             </div>
           </button>
 
-          <button type="button" class="stat-card card-green" id="dash-card-resultado" aria-label="Resultado do período" onclick="app.handleDashboardCardClick('dash-card-resultado', 'financeiro')" title="Abrir financeiro com resultado geral">
+          <button type="button" class="stat-card card-green" id="dash-card-resultado" data-action="dashboard-card" data-target="financeiro" aria-label="Resultado do período" onclick="app.handleDashboardCardClick('dash-card-resultado', 'financeiro')" title="Abrir financeiro com resultado geral">
             <div class="stat-icon"><i data-lucide="line-chart"></i></div>
             <div class="stat-info">
               <span class="stat-label">Resultado</span>
@@ -162,7 +162,7 @@
             </div>
           </button>
 
-          <button type="button" class="stat-card card-purple" id="dash-card-clientes" aria-label="Total de clientes" onclick="app.handleDashboardCardClick('dash-card-clientes', 'clientes')" title="Abrir lista de clientes">
+          <button type="button" class="stat-card card-purple" id="dash-card-clientes" data-action="dashboard-card" data-target="clientes" aria-label="Total de clientes" onclick="app.handleDashboardCardClick('dash-card-clientes', 'clientes')" title="Abrir lista de clientes">
             <div class="stat-icon"><i data-lucide="users"></i></div>
             <div class="stat-info">
               <span class="stat-label">Total de Clientes</span>
@@ -179,7 +179,7 @@
                 <h3>Agenda de Hoje e Próximas Consultas</h3>
                 <p>Compromissos agendados no consultório</p>
               </div>
-              <button class="btn btn-sm btn-ghost" id="btn-view-agenda-completa" onclick="app.clearDashboardQuickFilters();app.switchTab('agenda')" ontouchstart="app.clearDashboardQuickFilters();app.switchTab('agenda')">Ver Agenda Completa <i data-lucide="arrow-right"></i></button>
+              <button class="btn btn-sm btn-ghost" id="btn-view-agenda-completa" data-action="switch-tab" data-target="agenda" onclick="app.clearDashboardQuickFilters();app.switchTab('agenda')" ontouchstart="app.clearDashboardQuickFilters();app.switchTab('agenda')">Ver Agenda Completa <i data-lucide="arrow-right"></i></button>
             </div>
             <div class="card-body">
               <div id="dash-today-list" class="appointment-list-compact"></div>
@@ -192,7 +192,7 @@
                 <h3>Cobranças em Aberto</h3>
                 <p>Pagamentos aguardando recebimento</p>
               </div>
-              <button class="btn btn-sm btn-ghost" id="btn-view-financeiro-tudo" onclick="app.financeViewFilter='all';app.switchTab('financeiro')" ontouchstart="app.financeViewFilter='all';app.switchTab('financeiro')">Ver Tudo <i data-lucide="arrow-right"></i></button>
+              <button class="btn btn-sm btn-ghost" id="btn-view-financeiro-tudo" data-action="switch-tab" data-target="financeiro" onclick="app.financeViewFilter='all';app.switchTab('financeiro')" ontouchstart="app.financeViewFilter='all';app.switchTab('financeiro')">Ver Tudo <i data-lucide="arrow-right"></i></button>
             </div>
             <div class="card-body">
               <div id="dash-pending-list" class="pending-mini-list"></div>

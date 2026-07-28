@@ -286,6 +286,62 @@ class ConsultorioApp {
       const target = event.target;
       if (!(target instanceof Element)) return;
 
+      if (target.closest('.agenda-event-whatsapp')) {
+        return;
+      }
+
+      const bubbleCard = target.closest('.dash-bubble-item[data-appointment-id]');
+      if (bubbleCard) {
+        const appointmentId = String(bubbleCard.getAttribute('data-appointment-id') || '').trim();
+        if (appointmentId) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.openAppointmentModal(appointmentId);
+          return;
+        }
+      }
+
+      const weeklyAgendaCard = target.closest('.agenda-event[data-appointment-id]');
+      if (weeklyAgendaCard) {
+        const appointmentId = String(weeklyAgendaCard.getAttribute('data-appointment-id') || '').trim();
+        if (appointmentId) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.openAppointmentModal(appointmentId);
+          return;
+        }
+      }
+
+      const actionNode = target.closest('[data-action]');
+      if (actionNode) {
+        const action = String(actionNode.getAttribute('data-action') || '').trim();
+        const actionTarget = String(actionNode.getAttribute('data-target') || '').trim();
+        const appointmentId = String(actionNode.getAttribute('data-appointment-id') || '').trim();
+
+        if (action === 'open-appointment' && appointmentId) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.openAppointmentModal(appointmentId);
+          return;
+        }
+
+        if (action === 'dashboard-card' && actionTarget) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.handleDashboardCardClick(actionNode.id || '', actionTarget);
+          return;
+        }
+
+        if (action === 'switch-tab' && actionTarget) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (actionTarget === 'agenda') this.clearDashboardQuickFilters();
+          if (actionTarget === 'financeiro') this.financeViewFilter = 'all';
+          this.switchTab(actionTarget);
+          return;
+        }
+      }
+
       const appointmentTrigger = target.closest('#btn-header-new-appointment, #btn-new-appointment-agenda');
       if (appointmentTrigger) {
         event.preventDefault();
@@ -333,6 +389,39 @@ class ConsultorioApp {
 
     document.addEventListener('click', globalClickGuard, true);
     document.addEventListener('touchstart', globalClickGuard, { capture: true, passive: false });
+    document.addEventListener('keydown', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+
+      const weeklyAgendaCard = target.closest('.agenda-event[data-appointment-id]');
+      if (weeklyAgendaCard) {
+        const appointmentId = String(weeklyAgendaCard.getAttribute('data-appointment-id') || '').trim();
+        if (!appointmentId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.openAppointmentModal(appointmentId);
+        return;
+      }
+
+      const bubbleCard = target.closest('.dash-bubble-item[data-appointment-id]');
+      if (bubbleCard) {
+        const appointmentId = String(bubbleCard.getAttribute('data-appointment-id') || '').trim();
+        if (!appointmentId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.openAppointmentModal(appointmentId);
+        return;
+      }
+
+      const actionNode = target.closest('[data-action="open-appointment"]');
+      if (!actionNode) return;
+      const appointmentId = String(actionNode.getAttribute('data-appointment-id') || '').trim();
+      if (!appointmentId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.openAppointmentModal(appointmentId);
+    }, true);
 
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -817,7 +906,7 @@ class ConsultorioApp {
         dashToday.innerHTML = '<div class="empty-state"><p>Nenhuma consulta futura cadastrada.</p></div>';
       } else {
         dashToday.innerHTML = rows.map((a) => `
-          <div class="dash-bubble-item" role="group" aria-label="Consulta de ${safeText(a.clientName || '-')}">
+          <div class="dash-bubble-item" role="button" tabindex="0" data-action="open-appointment" data-appointment-id="${safeText(a.id || '')}" aria-label="Abrir consulta de ${safeText(a.clientName || '-')}">
             <div class="dash-bubble-date">
               <span>${formatDateBR(a.date)}</span>
               <strong>${safeText(a.time || '--:--')}</strong>
@@ -841,7 +930,7 @@ class ConsultorioApp {
         dashPending.innerHTML = '<div class="empty-state"><p>Sem cobranças pendentes.</p></div>';
       } else {
         dashPending.innerHTML = pend.map((a) => `
-          <div class="dash-bubble-item is-pending" role="group" aria-label="Cobrança pendente de ${safeText(a.clientName || '-')}">
+          <div class="dash-bubble-item is-pending" role="button" tabindex="0" data-action="open-appointment" data-appointment-id="${safeText(a.id || '')}" aria-label="Abrir cobrança pendente de ${safeText(a.clientName || '-')}">
             <div class="dash-bubble-content">
               <strong>${safeText(a.clientName || '-')}</strong>
               <p>${formatDateBR(a.date)} - Em aberto</p>
@@ -915,7 +1004,7 @@ class ConsultorioApp {
                     ? 'agenda-event-pago'
                     : (String(a.paymentStatus || '').toLowerCase().includes('parcial') ? 'agenda-event-parcial' : 'agenda-event-pendente');
                   return `
-                    <div class="agenda-event ${statusClass}" role="button" tabindex="0" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
+                    <div class="agenda-event ${statusClass}" role="button" tabindex="0" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
                       <div class="agenda-event-time">${safeText(a.time || '--:--')}</div>
                       <div class="agenda-event-title-row">
                         <div class="agenda-event-title">${safeText(a.clientName || '-')}</div>

@@ -127,7 +127,56 @@ class ConsultorioApp {
     this.firebaseApp = null;
     this.firebaseDb = null;
     this.firebaseConnected = false;
+    this.dashboardLastActiveCardId = 'dash-card-consultas';
+    this.dashboardCardByTab = {
+      agenda: 'dash-card-consultas',
+      financeiro: 'dash-card-resultado',
+      clientes: 'dash-card-clientes'
+    };
+    this.lastDashboardCardAction = '';
+    this.lastDashboardCardActionAt = 0;
     this.loadStore();
+  }
+
+  setDashboardCardActive(cardId, animate = true) {
+    const cards = document.querySelectorAll('.stats-grid .stat-card');
+    cards.forEach((card) => {
+      const isActive = card.id === cardId;
+      card.classList.toggle('active', isActive);
+      card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+
+    const selectedCard = document.getElementById(cardId);
+    if (selectedCard && animate) {
+      selectedCard.classList.remove('is-triggered');
+      // Restart transient click animation for clear action feedback.
+      void selectedCard.offsetWidth;
+      selectedCard.classList.add('is-triggered');
+    }
+  }
+
+  rememberDashboardCardForTab(cardId, targetTab) {
+    if (!cardId) return;
+    this.dashboardLastActiveCardId = cardId;
+    if (targetTab === 'agenda' || targetTab === 'financeiro' || targetTab === 'clientes') {
+      this.dashboardCardByTab[targetTab] = cardId;
+    }
+  }
+
+  syncDashboardCardFromTab(currentTab, previousTab = '') {
+    let cardId = '';
+
+    if (currentTab === 'agenda' || currentTab === 'financeiro' || currentTab === 'clientes') {
+      cardId = this.dashboardCardByTab[currentTab] || '';
+    } else if (currentTab === 'dashboard') {
+      if (previousTab === 'agenda' || previousTab === 'financeiro' || previousTab === 'clientes') {
+        cardId = this.dashboardCardByTab[previousTab] || this.dashboardLastActiveCardId;
+      } else {
+        cardId = this.dashboardLastActiveCardId;
+      }
+    }
+
+    if (cardId) this.setDashboardCardActive(cardId, false);
   }
 
   loadStore() {
@@ -697,6 +746,15 @@ class ConsultorioApp {
   }
 
   handleDashboardCardClick(cardId, targetTab) {
+    const now = Date.now();
+    const duplicatedAction = this.lastDashboardCardAction === cardId && (now - this.lastDashboardCardActionAt) < 160;
+    if (duplicatedAction) return;
+
+    this.lastDashboardCardAction = cardId;
+    this.lastDashboardCardActionAt = now;
+    this.rememberDashboardCardForTab(cardId, targetTab);
+    if (cardId) this.setDashboardCardActive(cardId);
+
     if (cardId === 'dash-card-consultas') {
       const today = getTodayStr();
       const agendaSearch = document.getElementById('agenda-search');
@@ -740,6 +798,7 @@ class ConsultorioApp {
   }
 
   switchTab(tabId) {
+    const previousTab = this.currentTab;
     const targetId = document.getElementById(`tab-${tabId}`) ? tabId : 'dashboard';
     this.currentTab = targetId;
 
@@ -785,6 +844,7 @@ class ConsultorioApp {
     }
 
     this.render();
+    this.syncDashboardCardFromTab(this.currentTab, previousTab);
   }
 
   showLoginScreen(message = '') {

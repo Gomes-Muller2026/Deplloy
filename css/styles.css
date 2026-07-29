@@ -858,15 +858,15 @@ input[type="date"]:focus {
 .card {
   position: relative;
   isolation: isolate;
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 22px;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  transition: box-shadow 220ms ease, border-color 220ms ease;
+  background: linear-gradient(160deg, rgba(51, 65, 85, 0.44) 0%, rgba(15, 23, 42, 0.56) 55%, rgba(2, 6, 23, 0.72) 100%);
+  border: 0;
+  border-radius: 30px;
+  backdrop-filter: blur(18px) saturate(1.45);
+  -webkit-backdrop-filter: blur(18px) saturate(1.45);
+  transition: box-shadow 220ms ease, transform 220ms ease;
   box-shadow:
-    0 10px 18px rgba(2, 6, 23, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 26px 46px rgba(2, 6, 23, 0.42),
+    0 10px 24px rgba(15, 23, 42, 0.32);
 
   overflow: hidden;
   margin-bottom: 1.5rem;
@@ -875,23 +875,36 @@ input[type="date"]:focus {
 .card::before {
   content: '';
   position: absolute;
-  inset: 2px;
-  border-radius: 18px;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(138deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 28%, rgba(255, 255, 255, 0) 58%),
+    radial-gradient(150px 80px at 18% 8%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0));
   pointer-events: none;
-  z-index: -1;
+  z-index: 1;
 }
 
 .card::after {
-  display: none;
+  content: '';
+  position: absolute;
+  width: 210px;
+  height: 210px;
+  right: -110px;
+  top: -95px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(186, 230, 253, 0.3), rgba(125, 211, 252, 0));
+  filter: blur(14px);
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .card:hover,
 .card:focus-within {
-  border-color: rgba(148, 163, 184, 0.38);
+  transform: translateY(-2px);
   box-shadow:
-    0 14px 24px rgba(2, 6, 23, 0.36),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 32px 54px rgba(2, 6, 23, 0.46),
+    0 16px 30px rgba(15, 23, 42, 0.34);
 }
 
 .stats-grid {
@@ -906,8 +919,9 @@ input[type="date"]:focus {
   display: flex;
   align-items: center;
   gap: 1.1rem;
-  border: none;
-  border-radius: 22px;
+  border: 0;
+  border-radius: 30px;
+  outline: none;
   cursor: pointer;
   overflow: hidden;
   position: relative;
@@ -915,12 +929,11 @@ input[type="date"]:focus {
   transform-style: preserve-3d;
   transform: perspective(1000px) translateY(0) rotateX(0deg) rotateY(0deg);
   transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 300ms ease;
-  backdrop-filter: blur(18px) saturate(1.6);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(22px) saturate(1.75);
+  -webkit-backdrop-filter: blur(22px) saturate(1.75);
   box-shadow:
-    0 20px 40px rgba(2, 6, 23, 0.45),
-    0 2px 0 rgba(255, 255, 255, 0.08) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.3) inset;
+    0 28px 50px rgba(2, 6, 23, 0.44),
+    0 12px 24px rgba(15, 23, 42, 0.32);
 }
 
 /* glare highlight */
@@ -931,9 +944,10 @@ input[type="date"]:focus {
   border-radius: inherit;
   background:
     linear-gradient(135deg,
-      rgba(255,255,255,0.28) 0%,
-      rgba(255,255,255,0.06) 30%,
-      rgba(255,255,255,0) 55%);
+      rgba(255,255,255,0.34) 0%,
+      rgba(255,255,255,0.1) 28%,
+      rgba(255,255,255,0) 56%),
+    radial-gradient(160px 84px at 20% 8%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0));
   pointer-events: none;
   z-index: 1;
 }
@@ -947,8 +961,8 @@ input[type="date"]:focus {
   right: -80px;
   top: -80px;
   border-radius: 50%;
-  opacity: 0.55;
-  filter: blur(28px);
+  opacity: 0.62;
+  filter: blur(30px);
   pointer-events: none;
   z-index: 0;
   transition: opacity 300ms ease;
@@ -959,36 +973,55 @@ input[type="date"]:focus {
   transform: perspective(1000px) translateY(-6px) rotateX(4deg) rotateY(-2deg) scale(1.03);
   outline: none;
   box-shadow:
-    0 32px 56px rgba(2, 6, 23, 0.5),
-    0 2px 0 rgba(255, 255, 255, 0.12) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.28) inset;
+    0 38px 62px rgba(2, 6, 23, 0.52),
+    0 18px 34px rgba(15, 23, 42, 0.38);
 }
 
 .stat-card:hover::after {
-  opacity: 0.75;
+  opacity: 0.88;
 }
 
 .stat-card:active {
   transform: perspective(1000px) translateY(-2px) rotateX(2deg) scale(1.015);
-  box-shadow: 0 16px 32px rgba(2, 6, 23, 0.5);
+  box-shadow:
+    0 18px 34px rgba(2, 6, 23, 0.48),
+    0 8px 18px rgba(15, 23, 42, 0.32);
 }
 
 .stat-card.active {
   box-shadow:
-    0 28px 52px rgba(2, 6, 23, 0.55),
-    0 0 0 1.5px rgba(125, 211, 252, 0.35) inset;
+    0 30px 54px rgba(2, 6, 23, 0.54),
+    0 0 24px rgba(125, 211, 252, 0.35);
   transform: perspective(1000px) translateY(-4px) scale(1.02);
 }
 
+.stat-card.is-triggered {
+  animation: stat-card-trigger 260ms ease-out;
+}
+
+@keyframes stat-card-trigger {
+  0% {
+    transform: perspective(1000px) translateY(0) scale(1);
+  }
+  45% {
+    transform: perspective(1000px) translateY(-5px) scale(1.025);
+  }
+  100% {
+    transform: perspective(1000px) translateY(-4px) scale(1.02);
+  }
+}
+
 .stat-card:focus-visible {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+  box-shadow:
+    0 34px 58px rgba(2, 6, 23, 0.5),
+    0 0 26px rgba(125, 211, 252, 0.38);
 }
 
 .stat-icon {
   width: 52px;
   height: 52px;
   flex: 0 0 52px;
-  border-radius: 15px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1011,36 +1044,36 @@ input[type="date"]:focus {
 
 .card-blue {
   background: linear-gradient(145deg,
-    rgba(14, 165, 233, 0.32) 0%,
-    rgba(7, 89, 133, 0.22) 55%,
-    rgba(7, 17, 31, 0.72) 100%);
+    rgba(56, 189, 248, 0.4) 0%,
+    rgba(14, 116, 144, 0.24) 55%,
+    rgba(7, 17, 31, 0.62) 100%);
 }
 .card-blue::after { background: radial-gradient(circle, rgba(56,189,248,0.9), transparent 65%); }
 .card-blue .stat-icon { background: rgba(14,165,233,0.22); color: #7dd3fc; }
 
 .card-green {
   background: linear-gradient(145deg,
-    rgba(16, 185, 129, 0.32) 0%,
-    rgba(6, 95, 70, 0.22) 55%,
-    rgba(7, 17, 31, 0.72) 100%);
+    rgba(52, 211, 153, 0.38) 0%,
+    rgba(6, 95, 70, 0.24) 55%,
+    rgba(7, 17, 31, 0.62) 100%);
 }
 .card-green::after { background: radial-gradient(circle, rgba(52,211,153,0.9), transparent 65%); }
 .card-green .stat-icon { background: rgba(16,185,129,0.22); color: #6ee7b7; }
 
 .card-amber {
   background: linear-gradient(145deg,
-    rgba(245, 158, 11, 0.34) 0%,
-    rgba(120, 73, 4, 0.22) 55%,
-    rgba(7, 17, 31, 0.72) 100%);
+    rgba(251, 191, 36, 0.4) 0%,
+    rgba(146, 64, 14, 0.24) 55%,
+    rgba(7, 17, 31, 0.62) 100%);
 }
 .card-amber::after { background: radial-gradient(circle, rgba(251,191,36,0.9), transparent 65%); }
 .card-amber .stat-icon { background: rgba(245,158,11,0.24); color: #fcd34d; }
 
 .card-purple {
   background: linear-gradient(145deg,
-    rgba(139, 92, 246, 0.32) 0%,
-    rgba(76, 29, 149, 0.22) 55%,
-    rgba(7, 17, 31, 0.72) 100%);
+    rgba(167, 139, 250, 0.38) 0%,
+    rgba(91, 33, 182, 0.24) 55%,
+    rgba(7, 17, 31, 0.62) 100%);
 }
 .card-purple::after { background: radial-gradient(circle, rgba(167,139,250,0.9), transparent 65%); }
 .card-purple .stat-icon { background: rgba(139,92,246,0.24); color: #c4b5fd; }
@@ -2280,49 +2313,67 @@ body.analytics-focus-mode .analytics-grid {
 .fin-card {
   position: relative;
   isolation: isolate;
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 22px;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: linear-gradient(160deg, rgba(51, 65, 85, 0.44) 0%, rgba(15, 23, 42, 0.56) 55%, rgba(2, 6, 23, 0.72) 100%);
+  border: 0;
+  border-radius: 30px;
+  backdrop-filter: blur(18px) saturate(1.45);
+  -webkit-backdrop-filter: blur(18px) saturate(1.45);
   padding: 1.25rem;
   cursor: pointer;
-  transition: box-shadow 220ms ease, border-color 220ms ease;
+  transition: box-shadow 220ms ease, transform 220ms ease;
   box-shadow:
-    0 10px 18px rgba(2, 6, 23, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 26px 46px rgba(2, 6, 23, 0.42),
+    0 10px 24px rgba(15, 23, 42, 0.32);
   overflow: hidden;
 }
 
 .fin-card::before {
   content: '';
   position: absolute;
-  inset: 2px;
-  border-radius: 18px;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(138deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 28%, rgba(255, 255, 255, 0) 58%),
+    radial-gradient(150px 80px at 18% 8%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0));
   pointer-events: none;
-  z-index: -1;
+  z-index: 1;
 }
 
 .fin-card::after {
-  display: none;
+  content: '';
+  position: absolute;
+  width: 210px;
+  height: 210px;
+  right: -110px;
+  top: -95px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(186, 230, 253, 0.3), rgba(125, 211, 252, 0));
+  filter: blur(14px);
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .fin-card:hover,
 .fin-card:focus-visible {
-  border-color: rgba(148, 163, 184, 0.38);
+  transform: translateY(-2px);
   box-shadow:
-    0 14px 24px rgba(2, 6, 23, 0.36),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 32px 54px rgba(2, 6, 23, 0.46),
+    0 16px 30px rgba(15, 23, 42, 0.34);
 }
 
 .fin-card:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+  box-shadow:
+    0 28px 46px rgba(2, 6, 23, 0.42),
+    0 0 24px rgba(125, 211, 252, 0.32);
 }
 
 .fin-card:active {
-  box-shadow: 0 18px 30px rgba(2, 6, 23, 0.5);
+  transform: translateY(0);
+  box-shadow:
+    0 18px 32px rgba(2, 6, 23, 0.42),
+    0 8px 18px rgba(15, 23, 42, 0.28);
 }
 
 .fin-title {
@@ -2347,12 +2398,10 @@ body.analytics-focus-mode .analytics-grid {
 }
 
 .fin-card.text-success {
-  border-color: rgba(16, 185, 129, 0.45);
   background: linear-gradient(155deg, rgba(16, 185, 129, 0.18), rgba(15, 23, 42, 0.96));
 }
 
 .fin-card.text-warning {
-  border-color: rgba(245, 158, 11, 0.5);
   background: linear-gradient(155deg, rgba(245, 158, 11, 0.2), rgba(15, 23, 42, 0.96));
 
 }

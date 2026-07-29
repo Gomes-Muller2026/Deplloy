@@ -10,6 +10,16 @@ const LOGIN_USER_STORAGE_KEY = 'consultorio_login_user';
 const LOGIN_PASSWORD_STORAGE_KEY = 'consultorio_login_password';
 const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
 const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
+const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyCKFg8ypyYLRbD8PoeP9NqO2KHBrmN70uk',
+  authDomain: 'consultorio-a07c8.firebaseapp.com',
+  projectId: 'consultorio-a07c8',
+  storageBucket: 'consultorio-a07c8.firebasestorage.app',
+  messagingSenderId: '399470846657',
+  appId: '1:399470846657:web:dc9ac3d7af7c348100aa40',
+  measurementId: 'G-68H2HBV9MB'
+};
 
 const getTodayStr = () => {
   const d = new Date();
@@ -113,6 +123,10 @@ class ConsultorioApp {
     this.reminderMinutes = 15;
     this.agendaViewMode = 'calendar';
     this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
+    this.firebaseConfig = null;
+    this.firebaseApp = null;
+    this.firebaseDb = null;
+    this.firebaseConnected = false;
     this.loadStore();
   }
 
@@ -160,6 +174,7 @@ class ConsultorioApp {
     this.ensureAppointmentProcedureOptions();
     this.loadSoundSettings();
     this.updateSoundControlsUI();
+    this.prefillFirebaseConfig();
     this.updateCloudSyncMeta('Modo local', 'local');
   }
 
@@ -243,6 +258,9 @@ class ConsultorioApp {
 
   initEvents() {
     const loginForm = document.getElementById('login-form');
+    const saveFirebaseBtn = document.getElementById('btn-save-firebase');
+    const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
+    const firebaseConfigInput = document.getElementById('cfg-firebase-json');
     const loginUserInput = document.getElementById('login-username');
     const loginPassInput = document.getElementById('login-password');
     const showPassInput = document.getElementById('login-show-password');
@@ -268,6 +286,29 @@ class ConsultorioApp {
     if (showPassInput && loginPassInput) {
       showPassInput.addEventListener('change', () => {
         loginPassInput.type = showPassInput.checked ? 'text' : 'password';
+      });
+    }
+
+    if (saveFirebaseBtn) {
+      saveFirebaseBtn.addEventListener('click', () => {
+        void this.initFirebase();
+      });
+    }
+
+    if (disconnectFirebaseBtn) {
+      disconnectFirebaseBtn.addEventListener('click', () => {
+        this.disconnectFirebase();
+      });
+    }
+
+    if (firebaseConfigInput) {
+      firebaseConfigInput.addEventListener('input', () => {
+        try {
+          const parsed = JSON.parse(firebaseConfigInput.value || '{}');
+          this.firebaseConfig = parsed;
+        } catch (err) {
+          this.firebaseConfig = null;
+        }
       });
     }
 
@@ -804,12 +845,118 @@ class ConsultorioApp {
     this.showToast('Você saiu da sessão.', 'info');
   }
 
-  initFirebase() {
+  prefillFirebaseConfig() {
+    const input = document.getElementById('cfg-firebase-json');
+    if (!input) return;
+
+    const storedConfig = this.loadFirebaseConfig();
+    const configToShow = storedConfig || DEFAULT_FIREBASE_CONFIG;
+    input.value = JSON.stringify(configToShow, null, 2);
+    this.firebaseConfig = configToShow;
+  }
+
+  loadFirebaseConfig() {
+    try {
+      const raw = localStorage.getItem(FIREBASE_CONFIG_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  saveFirebaseConfig(config) {
+    try {
+      localStorage.setItem(FIREBASE_CONFIG_STORAGE_KEY, JSON.stringify(config));
+    } catch (err) {
+      console.log('Falha ao salvar configuração do Firebase:', err);
+    }
+  }
+
+  setFirebaseStatus(connected, message, mode = 'live') {
     const badge = document.getElementById('cloud-sync-status');
     const text = document.getElementById('cloud-status-text');
-    if (badge) badge.className = 'cloud-status-badge offline';
-    if (text) text.textContent = 'Modo Local';
-    this.updateCloudSyncMeta('Modo local', 'local');
+    if (badge) {
+      badge.className = connected ? 'cloud-status-badge live' : 'cloud-status-badge offline';
+    }
+    if (text) text.textContent = connected ? 'Firebase Online' : 'Modo Local';
+    this.updateCloudSyncMeta(message, mode);
+  }
+
+  disconnectFirebase() {
+    this.firebaseConnected = false;
+    this.firebaseApp = null;
+    this.firebaseDb = null;
+    this.setFirebaseStatus(false, 'Desconectado do Firebase', 'local');
+    this.showToast('Firebase desconectado.', 'info');
+  }
+
+  async initFirebase() {
+    const input = document.getElementById('cfg-firebase-json');
+    const config = this.firebaseConfig || this.loadFirebaseConfig() || DEFAULT_FIREBASE_CONFIG;
+
+    if (!config || !config.projectId) {
+      this.setFirebaseStatus(false, 'Configure o JSON do Firebase', 'local');
+      this.showToast('Cole a configuração do Firebase no campo indicado.', 'warning');
+      return false;
+    }
+
+    if (input) input.value = JSON.stringify(config, null, 2);
+    this.firebaseConfig = config;
+    this.saveFirebaseConfig(config);
+
+    try {
+      if (!window.firebase || !window.firebase.apps || !window.firebase.firestore) {
+        throw new Error('SDK do Firebase não carregada');
+      }
+
+      if (!this.firebaseApp) {
+        const existingApp = window.firebase.apps.find((app) => app.name === 'consultorio-app');
+        this.firebaseApp = existingApp || window.firebase.initializeApp(config, 'consultorio-app');
+      }
+
+      this.firebaseDb = window.firebase.firestore(this.firebaseApp);
+      this.firebaseConnected = true;
+      this.setFirebaseStatus(true, 'Conectado ao Firebase', 'live');
+      this.showToast('Firebase conectado com sucesso.', 'success');
+
+      await this.syncDataWithFirebase();
+      return true;
+    } catch (err) {
+      this.firebaseConnected = false;
+      this.firebaseDb = null;
+      this.setFirebaseStatus(false, 'Falha ao conectar no Firebase', 'local');
+      this.showToast(`Não foi possível conectar ao Firebase: ${err.message}`, 'danger');
+      return false;
+    }
+  }
+
+  async syncDataWithFirebase() {
+    if (!this.firebaseDb) return;
+    try {
+      const collections = [
+        { name: 'clients', data: this.clients },
+        { name: 'appointments', data: this.appointments },
+        { name: 'expenses', data: this.expenses }
+      ];
+
+      for (const item of collections) {
+        const snapshot = await this.firebaseDb.collection(item.name).get();
+        if (!snapshot.empty) {
+          const remoteData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          if (item.name === 'clients') this.clients = remoteData;
+          if (item.name === 'appointments') this.appointments = remoteData;
+          if (item.name === 'expenses') this.expenses = remoteData;
+        }
+      }
+
+      this.saveStore();
+      this.render();
+    } catch (err) {
+      console.log('Falha ao sincronizar com Firestore:', err);
+      this.showToast('Conectado, mas a sincronização inicial falhou.', 'warning');
+    }
   }
 
   updateCloudSyncMeta(customText = '', mode = 'local') {

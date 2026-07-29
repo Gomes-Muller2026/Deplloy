@@ -5,9 +5,12 @@ const CACHE_NAME = 'consultorio-app-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './styles.css',
-  './app.js',
+  './css/styles.css',
+  './js/app.js',
   './manifest.json',
+  './assets/icons/icon-192.png',
+  './assets/icons/icon-512.png',
+  './assets/images/Patricia.avif',
   'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap',
   'https://unpkg.com/lucide@latest'
 ];

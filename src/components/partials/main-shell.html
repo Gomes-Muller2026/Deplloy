@@ -12,6 +12,7 @@
 
     <nav class="sidebar-nav">
       <button type="button" class="nav-item active" data-tab="dashboard" onclick="app.switchTab('dashboard')"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button>
+      <button type="button" class="nav-item nav-back-btn" id="btn-header-back" style="display:none;"><i data-lucide="arrow-left"></i><span>Voltar</span></button>
       <button type="button" class="nav-item" data-tab="agenda" onclick="app.switchTab('agenda')"><i data-lucide="calendar"></i><span>Agenda</span></button>
       <button type="button" class="nav-item" data-tab="clientes" onclick="app.switchTab('clientes')"><i data-lucide="users"></i><span>Clientes</span></button>
       <button type="button" class="nav-item" data-tab="financeiro" onclick="app.switchTab('financeiro')"><i data-lucide="wallet"></i><span>Financeiro</span><span class="badge-pending-count" id="nav-pending-badge">0</span></button>
@@ -66,7 +67,6 @@
         <button class="btn btn-secondary btn-icon-text" id="btn-header-new-client" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="user-plus"></i><span>Novo Paciente</span></button>
         <button class="btn btn-secondary btn-icon-text" id="btn-open-birthdays"><i data-lucide="cake"></i><span>Aniversários</span><span class="btn-notification-badge">0</span></button>
         <button class="btn btn-secondary btn-icon-text" id="btn-logout-session"><i data-lucide="log-out"></i><span>Sair</span></button>
-        <button class="btn btn-secondary btn-icon-text" id="btn-header-back" style="display:none;"><i data-lucide="arrow-left"></i><span>Voltar</span></button>
         <button class="btn btn-primary btn-icon-text" id="btn-header-new-appointment" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="calendar-plus"></i><span>Agendar Consulta</span></button>
       </div>
     </header>

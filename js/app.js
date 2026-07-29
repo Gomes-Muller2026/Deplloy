@@ -762,7 +762,8 @@ class ConsultorioApp {
 
     const btnHeaderBack = document.getElementById('btn-header-back');
     if (btnHeaderBack) {
-      btnHeaderBack.style.display = this.currentTab === 'agenda' ? 'inline-flex' : 'none';
+      const showBack = this.currentTab !== 'dashboard';
+      btnHeaderBack.style.display = showBack ? 'inline-flex' : 'none';
     }
 
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {
@@ -916,18 +917,45 @@ class ConsultorioApp {
         this.firebaseApp = existingApp || window.firebase.initializeApp(config, 'consultorio-app');
       }
 
+      if (window.firebase.auth) {
+        const auth = window.firebase.auth(this.firebaseApp);
+        if (!auth.currentUser) {
+          try {
+            await auth.signInAnonymously();
+          } catch (authErr) {
+            console.log('Falha ao autenticar anonimamente:', authErr);
+          }
+        }
+      }
+
       this.firebaseDb = window.firebase.firestore(this.firebaseApp);
       this.firebaseConnected = true;
       this.setFirebaseStatus(true, 'Conectado ao Firebase', 'live');
       this.showToast('Firebase conectado com sucesso.', 'success');
 
-      await this.syncDataWithFirebase();
+      try {
+        await this.syncDataWithFirebase();
+      } catch (syncErr) {
+        const message = syncErr && syncErr.message ? syncErr.message : 'Erro desconhecido';
+        this.firebaseConnected = false;
+        this.firebaseDb = null;
+        this.setFirebaseStatus(false, 'Firebase indisponível para sincronização', 'local');
+        this.showToast(`Sincronização cancelada: ${message}`, 'warning');
+      }
       return true;
     } catch (err) {
+      const message = err && err.message ? err.message : 'Erro desconhecido';
+      const isPermissionError = /permission|permissions/i.test(message);
+      const isNetworkError = /network|Failed to fetch|ERR_ABORTED|unavailable/i.test(message);
       this.firebaseConnected = false;
       this.firebaseDb = null;
-      this.setFirebaseStatus(false, 'Falha ao conectar no Firebase', 'local');
-      this.showToast(`Não foi possível conectar ao Firebase: ${err.message}`, 'danger');
+      this.setFirebaseStatus(false, isPermissionError ? 'Firebase sem permissão' : 'Falha ao conectar no Firebase', 'local');
+      this.showToast(
+        isPermissionError
+          ? 'O Firebase respondeu, mas as regras não permitiram a leitura. O app continuará em modo local.'
+          : 'Não foi possível conectar ao Firebase. O app continuará em modo local.',
+        'warning'
+      );
       return false;
     }
   }
@@ -954,8 +982,9 @@ class ConsultorioApp {
       this.saveStore();
       this.render();
     } catch (err) {
-      console.log('Falha ao sincronizar com Firestore:', err);
-      this.showToast('Conectado, mas a sincronização inicial falhou.', 'warning');
+      const message = err && err.message ? err.message : 'Erro desconhecido';
+      console.log('Falha ao sincronizar com Firestore:', message);
+      throw new Error(message);
     }
   }
 

@@ -1,0 +1,33 @@
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo-wrap">
+        <img src="assets/images/Patricia.avif" alt="Logo da clínica" class="login-logo">
+      </div>
+      <div>
+        <h2>Patricia Grando Muller</h2>
+        <p>Entre com seu usuário e senha para acessar o sistema</p>
+      </div>
+    </div>
+
+    <form id="login-form" class="login-form">
+      <div class="form-group">
+        <label for="login-username">Usuário</label>
+        <input type="text" id="login-username" class="form-control" value="Patricia" autocomplete="username" required>
+      </div>
+
+      <div class="form-group">
+        <label for="login-password">Senha</label>
+        <input type="password" id="login-password" class="form-control" placeholder="Digite sua senha" autocomplete="current-password" required>
+      </div>
+
+      <label class="login-show-password" for="login-show-password">
+        <input type="checkbox" id="login-show-password">
+        <span>Mostrar senha</span>
+      </label>
+
+      <p id="login-error" class="login-error" style="display:none;"></p>
+      <button type="submit" class="btn btn-primary btn-login-submit">Entrar</button>
+    </form>
+  </div>
+</div>

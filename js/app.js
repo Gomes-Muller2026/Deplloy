@@ -1464,24 +1464,12 @@ class ConsultorioApp {
     const amount = toNumber((document.getElementById('expense-amount') || {}).value || 0);
     const date = String((document.getElementById('expense-date') || {}).value || '').trim();
 
-    if (!description || amount <= 0 || !date) {
-      this.showToast('Preencha descrição, valor e data da despesa.', 'warning');
-      return;
-    }
-
-    const payload = { description, category, amount, date };
-    if (id) {
-      const idx = this.expenses.findIndex((e) => e.id === id);
-      if (idx !== -1) this.expenses[idx] = Object.assign({}, this.expenses[idx], payload);
-      this.showToast('Despesa atualizada com sucesso.', 'success');
+    const payload = { id, description, category, amount, date };
+    if (window.financeiroModule && typeof window.financeiroModule.saveExpense === 'function') {
+      window.financeiroModule.saveExpense(this, payload, id || '');
     } else {
-      this.expenses.push(Object.assign(payload, { id: `exp-${Date.now()}` }));
-      this.showToast('Despesa cadastrada com sucesso.', 'success');
+      this.showToast('Módulo financeiro não carregado.', 'warning');
     }
-
-    this.saveStore();
-    this.render();
-    this.closeExpenseModal();
   }
 
   populateClientSelectOptions(selectedId = '') {
@@ -1545,12 +1533,8 @@ class ConsultorioApp {
     const phone = String((document.getElementById('client-phone') || {}).value || '').trim();
     const email = String((document.getElementById('client-email') || {}).value || '').trim();
 
-    if (!name || !phone) {
-      this.showToast('Preencha nome e telefone do paciente.', 'warning');
-      return;
-    }
-
     const payload = {
+      id,
       name,
       phone,
       email,
@@ -1561,37 +1545,20 @@ class ConsultorioApp {
       notes: String((document.getElementById('client-notes') || {}).value || '').trim()
     };
 
-    if (id) {
-      const idx = this.clients.findIndex((c) => c.id === id);
-      if (idx !== -1) {
-        this.clients[idx] = Object.assign({}, this.clients[idx], payload);
-        this.appointments.forEach((a) => {
-          if (a.clientId === id) a.clientName = payload.name;
-        });
-      }
-      this.showToast('Paciente atualizado com sucesso.', 'success');
+    if (window.clientModule && typeof window.clientModule.saveClient === 'function') {
+      window.clientModule.saveClient(this, payload, id || '');
+      this.populateClientSelectOptions();
     } else {
-      this.clients.push(Object.assign(payload, {
-        id: `cli-${Date.now()}`,
-        registrationNumber: this.getNextClientRegistrationNumber(),
-        createdAt: getTodayStr()
-      }));
-      this.showToast('Paciente cadastrado com sucesso.', 'success');
+      this.showToast('Módulo de clientes não carregado.', 'warning');
     }
-
-    this.saveStore();
-    this.populateClientSelectOptions();
-    this.render();
-    this.closeClientModal();
   }
 
   deleteClient(clientId) {
-    if (!confirm('Deseja realmente excluir este paciente?')) return;
-    this.clients = this.clients.filter((c) => c.id !== clientId);
-    this.appointments = this.appointments.filter((a) => a.clientId !== clientId);
-    this.saveStore();
-    this.render();
-    this.showToast('Paciente excluído com sucesso.', 'success');
+    if (window.clientModule && typeof window.clientModule.deleteClient === 'function') {
+      window.clientModule.deleteClient(this, clientId);
+    } else {
+      this.showToast('Módulo de clientes não carregado.', 'warning');
+    }
   }
 
   openAppointmentModal(appointmentId = '') {
@@ -1661,6 +1628,7 @@ class ConsultorioApp {
     }
 
     const payload = {
+      id,
       clientId,
       clientName: client.name,
       date,
@@ -1674,61 +1642,35 @@ class ConsultorioApp {
       notes: String((document.getElementById('appt-notes') || {}).value || '').trim()
     };
 
-    if (id) {
-      const idx = this.appointments.findIndex((a) => a.id === id);
-      if (idx !== -1) this.appointments[idx] = Object.assign({}, this.appointments[idx], payload);
-      this.showToast('Consulta atualizada com sucesso.', 'success');
+    if (window.agendaModule && typeof window.agendaModule.saveAppointment === 'function') {
+      window.agendaModule.saveAppointment(this, payload, id || '');
     } else {
-      this.appointments.push(Object.assign(payload, { id: `app-${Date.now()}` }));
-      this.showToast('Consulta agendada com sucesso.', 'success');
+      this.showToast('Módulo de agenda não carregado.', 'warning');
     }
-
-    this.saveStore();
-    this.render();
-    this.closeAppointmentModal();
   }
 
   deleteAppointment(appointmentId) {
-    if (!confirm('Deseja realmente excluir esta consulta?')) return;
-    this.appointments = this.appointments.filter((a) => a.id !== appointmentId);
-    this.saveStore();
-    this.render();
-    this.showToast('Consulta excluída com sucesso.', 'success');
+    if (window.agendaModule && typeof window.agendaModule.deleteAppointment === 'function') {
+      window.agendaModule.deleteAppointment(this, appointmentId);
+    } else {
+      this.showToast('Módulo de agenda não carregado.', 'warning');
+    }
   }
 
   deleteExpense(expenseId) {
-    if (!confirm('Deseja realmente excluir esta despesa?')) return;
-    this.expenses = this.expenses.filter((e) => e.id !== expenseId);
-    this.saveStore();
-    this.render();
-    this.showToast('Despesa excluída com sucesso.', 'success');
+    if (window.financeiroModule && typeof window.financeiroModule.deleteExpense === 'function') {
+      window.financeiroModule.deleteExpense(this, expenseId);
+    } else {
+      this.showToast('Módulo financeiro não carregado.', 'warning');
+    }
   }
 
   sendAppointmentWhatsApp(appointmentId) {
-    const appointment = this.appointments.find((a) => a.id === appointmentId);
-    if (!appointment) return;
-
-    const client = this.clients.find((c) => c.id === appointment.clientId);
-    const rawPhone = (client && client.phone) || '';
-    const phone = this.normalizeWhatsAppPhone(rawPhone);
-    if (!phone) {
-      this.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
-      return;
+    if (window.agendaModule && typeof window.agendaModule.sendAppointmentWhatsApp === 'function') {
+      window.agendaModule.sendAppointmentWhatsApp(this, appointmentId);
+    } else {
+      this.showToast('Módulo de agenda não carregado.', 'warning');
     }
-
-    const text = [
-      `Olá, ${(client && client.name) || appointment.clientName || 'cliente'}!`,
-      '',
-      'Passando para confirmar seu agendamento:',
-      `Data: ${formatDateBR(appointment.date)}`,
-      `Horário: ${appointment.time || ''}`,
-      `Procedimento: ${appointment.procedure || 'Consulta'}`,
-      `Valor: ${formatCurrency(appointment.price || 0)}`
-    ].join('\n');
-
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener');
-    this.showToast('Mensagem de WhatsApp preparada.', 'success');
   }
 
   getTopRange() {
@@ -1938,7 +1880,18 @@ window.app = new Proxy(appInstance, {
   }
 });
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    if (window.loadPartial) {
+      await Promise.all([
+        window.loadPartial('src/components/partials/login-screen.html', 'login-root'),
+        window.loadPartial('src/components/partials/main-shell.html', 'app-root')
+      ]);
+    }
+  } catch (err) {
+    console.log('Falha ao carregar partials:', err);
+  }
+
   window.app.initDOM();
   window.app.initEvents();
   window.app.render();

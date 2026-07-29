@@ -1,0 +1,423 @@
+<div class="app-layout app-hidden" id="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">
+        <img src="./assets/icons/icon-512.png" alt="Logo da clínica">
+      </div>
+      <div class="logo-text">
+        <h2>Patricia Grando Muller</h2>
+        <p>Psicoterapeuta</p>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button type="button" class="nav-item active" data-tab="dashboard" onclick="app.switchTab('dashboard')"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button>
+      <button type="button" class="nav-item" data-tab="agenda" onclick="app.switchTab('agenda')"><i data-lucide="calendar"></i><span>Agenda</span></button>
+      <button type="button" class="nav-item" data-tab="clientes" onclick="app.switchTab('clientes')"><i data-lucide="users"></i><span>Clientes</span></button>
+      <button type="button" class="nav-item" data-tab="financeiro" onclick="app.switchTab('financeiro')"><i data-lucide="wallet"></i><span>Financeiro</span><span class="badge-pending-count" id="nav-pending-badge">0</span></button>
+      <button type="button" class="nav-item" data-tab="despesas" onclick="app.switchTab('despesas')"><i data-lucide="receipt"></i><span>Despesas</span></button>
+      <button type="button" class="nav-item" data-tab="whatsapp" onclick="app.switchTab('whatsapp')"><i data-lucide="message-circle"></i><span>WhatsApp</span></button>
+      <button type="button" class="nav-item" data-tab="senha" onclick="app.switchTab('senha')"><i data-lucide="key-round"></i><span>Senha</span></button>
+      <button type="button" class="nav-item" data-tab="graficos" onclick="app.switchTab('graficos')"><i data-lucide="bar-chart-3"></i><span>Gráficos</span></button>
+      <button type="button" class="nav-item" data-tab="config" onclick="app.switchTab('config')"><i data-lucide="settings"></i><span>Configurações</span></button>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <header class="top-header">
+      <div class="header-title">
+        <h1 id="page-title">Consultório Control</h1>
+        <p id="page-subtitle">Gestão de clientes, agenda e financeiro</p>
+      </div>
+
+      <div class="header-actions">
+        <div class="sound-control-group">
+          <button class="btn btn-secondary btn-icon-text active-sound" id="btn-toggle-sound" title="Ativar/Desativar avisos sonoros">
+            <i data-lucide="bell"></i>
+            <span id="sound-status-text">Avisos: ON</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" id="btn-test-sound" title="Tocar som de lembrete agora para testar">
+            <i data-lucide="volume-2"></i>
+            <span>Testar Som</span>
+          </button>
+          <div class="reminder-mins-box" title="Defina com quantos minutos de antecedência o alarme deve tocar">
+            <span style="font-size:0.75rem;">Avisar</span>
+            <input type="number" id="top-reminder-mins" class="reminder-mins-input" value="15" min="1">
+            <span style="font-size:0.75rem;">min antes</span>
+          </div>
+        </div>
+
+        <div id="cloud-sync-status" class="cloud-status-badge offline">
+          <i data-lucide="cloud"></i>
+          <span id="cloud-status-text">Modo Local</span>
+        </div>
+        <span id="cloud-sync-last" class="cloud-sync-meta">Sem atualização</span>
+
+        <div class="top-date-picker">
+          <i data-lucide="calendar-range"></i>
+          <input type="date" id="top-date-start" class="top-date-input date-input" title="Data inicial">
+          <span class="top-date-sep">até</span>
+          <input type="date" id="top-date-end" class="top-date-input date-input" title="Data final">
+          <button class="btn-clear-date" id="btn-reset-top-dates" title="Resetar período">
+            <i data-lucide="rotate-ccw"></i>
+          </button>
+        </div>
+
+        <button class="btn btn-secondary btn-icon-text" id="btn-header-new-client" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="user-plus"></i><span>Novo Paciente</span></button>
+        <button class="btn btn-secondary btn-icon-text" id="btn-open-birthdays"><i data-lucide="cake"></i><span>Aniversários</span><span class="btn-notification-badge">0</span></button>
+        <button class="btn btn-secondary btn-icon-text" id="btn-logout-session"><i data-lucide="log-out"></i><span>Sair</span></button>
+        <button class="btn btn-secondary btn-icon-text" id="btn-header-back" style="display:none;"><i data-lucide="arrow-left"></i><span>Voltar</span></button>
+        <button class="btn btn-primary btn-icon-text" id="btn-header-new-appointment" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="calendar-plus"></i><span>Agendar Consulta</span></button>
+      </div>
+    </header>
+
+    <section class="tab-content active" id="tab-dashboard">
+      <div class="stats-grid">
+        <button type="button" class="stat-card card-blue" id="dash-card-consultas" data-action="dashboard-card" data-target="agenda" aria-label="Consultas de hoje" onclick="app.handleDashboardCardClick('dash-card-consultas', 'agenda')" title="Abrir agenda de consultas de hoje">
+          <div class="stat-icon"><i data-lucide="calendar-check"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Consultas Hoje</span>
+            <h3 class="stat-value" id="dash-consultas-hoje">0</h3>
+            <span class="stat-sub" id="dash-consultas-hoje-sub">0 concluídas</span>
+          </div>
+        </button>
+
+        <button type="button" class="stat-card card-green" id="dash-card-recebido" data-action="dashboard-card" data-target="financeiro" aria-label="Recebido no período" onclick="app.handleDashboardCardClick('dash-card-recebido', 'financeiro')" title="Abrir financeiro com recebidos">
+          <div class="stat-icon"><i data-lucide="check-circle-2"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Recebido</span>
+            <h3 class="stat-value" id="dash-received-month">R$ 0,00</h3>
+            <span class="stat-sub">Pagamentos confirmados</span>
+          </div>
+        </button>
+
+        <button type="button" class="stat-card card-amber" id="dash-card-pendente" data-action="dashboard-card" data-target="financeiro" aria-label="Pendências" onclick="app.handleDashboardCardClick('dash-card-pendente', 'financeiro')" title="Abrir financeiro com pendências">
+          <div class="stat-icon"><i data-lucide="alert-circle"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Em Aberto</span>
+            <h3 class="stat-value" id="dash-pending-total">R$ 0,00</h3>
+            <span class="stat-sub" id="dash-pending-count">0 cobranças pendentes</span>
+          </div>
+        </button>
+
+        <button type="button" class="stat-card card-green" id="dash-card-resultado" data-action="dashboard-card" data-target="financeiro" aria-label="Resultado do período" onclick="app.handleDashboardCardClick('dash-card-resultado', 'financeiro')" title="Abrir financeiro com resultado geral">
+          <div class="stat-icon"><i data-lucide="line-chart"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Resultado</span>
+            <h3 class="stat-value" id="dash-result-total">R$ 0,00</h3>
+            <span class="stat-sub" id="dash-result-sub">Equilíbrio no período</span>
+          </div>
+        </button>
+
+        <button type="button" class="stat-card card-purple" id="dash-card-clientes" data-action="dashboard-card" data-target="clientes" aria-label="Total de clientes" onclick="app.handleDashboardCardClick('dash-card-clientes', 'clientes')" title="Abrir lista de clientes">
+          <div class="stat-icon"><i data-lucide="users"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Total de Clientes</span>
+            <h3 class="stat-value" id="dash-total-clients">0</h3>
+            <span class="stat-sub">Cadastrados no sistema</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card grid-col-span-2">
+          <div class="card-header">
+            <div>
+              <h3>Agenda de Hoje e Próximas Consultas</h3>
+              <p>Compromissos agendados no consultório</p>
+            </div>
+            <button class="btn btn-sm btn-ghost" id="btn-view-agenda-completa" data-action="switch-tab" data-target="agenda" onclick="app.clearDashboardQuickFilters();app.switchTab('agenda')" ontouchstart="app.clearDashboardQuickFilters();app.switchTab('agenda')">Ver Agenda Completa <i data-lucide="arrow-right"></i></button>
+          </div>
+          <div class="card-body">
+            <div id="dash-today-list" class="appointment-list-compact"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3>Cobranças em Aberto</h3>
+              <p>Pagamentos aguardando recebimento</p>
+            </div>
+            <button class="btn btn-sm btn-ghost" id="btn-view-financeiro-tudo" data-action="switch-tab" data-target="financeiro" onclick="app.financeViewFilter='all';app.switchTab('financeiro')" ontouchstart="app.financeViewFilter='all';app.switchTab('financeiro')">Ver Tudo <i data-lucide="arrow-right"></i></button>
+          </div>
+          <div class="card-body">
+            <div id="dash-pending-list" class="pending-mini-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-content" id="tab-agenda">
+      <div class="filter-bar card">
+        <div class="filter-group">
+          <div class="input-icon">
+            <i data-lucide="search"></i>
+            <input type="text" id="agenda-search" placeholder="Buscar por cliente ou procedimento...">
+          </div>
+          <input type="date" id="agenda-filter-start" class="form-control date-input agenda-filter-date" title="Data inicial">
+          <input type="date" id="agenda-filter-end" class="form-control date-input agenda-filter-date agenda-filter-end-hidden" title="Data final">
+          <select id="agenda-filter-status" class="form-control">
+            <option value="todos">Todos os Status</option>
+            <option value="Agendado">Agendado</option>
+            <option value="Concluido">Concluído</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div class="agenda-view-toggle">
+          <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-calendar">Calendário</button>
+          <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-list">Lista</button>
+        </div>
+        <button class="btn btn-primary" id="btn-new-appointment-agenda" type="button" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="plus"></i> Agendar Consulta</button>
+      </div>
+
+      <div class="card agenda-calendar-card" id="agenda-calendar-card" style="display:none;">
+        <div class="agenda-calendar-toolbar" id="agenda-calendar-toolbar">
+          <div class="agenda-nav-group">
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-prev"><i data-lucide="chevron-left"></i> Anterior</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-today"><i data-lucide="rotate-ccw"></i> Voltar</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-next">Próxima <i data-lucide="chevron-right"></i></button>
+          </div>
+          <div class="agenda-calendar-range" id="agenda-calendar-range">Período</div>
+        </div>
+        <div class="card-body">
+          <div id="agenda-calendar-grid" class="agenda-calendar-grid"></div>
+        </div>
+      </div>
+
+      <div class="card agenda-table-card" id="agenda-table-card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Data / Horário</th>
+                  <th>Cliente / Paciente</th>
+                  <th>Procedimento / Motivo</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                  <th>Pagamento</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="agenda-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-content" id="tab-clientes">
+      <div class="filter-bar card">
+        <div class="filter-group">
+          <div class="input-icon">
+            <i data-lucide="search"></i>
+            <input type="text" id="clientes-search" placeholder="Buscar por nome, telefone ou e-mail...">
+          </div>
+          <select id="clientes-phone-filter" class="form-control">
+            <option value="todos">Todos</option>
+            <option value="validos">Com WhatsApp</option>
+            <option value="invalidos">Sem WhatsApp</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btn-new-client" type="button" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="plus"></i> Novo Paciente</button>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Telefone</th>
+                  <th>E-mail</th>
+                  <th>Cadastro</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="clientes-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-content" id="tab-financeiro">
+      <div class="filter-bar card">
+        <div class="filter-group">
+          <div class="input-icon">
+            <i data-lucide="search"></i>
+            <input type="text" id="financeiro-search" placeholder="Buscar por cliente..."></div>
+          <div class="finance-filter-pill" id="finance-filter-indicator">
+            <span id="finance-filter-label">Filtro: Todos</span>
+          </div>
+        </div>
+        <div class="finance-view-toggle">
+          <button class="btn btn-secondary btn-sm" type="button" data-finance-view="all" onclick="app.financeViewFilter='all';app.renderFinanceiroTable()">Todos</button>
+          <button class="btn btn-secondary btn-sm" type="button" data-finance-view="pending" onclick="app.financeViewFilter='pending';app.renderFinanceiroTable()">Pendentes</button>
+          <button class="btn btn-secondary btn-sm" type="button" data-finance-view="paid" onclick="app.financeViewFilter='paid';app.renderFinanceiroTable()">Recebidos</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Qtd</th>
+                  <th>Total</th>
+                  <th>Pend.</th>
+                  <th>Pago</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="financeiro-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-content" id="tab-despesas">
+      <div class="filter-bar card">
+        <div class="filter-group"></div>
+        <button class="btn btn-primary" id="btn-new-expense" type="button" onclick="app.openExpenseModal()" ontouchstart="app.openExpenseModal()"><i data-lucide="plus"></i> Nova Despesa</button>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th>Valor</th>
+                  <th>Data</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="despesas-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-content" id="tab-whatsapp">
+      <div class="card"><div class="card-body"><p>Configurações de WhatsApp simplificadas nesta versão.</p></div></div>
+    </section>
+
+    <section class="tab-content" id="tab-senha">
+      <div class="card"><div class="card-body"><p>Alteração de senha simplificada nesta versão.</p></div></div>
+    </section>
+
+    <section class="tab-content" id="tab-graficos">
+      <div class="card"><div class="card-body"><p>Gráficos em restauração incremental.</p></div></div>
+    </section>
+
+    <section class="tab-content" id="tab-config">
+      <div class="config-grid">
+        <div class="card grid-col-span-2">
+          <div class="card-header"><h3><i data-lucide="cloud-lightning"></i> Sincronização Firebase</h3></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="cfg-firebase-json">Configuração Firebase JSON</label>
+              <textarea id="cfg-firebase-json" class="form-control" rows="5"></textarea>
+            </div>
+            <div class="config-actions">
+              <button class="btn btn-primary" id="btn-save-firebase">Conectar</button>
+              <button class="btn btn-secondary" id="btn-disconnect-firebase">Desconectar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modal-client">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="modal-client-title">Cadastrar Novo Paciente</h3>
+      <button class="btn-close" id="btn-close-client"><i data-lucide="x"></i></button>
+    </div>
+    <form id="form-client">
+      <input type="hidden" id="client-id">
+      <div class="modal-body grid-2">
+        <div class="form-group grid-col-span-2"><label for="client-name">Nome *</label><input type="text" id="client-name" class="form-control" required></div>
+        <div class="form-group"><label for="client-phone">Telefone *</label><input type="tel" id="client-phone" class="form-control" required></div>
+        <div class="form-group"><label for="client-email">E-mail</label><input type="email" id="client-email" class="form-control"></div>
+        <div class="form-group"><label for="client-cpf">CPF</label><input type="text" id="client-cpf" class="form-control"></div>
+        <div class="form-group"><label for="client-rg">RG</label><input type="text" id="client-rg" class="form-control"></div>
+        <div class="form-group"><label for="client-dob">Data de Nascimento</label><input type="date" id="client-dob" class="form-control date-input"></div>
+        <div class="form-group"><label for="client-group">Grupo</label><input type="text" id="client-group" class="form-control"></div>
+        <div class="form-group grid-col-span-2"><label for="client-notes">Observações</label><textarea id="client-notes" class="form-control" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-client">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar Cliente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-appointment">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="modal-appointment-title">Agendar Consulta</h3>
+      <button class="btn-close" id="btn-close-appointment"><i data-lucide="x"></i></button>
+    </div>
+    <form id="form-appointment">
+      <input type="hidden" id="appointment-id">
+      <div class="modal-body grid-2">
+        <div class="form-group"><label for="appt-client-id">Paciente *</label><select id="appt-client-id" class="form-control" required></select></div>
+        <div class="form-group"><label for="appt-date">Data *</label><input type="date" id="appt-date" class="form-control date-input" required></div>
+        <div class="form-group"><label for="appt-time">Horário *</label><input type="time" id="appt-time" class="form-control" required></div>
+        <div class="form-group"><label for="appt-procedure">Procedimento *</label><select id="appt-procedure" class="form-control" required></select></div>
+        <div class="form-group"><label for="appt-price">Valor (R$) *</label><input type="number" step="0.01" min="0" id="appt-price" class="form-control" required></div>
+        <div class="form-group"><label for="appt-payment-method">Forma de Pagamento</label><select id="appt-payment-method" class="form-control"><option value="Pix">Pix</option><option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option><option value="Transferência">Transferência</option></select></div>
+        <div class="form-group"><label for="appt-status">Status</label><select id="appt-status" class="form-control"><option value="Agendado">Agendado</option><option value="Concluido">Concluído</option><option value="Cancelado">Cancelado</option></select></div>
+        <div class="form-group"><label for="appt-payment-status">Status do Pagamento</label><select id="appt-payment-status" class="form-control"><option value="Pendente">Pendente</option><option value="Parcial">Parcial</option><option value="Pago">Pago</option></select></div>
+        <div class="form-group"><label for="appt-amount-paid">Valor Pago</label><input type="number" step="0.01" min="0" id="appt-amount-paid" class="form-control"></div>
+        <div class="form-group grid-col-span-2"><label for="appt-notes">Observações</label><textarea id="appt-notes" class="form-control" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" id="btn-cancel-appointment">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar Consulta</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-expense">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="modal-expense-title">Nova Despesa</h3>
+      <button class="btn-close" id="btn-close-expense"><i data-lucide="x"></i></button>
+    </div>
+    <form id="form-expense">
+      <input type="hidden" id="expense-id">
+      <div class="modal-body grid-2">
+        <div class="form-group grid-col-span-2"><label for="expense-description">Descrição *</label><input type="text" id="expense-description" class="form-control" required></div>
+        <div class="form-group"><label for="expense-category">Categoria</label><select id="expense-category" class="form-control">
+          <option value="Outros">Outros</option>
+          <option value="Aluguel">Aluguel</option>
+          <option value="Internet">Internet</option>
+          <option value="Material">Material</option>
+          <option value="Folha">Folha</option>
+          <option value="Transporte">Transporte</option>
+          <option value="Software">Software</option>
+        </select></div>
+        <div class="form-group"><label for="expense-amount">Valor (R$) *</label><input type="number" step="0.01" min="0" id="expense-amount" class="form-control" required></div>
+        <div class="form-group"><label for="expense-date">Data *</label><input type="date" id="expense-date" class="form-control date-input" required></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" id="btn-cancel-expense">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar Despesa</button>
+      </div>
+    </form>
+  </div>
+</div>

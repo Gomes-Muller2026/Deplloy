@@ -605,6 +605,57 @@
         </form>
       </div>
     </div>
+
+    <div class="modal-backdrop" id="modal-payment">
+      <div class="modal-card modal-card-sm">
+        <div class="modal-header">
+          <h3>Cobrança</h3>
+          <button class="btn-close" id="btn-close-payment"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="pay-appointment-id">
+          <div class="payment-info-card" id="pay-info-card">
+            <div class="payment-info-row"><span class="pay-label">Paciente</span><strong id="pay-client-name"></strong></div>
+            <div class="payment-info-row"><span class="pay-label">Data / Horário</span><span id="pay-date-time"></span></div>
+            <div class="payment-info-row"><span class="pay-label">Procedimento</span><span id="pay-procedure"></span></div>
+          </div>
+          <div class="payment-values-row">
+            <div class="payment-value-block">
+              <span class="pay-label">Total</span>
+              <strong id="pay-total" class="pay-amount-total"></strong>
+            </div>
+            <div class="payment-value-block">
+              <span class="pay-label">Já pago</span>
+              <strong id="pay-paid" class="pay-amount-paid"></strong>
+            </div>
+            <div class="payment-value-block">
+              <span class="pay-label">Em aberto</span>
+              <strong id="pay-balance" class="pay-amount-pending"></strong>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:0.9rem;">
+            <label for="pay-method">Forma de Pagamento</label>
+            <select id="pay-method" class="form-control">
+              <option value="Pix">Pix</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Cartão">Cartão</option>
+              <option value="Transferência">Transferência</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="pay-amount-now">Valor a registrar (R$)</label>
+            <div class="pay-input-row">
+              <input type="number" id="pay-amount-now" class="form-control" step="0.01" min="0" placeholder="0,00">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-pay-quitar">Quitar total</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-payment">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-save-payment"><i data-lucide="check"></i> Salvar Pagamento</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="src/modules/clientes/clientModule.js?v=20260729-1"></script>

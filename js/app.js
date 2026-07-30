@@ -539,7 +539,12 @@ class ConsultorioApp {
         if (appointmentId) {
           event.preventDefault();
           event.stopPropagation();
-          this.openAppointmentModal(appointmentId);
+          const isPending = bubbleCard.classList.contains('is-pending');
+          if (isPending) {
+            this.openPaymentModal(appointmentId);
+          } else {
+            this.openAppointmentModal(appointmentId);
+          }
           return;
         }
       }
@@ -766,6 +771,22 @@ class ConsultorioApp {
     closeExpenseButtons.forEach((id) => {
       const btn = document.getElementById(id);
       if (btn) btn.addEventListener('click', () => this.closeExpenseModal());
+    });
+
+    ['btn-cancel-payment', 'btn-close-payment'].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', () => this.closePaymentModal());
+    });
+    const btnSavePayment = document.getElementById('btn-save-payment');
+    if (btnSavePayment) btnSavePayment.addEventListener('click', () => this.savePaymentForm());
+    const btnPayQuitar = document.getElementById('btn-pay-quitar');
+    if (btnPayQuitar) btnPayQuitar.addEventListener('click', () => {
+      const balanceEl = document.getElementById('pay-balance');
+      const input = document.getElementById('pay-amount-now');
+      if (input && balanceEl) {
+        const raw = String(balanceEl.textContent || '').replace(/[^\d,\.]/g, '').replace(',', '.');
+        input.value = parseFloat(raw) || 0;
+      }
     });
 
     const btnNewExpense = document.getElementById('btn-new-expense');
@@ -2128,6 +2149,60 @@ class ConsultorioApp {
   closeAppointmentModal() {
     const modal = document.getElementById('modal-appointment');
     if (modal) modal.classList.remove('active');
+  }
+
+  openPaymentModal(appointmentId) {
+    const appt = this.appointments.find((a) => a.id === appointmentId);
+    if (!appt) return;
+    const modal = document.getElementById('modal-payment');
+    if (!modal) return;
+
+    document.getElementById('pay-appointment-id').value = appt.id;
+    document.getElementById('pay-client-name').textContent = appt.clientName || '-';
+    document.getElementById('pay-date-time').textContent = `${formatDateBR(appt.date)} às ${appt.time || '--:--'}`;
+    document.getElementById('pay-procedure').textContent = appt.procedure || '-';
+
+    const total = toNumber(appt.price);
+    const paid = toNumber(appt.amountPaid);
+    const balance = Math.max(0, total - paid);
+    document.getElementById('pay-total').textContent = formatCurrency(total);
+    document.getElementById('pay-paid').textContent = formatCurrency(paid);
+    document.getElementById('pay-balance').textContent = formatCurrency(balance);
+
+    const methodEl = document.getElementById('pay-method');
+    if (methodEl) methodEl.value = appt.paymentMethod || 'Pix';
+    const amountNowEl = document.getElementById('pay-amount-now');
+    if (amountNowEl) amountNowEl.value = balance > 0 ? balance : '';
+
+    modal.classList.add('active');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+  }
+
+  closePaymentModal() {
+    const modal = document.getElementById('modal-payment');
+    if (modal) modal.classList.remove('active');
+  }
+
+  savePaymentForm() {
+    const id = (document.getElementById('pay-appointment-id') || {}).value || '';
+    const appt = this.appointments.find((a) => a.id === id);
+    if (!appt) { this.showToast('Agendamento não encontrado.', 'warning'); return; }
+
+    const amountNow = toNumber((document.getElementById('pay-amount-now') || {}).value);
+    const method = String((document.getElementById('pay-method') || {}).value || appt.paymentMethod || 'Pix');
+
+    if (amountNow <= 0) { this.showToast('Informe um valor maior que zero.', 'warning'); return; }
+
+    const newPaid = toNumber(appt.amountPaid) + amountNow;
+    const total = toNumber(appt.price);
+    appt.amountPaid = newPaid;
+    appt.paymentMethod = method;
+    appt.paymentStatus = newPaid >= total ? 'Pago' : (newPaid > 0 ? 'Parcial' : 'Pendente');
+
+    this.saveData();
+    this.render();
+    this.closePaymentModal();
+    this.showToast(`Pagamento de ${formatCurrency(amountNow)} registrado.`, 'success');
   }
 
   saveAppointmentForm() {

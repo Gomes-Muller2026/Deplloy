@@ -2807,6 +2807,70 @@ body.analytics-focus-mode .analytics-grid {
   width: min(980px, calc(100vw - 64px));
 }
 
+/* ── Payment modal ───────────────────────────── */
+.modal-card-sm {
+  width: min(460px, calc(100vw - 40px));
+}
+
+.payment-info-card {
+  background: rgba(15,23,42,0.55);
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.payment-info-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.pay-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.payment-values-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.payment-value-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.55rem 0.4rem;
+  border-radius: 10px;
+  background: rgba(30,41,59,0.55);
+  border: 1px solid rgba(148,163,184,0.18);
+}
+
+.payment-value-block .pay-label {
+  min-width: unset;
+  font-size: 0.72rem;
+}
+
+.pay-amount-total  { color: #bfe9ff; font-size: 1rem; font-weight: 800; }
+.pay-amount-paid   { color: #bbf7d0; font-size: 1rem; font-weight: 800; }
+.pay-amount-pending{ color: #fde68a; font-size: 1rem; font-weight: 800; }
+
+.pay-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pay-input-row .form-control { flex: 1; }
+
 /* Keep appointment form scrollable with a visible scrollbar on smaller viewports */
 #modal-appointment .modal-body {
   overflow-y: scroll;

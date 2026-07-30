@@ -1,7 +1,8 @@
 function loadPartialViaXhr(filePath) {
+  const safePath = String(filePath || '').split('#')[0].split('?')[0];
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('GET', filePath, true);
+    xhr.open('GET', safePath, true);
     xhr.onreadystatechange = function onReadyStateChange() {
       if (xhr.readyState !== 4) return;
       const ok = (xhr.status >= 200 && xhr.status < 300) || (xhr.status === 0 && !!xhr.responseText);
@@ -9,10 +10,10 @@ function loadPartialViaXhr(filePath) {
         resolve(xhr.responseText);
         return;
       }
-      reject(new Error(`Falha ao carregar ${filePath} via XHR (status: ${xhr.status})`));
+      reject(new Error(`Falha ao carregar ${safePath} via XHR (status: ${xhr.status})`));
     };
     xhr.onerror = function onError() {
-      reject(new Error(`Erro de rede ao carregar ${filePath} via XHR`));
+      reject(new Error(`Erro de rede ao carregar ${safePath} via XHR`));
     };
     xhr.send();
   });

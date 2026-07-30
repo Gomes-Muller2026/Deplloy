@@ -12,6 +12,7 @@ const clientModule = {
     const normalized = {
       ...payload,
       id: clientId || `client-${Date.now()}`,
+      group: app.normalizeClientGroupName(payload.group),
       createdAt: payload.createdAt || getTodayStr(),
       registrationNumber: payload.registrationNumber || app.getNextClientRegistrationNumber()
     };
@@ -24,6 +25,8 @@ const clientModule = {
       app.clients.push(normalized);
       app.showToast('Cliente cadastrado com sucesso.', 'success');
     }
+
+    app.rememberClientGroup(normalized.group);
 
     app.saveStore();
     app.render();

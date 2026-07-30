@@ -1137,7 +1137,7 @@ input[type="date"]:focus {
 .appointment-list-compact {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.45rem;
 }
 
 .appt-compact-item {
@@ -1185,7 +1185,7 @@ input[type="date"]:focus {
 .pending-mini-list {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.45rem;
 }
 
 .pending-mini-item {
@@ -1220,10 +1220,10 @@ input[type="date"]:focus {
 .dash-bubble-item {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 0.8rem;
+  gap: 0.6rem;
   align-items: center;
-  padding: 0.9rem 1rem;
-  border-radius: 16px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
   border: 1px solid rgba(148, 163, 184, 0.28);
   background: rgba(15, 23, 42, 0.58);
   cursor: pointer;
@@ -1240,13 +1240,14 @@ input[type="date"]:focus {
 
 .dash-bubble-item.is-pending {
   border-left: 4px solid var(--warning);
+  grid-template-columns: 1fr auto;
 }
 
 .dash-bubble-date {
-  min-width: 96px;
+  min-width: 80px;
   text-align: center;
-  padding: 0.5rem 0.6rem;
-  border-radius: 12px;
+  padding: 0.3rem 0.5rem;
+  border-radius: 10px;
   background: rgba(14, 165, 233, 0.18);
   color: #7dd3fc;
   border: 1px solid rgba(125, 211, 252, 0.28);
@@ -1254,14 +1255,14 @@ input[type="date"]:focus {
 
 .dash-bubble-date span {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
 }
 
 .dash-bubble-date strong {
   display: block;
-  font-size: 1.02rem;
-  margin-top: 0.08rem;
+  font-size: 0.9rem;
+  margin-top: 0.04rem;
 }
 
 .dash-bubble-content {
@@ -1271,15 +1272,15 @@ input[type="date"]:focus {
 .dash-bubble-content strong {
   display: block;
   color: var(--text-main);
-  font-size: 1.02rem;
-  line-height: 1.25;
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .dash-bubble-content p {
-  margin: 0.15rem 0 0;
+  margin: 0.08rem 0 0;
   color: var(--text-muted);
-  font-size: 0.92rem;
-  line-height: 1.35;
+  font-size: 0.8rem;
+  line-height: 1.25;
 }
 
 .dash-status-chip,
@@ -1316,6 +1317,153 @@ input[type="date"]:focus {
   background: rgba(245, 158, 11, 0.2);
   border: 1px solid rgba(245, 158, 11, 0.42);
   color: #fbbf24;
+}
+
+/* ── Anamnese ────────────────────────────────── */
+.anamnese-wrapper {
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  background: rgba(15,23,42,0.45);
+}
+
+.anamnese-header-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
+}
+
+.anamnese-main-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.anamnese-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.anamnese-type-cards {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.anamnese-type-card {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148,163,184,0.3);
+  background: rgba(30,41,59,0.6);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.anamnese-type-card:hover:not(:disabled) {
+  border-color: rgba(56,189,248,0.55);
+  color: #bae6fd;
+  background: rgba(14,165,233,0.12);
+}
+
+.anamnese-type-card.active {
+  border-color: rgba(56,189,248,0.7);
+  background: rgba(14,165,233,0.2);
+  color: #7dd3fc;
+  box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
+}
+
+.anamnese-type-soon {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.anamnese-form {
+  margin-top: 1rem;
+  border-top: 1px solid rgba(148,163,184,0.15);
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.anamnese-abordagem {
+  font-size: 0.77rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 0.3rem;
+}
+
+.anamnese-section-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #7dd3fc;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 0.8rem;
+  margin-bottom: 0.1rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgba(56,189,248,0.2);
+}
+
+.anamnese-roteiro-title {
+  color: #c4b5fd;
+  border-bottom-color: rgba(139,92,246,0.25);
+}
+
+.anamnese-roteiro-title span {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.anamnese-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.anamnese-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.anamnese-field.full {
+  grid-column: 1 / -1;
+}
+
+.anamnese-field label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.anamnese-field .form-control {
+  font-size: 0.85rem;
+}
+
+.anamnese-roteiro-list {
+  padding-left: 1.3rem;
+  margin: 0.4rem 0 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.anamnese-roteiro-list li {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 
 .finance-group-summary {
@@ -1737,8 +1885,8 @@ input[type="date"]:focus {
 }
 
 #agenda-table-card .badge {
-  font-size: 0.75rem;
-  padding: 0.24rem 0.6rem;
+  font-size: 0.78rem;
+  min-width: 90px;
 }
 
 #agenda-table-card td:last-child {
@@ -2003,19 +2151,83 @@ select.form-control option:focus {
   color: #f8fafc;
 }
 
-/* Status Badges */
+/* Status Badges — mesma base do money-pill */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
-  border-radius: var(--radius-full);
-  font-size: 0.78rem;
-  font-weight: 600;
+  justify-content: center;
+  min-width: 100px;
+  padding: 0.44rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  line-height: 1;
   text-transform: capitalize;
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.28);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 10px 18px rgba(2,6,23,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.24),
+    inset 0 -8px 14px rgba(15,23,42,0.24);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
+}
+.badge::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(155deg, rgba(255,255,255,0.2), rgba(255,255,255,0) 48%);
+  pointer-events: none;
+}
+button.badge {
+  cursor: pointer;
+  outline: none;
+}
+button.badge:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow:
+    0 14px 24px rgba(2,6,23,0.38),
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    inset 0 -8px 14px rgba(15,23,42,0.26);
+}
+button.badge:active {
+  transform: scale(0.96);
+  opacity: 0.82;
+}
+/* Status variants */
+.badge-agendado {
+  color: #bfe9ff;
+  border-color: rgba(56,189,248,0.45);
+  background: rgba(14,165,233,0.2);
+}
+.badge-concluido {
+  color: #bbf7d0;
+  border-color: rgba(16,185,129,0.45);
+  background: rgba(16,185,129,0.2);
+}
+.badge-cancelado {
+  color: #fca5a5;
+  border-color: rgba(239,68,68,0.45);
+  background: rgba(239,68,68,0.2);
+}
+/* Payment variants */
+.badge-pago {
+  color: #bbf7d0;
+  border-color: rgba(34,197,94,0.45);
+  background: rgba(34,197,94,0.2);
+}
+.badge-parcial {
+  color: #fed7aa;
+  border-color: rgba(249,115,22,0.45);
+  background: rgba(249,115,22,0.2);
+}
+.badge-pendente {
+  color: #fde68a;
+  border-color: rgba(245,158,11,0.45);
+  background: rgba(245,158,11,0.2);
 }
 
 .money-pill {
@@ -2034,6 +2246,7 @@ select.form-control option:focus {
     0 10px 18px rgba(2, 6, 23, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
     inset 0 -8px 14px rgba(15, 23, 42, 0.24);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
   position: relative;
   overflow: hidden;
 }
@@ -2095,6 +2308,57 @@ select.form-control option:focus {
   margin: 0 auto;
 }
 
+/* ── Group Manager ───────────────────────────── */
+.groups-add-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.groups-add-row .form-control {
+  flex: 1;
+}
+
+.group-manager-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148,163,184,0.22);
+  background: rgba(30,41,59,0.55);
+  margin-bottom: 0.4rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.group-manager-card:hover {
+  border-color: rgba(148,163,184,0.4);
+  background: rgba(30,41,59,0.75);
+}
+
+.group-manager-card > [data-lucide] {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+}
+
+.group-manager-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-manager-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.group-manager-delete {
+  color: var(--danger) !important;
+}
+
 .finance-client-link {
   border: 0;
   padding: 0;
@@ -2110,6 +2374,21 @@ select.form-control option:focus {
 .finance-client-link:hover {
   color: inherit;
   text-decoration: none;
+}
+
+button.money-pill {
+  cursor: pointer;
+}
+button.money-pill:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow:
+    0 14px 24px rgba(2,6,23,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    inset 0 -8px 14px rgba(15,23,42,0.26);
+}
+button.money-pill:active {
+  transform: scale(0.96);
+  opacity: 0.82;
 }
 
 .finance-status-link {
@@ -2517,6 +2796,17 @@ body.analytics-focus-mode .analytics-grid {
   min-height: 0;
 }
 
+.modal-body.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+  align-items: start;
+}
+
+#modal-client .modal-card {
+  width: min(980px, calc(100vw - 64px));
+}
+
 /* Keep appointment form scrollable with a visible scrollbar on smaller viewports */
 #modal-appointment .modal-body {
   overflow-y: scroll;
@@ -2530,6 +2820,12 @@ body.analytics-focus-mode .analytics-grid {
   max-height: calc(100vh - 210px);
   padding-bottom: 1.1rem;
   scrollbar-gutter: stable;
+}
+
+@media (max-width: 760px) {
+  .modal-body.grid-2 {
+    grid-template-columns: 1fr;
+  }
 }
 
 #modal-client .modal-body::-webkit-scrollbar {
@@ -2548,6 +2844,26 @@ body.analytics-focus-mode .analytics-grid {
 
 #modal-client .modal-body::-webkit-scrollbar-thumb:hover {
   background: rgba(56, 189, 248, 0.72);
+}
+
+#modal-client-groups [data-group-edit] {
+  color: #111827;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+#modal-client-groups [data-group-edit]::placeholder {
+  color: rgba(17, 24, 39, 0.55);
+}
+
+#modal-client-groups .btn-secondary {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+#modal-client-groups .btn-ghost {
+  color: #be123c !important;
+  font-weight: 700;
 }
 
 #modal-appointment .modal-body::-webkit-scrollbar {

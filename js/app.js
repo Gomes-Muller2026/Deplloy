@@ -11,6 +11,7 @@ const LOGIN_PASSWORD_STORAGE_KEY = 'consultorio_login_password';
 const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
 const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
+const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCKFg8ypyYLRbD8PoeP9NqO2KHBrmN70uk',
   authDomain: 'consultorio-a07c8.firebaseapp.com',
@@ -127,6 +128,7 @@ class ConsultorioApp {
     this.firebaseApp = null;
     this.firebaseDb = null;
     this.firebaseConnected = false;
+    this.clientGroups = [];
     this.dashboardLastActiveCardId = 'dash-card-consultas';
     this.dashboardCardByTab = {
       agenda: 'dash-card-consultas',
@@ -184,14 +186,20 @@ class ConsultorioApp {
       const c = JSON.parse(localStorage.getItem('consultorio_clients') || '[]');
       const a = JSON.parse(localStorage.getItem('consultorio_appointments') || '[]');
       const e = JSON.parse(localStorage.getItem('consultorio_expenses') || '[]');
+      const g = JSON.parse(localStorage.getItem(CLIENT_GROUPS_STORAGE_KEY) || '[]');
       this.clients = Array.isArray(c) ? c : [];
       this.appointments = Array.isArray(a) ? a : [];
       this.expenses = Array.isArray(e) ? e : [];
+      this.clientGroups = Array.isArray(g) ? g.filter((item) => String(item || '').trim()) : [];
+      if (!this.clientGroups.length) {
+        this.clientGroups = this.collectClientGroupsFromClients();
+      }
     } catch (err) {
       console.log('Falha ao carregar dados locais:', err);
       this.clients = [];
       this.appointments = [];
       this.expenses = [];
+      this.clientGroups = [];
     }
   }
 
@@ -199,6 +207,149 @@ class ConsultorioApp {
     localStorage.setItem('consultorio_clients', JSON.stringify(this.clients));
     localStorage.setItem('consultorio_appointments', JSON.stringify(this.appointments));
     localStorage.setItem('consultorio_expenses', JSON.stringify(this.expenses));
+    localStorage.setItem(CLIENT_GROUPS_STORAGE_KEY, JSON.stringify(this.clientGroups));
+  }
+
+  normalizeClientGroupName(groupName) {
+    return String(groupName || '').replace(/\s+/g, ' ').trim();
+  }
+
+  normalizeCep(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 8);
+  }
+
+  formatCep(value) {
+    const digits = this.normalizeCep(value);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }
+
+  formatDobDisplay(value) {
+    const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  }
+
+  formatDobForInput(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const [year, month, day] = raw.split('-');
+      return `${day}/${month}/${year}`;
+    }
+
+    return this.formatDobDisplay(raw);
+  }
+
+  normalizeDobToIso(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length !== 8) return '';
+
+    const day = Number(digits.slice(0, 2));
+    const month = Number(digits.slice(2, 4));
+    const year = Number(digits.slice(4, 8));
+    if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return '';
+
+    const parsed = new Date(year, month - 1, day);
+    if (
+      parsed.getFullYear() !== year
+      || parsed.getMonth() !== month - 1
+      || parsed.getDate() !== day
+    ) {
+      return '';
+    }
+
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  async fillAddressByCep(rawCep) {
+    const cepInput = document.getElementById('client-cep');
+    const cep = this.normalizeCep(rawCep);
+
+    if (cepInput) cepInput.value = this.formatCep(cep);
+    if (cep.length !== 8) return;
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { cache: 'no-store' });
+      if (!response.ok) throw new Error('Falha na consulta de CEP');
+
+      const data = await response.json();
+      if (data && data.erro) {
+        this.showToast('CEP não encontrado.', 'warning');
+        return;
+      }
+
+      const setIfPresent = (id, value) => {
+        const field = document.getElementById(id);
+        if (!field) return;
+        field.value = String(value || '').trim();
+      };
+
+      setIfPresent('client-street', data.logradouro);
+      setIfPresent('client-neighborhood', data.bairro);
+      setIfPresent('client-city', data.localidade);
+      setIfPresent('client-state', data.uf);
+
+      const complementField = document.getElementById('client-complement');
+      if (complementField && !String(complementField.value || '').trim()) {
+        complementField.value = String(data.complemento || '').trim();
+      }
+
+      const numberField = document.getElementById('client-number');
+      if (numberField && !String(numberField.value || '').trim()) {
+        numberField.focus();
+      }
+
+      this.showToast('Endereço preenchido automaticamente pelo CEP.', 'success');
+    } catch (err) {
+      this.showToast('Não foi possível consultar o CEP agora.', 'warning');
+    }
+  }
+
+  collectClientGroupsFromClients() {
+    const seen = new Set();
+    return this.clients
+      .map((client) => this.normalizeClientGroupName(client.group))
+      .filter((group) => {
+        if (!group) return false;
+        const key = group.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }
+
+  rememberClientGroup(groupName) {
+    const normalized = this.normalizeClientGroupName(groupName);
+    if (!normalized) return;
+
+    const existingIndex = this.clientGroups.findIndex((item) => item.toLowerCase() === normalized.toLowerCase());
+    if (existingIndex >= 0) this.clientGroups.splice(existingIndex, 1);
+    this.clientGroups.unshift(normalized);
+    this.clientGroups = this.clientGroups.slice(0, 40);
+    this.populateClientGroupOptions();
+  }
+
+  populateClientGroupOptions(preferredGroup = '') {
+    const datalist = document.getElementById('client-group-options');
+    if (!datalist) return;
+
+    const groups = this.clientGroups.slice();
+    const preferred = this.normalizeClientGroupName(preferredGroup);
+    if (preferred && !groups.some((item) => item.toLowerCase() === preferred.toLowerCase())) {
+      groups.unshift(preferred);
+    }
+
+    datalist.innerHTML = groups
+      .map((group) => `<option value="${safeText(group)}"></option>`)
+      .join('');
   }
 
   showToast(message, type = 'info') {
@@ -223,6 +374,7 @@ class ConsultorioApp {
     this.ensureAppointmentProcedureOptions();
     this.loadSoundSettings();
     this.updateSoundControlsUI();
+    this.populateClientGroupOptions();
     this.prefillFirebaseConfig();
     this.updateCloudSyncMeta('Modo local', 'local');
   }
@@ -561,6 +713,26 @@ class ConsultorioApp {
     const formClient = document.getElementById('form-client');
     if (formClient) formClient.addEventListener('submit', (e) => { e.preventDefault(); this.saveClientForm(); });
 
+    const clientDobInput = document.getElementById('client-dob');
+    if (clientDobInput) {
+      clientDobInput.addEventListener('input', () => {
+        clientDobInput.value = this.formatDobDisplay(clientDobInput.value);
+      });
+      clientDobInput.addEventListener('blur', () => {
+        clientDobInput.value = this.formatDobForInput(clientDobInput.value);
+      });
+    }
+
+    const clientCepInput = document.getElementById('client-cep');
+    if (clientCepInput) {
+      clientCepInput.addEventListener('input', () => {
+        clientCepInput.value = this.formatCep(clientCepInput.value);
+      });
+      clientCepInput.addEventListener('blur', () => {
+        void this.fillAddressByCep(clientCepInput.value);
+      });
+    }
+
     const formAppointment = document.getElementById('form-appointment');
     if (formAppointment) formAppointment.addEventListener('submit', (e) => { e.preventDefault(); this.saveAppointmentForm(); });
 
@@ -571,6 +743,17 @@ class ConsultorioApp {
     closeClientButtons.forEach((id) => {
       const btn = document.getElementById(id);
       if (btn) btn.addEventListener('click', () => this.closeClientModal());
+    });
+
+    const manageClientGroupsBtn = document.getElementById('btn-manage-client-groups');
+    if (manageClientGroupsBtn) {
+      manageClientGroupsBtn.addEventListener('click', () => this.openClientGroupsModal());
+    }
+
+    const closeClientGroupsButtons = ['btn-close-client-groups', 'btn-close-client-groups-footer'];
+    closeClientGroupsButtons.forEach((id) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', () => this.closeClientGroupsModal());
     });
 
     const closeAppointmentButtons = ['btn-cancel-appointment', 'btn-close-appointment'];
@@ -620,6 +803,8 @@ class ConsultorioApp {
     if (btnAgendaPrev) {
       btnAgendaPrev.addEventListener('click', () => {
         this.agendaCalendarStartDate = addDaysIso(this.agendaCalendarStartDate, -7);
+        const inp = document.getElementById('agenda-filter-start');
+        if (inp) inp.value = this.agendaCalendarStartDate;
         this.renderAgendaTable();
       });
     }
@@ -627,6 +812,8 @@ class ConsultorioApp {
     if (btnAgendaNext) {
       btnAgendaNext.addEventListener('click', () => {
         this.agendaCalendarStartDate = addDaysIso(this.agendaCalendarStartDate, 7);
+        const inp = document.getElementById('agenda-filter-start');
+        if (inp) inp.value = this.agendaCalendarStartDate;
         this.renderAgendaTable();
       });
     }
@@ -634,6 +821,8 @@ class ConsultorioApp {
     if (btnAgendaToday) {
       btnAgendaToday.addEventListener('click', () => {
         this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
+        const inp = document.getElementById('agenda-filter-start');
+        if (inp) inp.value = this.agendaCalendarStartDate;
         this.renderAgendaTable();
       });
     }
@@ -1295,8 +1484,8 @@ class ConsultorioApp {
           <td>${safeText(a.clientName || '-')}</td>
           <td>${safeText(a.procedure || '-')}</td>
           <td><strong>${formatCurrency(a.price || 0)}</strong></td>
-          <td><span class="badge ${statusClass}">${safeText(status)}</span></td>
-          <td><span class="badge ${paymentClass}">${safeText(payment)}</span></td>
+          <td><button type="button" class="badge ${statusClass}" onclick="app.cycleAppointmentStatus('${a.id}')" title="Clique para alterar status">${safeText(status)}</button></td>
+          <td><button type="button" class="badge ${paymentClass}" onclick="app.cycleAppointmentPayment('${a.id}')" title="Clique para alterar pagamento">${safeText(payment)}</button></td>
           <td style="text-align: right;">
             <button class="btn btn-sm btn-secondary" onclick="app.openAppointmentModal('${a.id}')"><i data-lucide="pencil"></i> Editar</button>
             <button class="btn btn-sm btn-secondary" onclick="app.sendAppointmentWhatsApp('${a.id}')"><i data-lucide="message-circle"></i> WhatsApp</button>
@@ -1309,6 +1498,28 @@ class ConsultorioApp {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
       window.lucide.createIcons();
     }
+  }
+
+  cycleAppointmentStatus(id) {
+    const appt = this.appointments.find((a) => a.id === id);
+    if (!appt) return;
+    const cycle = ['Agendado', 'Concluido', 'Cancelado'];
+    const next = cycle[(cycle.indexOf(appt.status) + 1) % cycle.length];
+    appt.status = next;
+    this.saveData();
+    this.renderAgendaTable();
+    this.render();
+  }
+
+  cycleAppointmentPayment(id) {
+    const appt = this.appointments.find((a) => a.id === id);
+    if (!appt) return;
+    const cycle = ['Pendente', 'Parcial', 'Pago'];
+    const next = cycle[(cycle.indexOf(appt.paymentStatus) + 1) % cycle.length];
+    appt.paymentStatus = next;
+    this.saveData();
+    this.renderAgendaTable();
+    this.render();
   }
 
   updateAgendaViewModeUI() {
@@ -1445,9 +1656,9 @@ class ConsultorioApp {
             <button class="finance-client-link" type="button" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')">${safeText(r.clientName)}</button>
           </td>
           <td>${r.qty}</td>
-          <td><span class="money-pill money-pill-total">${formatCurrency(r.total)}</span></td>
-          <td><span class="money-pill money-pill-pending">${formatCurrency(r.pending)}</span></td>
-          <td><span class="money-pill money-pill-paid">${formatCurrency(r.paid)}</span></td>
+          <td><button type="button" class="money-pill money-pill-total" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')" title="Clique para editar">${formatCurrency(r.total)}</button></td>
+          <td><button type="button" class="money-pill money-pill-pending" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')" title="Clique para editar">${formatCurrency(r.pending)}</button></td>
+          <td><button type="button" class="money-pill money-pill-paid" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')" title="Clique para editar">${formatCurrency(r.paid)}</button></td>
           <td>
             <button class="finance-status-link" type="button" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')">${safeText(status)}</button>
           </td>
@@ -1587,11 +1798,14 @@ class ConsultorioApp {
     const title = document.getElementById('modal-client-title');
     if (idInput) idInput.value = '';
     if (title) title.textContent = 'Cadastrar Novo Paciente';
+    this.populateClientGroupOptions();
 
+    let _anamneseData = null;
     if (clientId) {
       const c = this.clients.find((x) => x.id === clientId);
       if (c) {
         if (idInput) idInput.value = c.id;
+        _anamneseData = c.anamnese || null;
         const set = (id, val) => {
           const el = document.getElementById(id);
           if (el) el.value = val || '';
@@ -1601,19 +1815,218 @@ class ConsultorioApp {
         set('client-email', c.email);
         set('client-cpf', c.cpf);
         set('client-rg', c.rg);
-        set('client-dob', c.dob);
+        set('client-dob', this.formatDobForInput(c.dob));
         set('client-group', c.group);
+        set('client-cep', this.formatCep(c.cep));
+        set('client-street', c.street);
+        set('client-number', c.number);
+        set('client-complement', c.complement);
+        set('client-neighborhood', c.neighborhood);
+        set('client-city', c.city);
+        set('client-state', c.state);
         set('client-notes', c.notes);
+        set('client-emergency-name', c.emergencyName);
+        set('client-emergency-phone', c.emergencyPhone);
+        set('client-emergency-relation', c.emergencyRelation);
+        this.populateClientGroupOptions(c.group);
         if (title) title.textContent = 'Editar Dados do Paciente';
       }
     }
 
+    this.loadAnamneseData(_anamneseData);
     modal.classList.add('active');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+  }
+
+  selectAnamneseType(type) {
+    const typeInput = document.getElementById('anamnese-selected-type');
+    const current = typeInput ? typeInput.value : '';
+    document.querySelectorAll('.anamnese-type-card').forEach((c) => c.classList.remove('active'));
+    document.querySelectorAll('.anamnese-form').forEach((f) => { f.style.display = 'none'; });
+    if (current === type) {
+      if (typeInput) typeInput.value = '';
+      return;
+    }
+    if (typeInput) typeInput.value = type;
+    const card = document.querySelector(`.anamnese-type-card[data-type="${type}"]`);
+    if (card) card.classList.add('active');
+    const form = document.getElementById(`anamnese-form-${type}`);
+    if (form) form.style.display = 'flex';
+  }
+
+  getAnamneseData() {
+    const typeInput = document.getElementById('anamnese-selected-type');
+    const type = typeInput ? typeInput.value : '';
+    if (!type) return null;
+    const form = document.getElementById(`anamnese-form-${type}`);
+    if (!form) return { type, data: {} };
+    const data = {};
+    form.querySelectorAll('[data-anamnese]').forEach((el) => {
+      const key = String(el.getAttribute('data-anamnese') || '').replace(`${type}.`, '');
+      data[key] = el.value || '';
+    });
+    return { type, data };
+  }
+
+  loadAnamneseData(anamnese) {
+    document.querySelectorAll('.anamnese-type-card').forEach((c) => c.classList.remove('active'));
+    document.querySelectorAll('.anamnese-form').forEach((f) => { f.style.display = 'none'; });
+    const typeInput = document.getElementById('anamnese-selected-type');
+    if (typeInput) typeInput.value = '';
+    if (!anamnese || !anamnese.type) return;
+    this.selectAnamneseType(anamnese.type);
+    if (!anamnese.data) return;
+    const form = document.getElementById(`anamnese-form-${anamnese.type}`);
+    if (!form) return;
+    form.querySelectorAll('[data-anamnese]').forEach((el) => {
+      const key = String(el.getAttribute('data-anamnese') || '').replace(`${anamnese.type}.`, '');
+      if (anamnese.data[key] !== undefined) el.value = anamnese.data[key];
+    });
   }
 
   closeClientModal() {
     const modal = document.getElementById('modal-client');
     if (modal) modal.classList.remove('active');
+  }
+
+  openClientGroupsModal() {
+    const modal = document.getElementById('modal-client-groups');
+    if (!modal) return;
+    this.renderClientGroupsManager();
+    modal.classList.add('active');
+  }
+
+  closeClientGroupsModal() {
+    const modal = document.getElementById('modal-client-groups');
+    if (modal) modal.classList.remove('active');
+  }
+
+  renderClientGroupsManager() {
+    const container = document.getElementById('client-groups-list');
+    if (!container) return;
+
+    // wire add-group button each render
+    const addBtn = document.getElementById('btn-add-group');
+    const addInput = document.getElementById('new-group-input');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        const name = this.normalizeClientGroupName((addInput || {}).value || '');
+        if (!name) { this.showToast('Informe um nome para o grupo.', 'warning'); return; }
+        if (this.clientGroups.some((g) => this.normalizeClientGroupName(g).toLowerCase() === name.toLowerCase())) {
+          this.showToast('Grupo já existe.', 'warning'); return;
+        }
+        this.rememberClientGroup(name);
+        this.saveStore();
+        if (addInput) addInput.value = '';
+        this.populateClientGroupOptions();
+        this.renderClientGroupsManager();
+        this.showToast(`Grupo "${name}" criado.`, 'success');
+      };
+    }
+    if (addInput) {
+      addInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (addBtn) addBtn.click(); } };
+    }
+
+    if (!this.clientGroups.length) {
+      container.innerHTML = '<div class="empty-state"><p>Nenhum grupo salvo ainda.</p></div>';
+      return;
+    }
+
+    container.innerHTML = this.clientGroups.map((group) => `
+      <div class="group-manager-card" data-group-row="${safeText(group)}">
+        <i data-lucide="tag"></i>
+        <input type="text" class="form-control group-manager-input" value="${safeText(group)}" data-group-edit aria-label="Nome do grupo">
+        <div class="group-manager-actions">
+          <button type="button" class="btn btn-sm btn-secondary" data-group-action="rename" data-group="${safeText(group)}"><i data-lucide="check"></i> Salvar</button>
+          <button type="button" class="btn btn-sm btn-ghost group-manager-delete" data-group-action="delete" data-group="${safeText(group)}"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('[data-group-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = String(btn.getAttribute('data-group-action') || '');
+        const groupName = this.normalizeClientGroupName(btn.getAttribute('data-group') || '');
+        if (!groupName) return;
+
+        if (action === 'rename') {
+          const row = btn.closest('[data-group-row]');
+          const input = row ? row.querySelector('[data-group-edit]') : null;
+          const nextName = input ? String(input.value || '') : '';
+          this.renameClientGroup(groupName, nextName);
+          return;
+        }
+
+        if (action === 'delete') {
+          this.deleteClientGroup(groupName);
+        }
+      });
+    });
+  }
+
+  renameClientGroup(oldGroup, newGroup) {
+    const oldNormalized = this.normalizeClientGroupName(oldGroup);
+    const newNormalized = this.normalizeClientGroupName(newGroup);
+
+    if (!oldNormalized) return;
+    if (!newNormalized) {
+      this.showToast('Informe um nome válido para o grupo.', 'warning');
+      return;
+    }
+
+    const oldKey = oldNormalized.toLowerCase();
+    const newKey = newNormalized.toLowerCase();
+    if (oldKey === newKey) return;
+
+    let updatedClients = 0;
+    this.clients = this.clients.map((client) => {
+      const currentGroup = this.normalizeClientGroupName(client.group).toLowerCase();
+      if (currentGroup !== oldKey) return client;
+      updatedClients += 1;
+      return { ...client, group: newNormalized };
+    });
+
+    this.clientGroups = this.clientGroups.filter((group) => this.normalizeClientGroupName(group).toLowerCase() !== oldKey);
+    this.rememberClientGroup(newNormalized);
+
+    const groupInput = document.getElementById('client-group');
+    if (groupInput && this.normalizeClientGroupName(groupInput.value).toLowerCase() === oldKey) {
+      groupInput.value = newNormalized;
+    }
+
+    this.populateClientGroupOptions(newNormalized);
+    this.saveStore();
+    this.renderClientGroupsManager();
+    this.render();
+    this.showToast(`Grupo atualizado. ${updatedClients} cliente(s) ajustado(s).`, 'success');
+  }
+
+  deleteClientGroup(groupName) {
+    const normalized = this.normalizeClientGroupName(groupName);
+    if (!normalized) return;
+
+    const targetKey = normalized.toLowerCase();
+    let affectedClients = 0;
+
+    this.clients = this.clients.map((client) => {
+      const currentGroup = this.normalizeClientGroupName(client.group).toLowerCase();
+      if (currentGroup !== targetKey) return client;
+      affectedClients += 1;
+      return { ...client, group: '' };
+    });
+
+    this.clientGroups = this.clientGroups.filter((group) => this.normalizeClientGroupName(group).toLowerCase() !== targetKey);
+
+    const groupInput = document.getElementById('client-group');
+    if (groupInput && this.normalizeClientGroupName(groupInput.value).toLowerCase() === targetKey) {
+      groupInput.value = '';
+    }
+
+    this.populateClientGroupOptions();
+    this.saveStore();
+    this.renderClientGroupsManager();
+    this.render();
+    this.showToast(`Grupo removido. ${affectedClients} cliente(s) ajustado(s).`, 'success');
   }
 
   saveClientForm() {
@@ -1622,6 +2035,15 @@ class ConsultorioApp {
     const phone = String((document.getElementById('client-phone') || {}).value || '').trim();
     const email = String((document.getElementById('client-email') || {}).value || '').trim();
 
+    const group = this.normalizeClientGroupName((document.getElementById('client-group') || {}).value || '');
+    const dobRaw = String((document.getElementById('client-dob') || {}).value || '').trim();
+    const dobIso = this.normalizeDobToIso(dobRaw);
+
+    if (dobRaw && !dobIso) {
+      this.showToast('Data de nascimento inválida. Use o formato ddmmaaaa.', 'warning');
+      return;
+    }
+
     const payload = {
       id,
       name,
@@ -1629,9 +2051,20 @@ class ConsultorioApp {
       email,
       cpf: String((document.getElementById('client-cpf') || {}).value || '').trim(),
       rg: String((document.getElementById('client-rg') || {}).value || '').trim(),
-      dob: String((document.getElementById('client-dob') || {}).value || '').trim(),
-      group: String((document.getElementById('client-group') || {}).value || '').trim(),
-      notes: String((document.getElementById('client-notes') || {}).value || '').trim()
+      dob: dobIso,
+      group,
+      cep: this.formatCep((document.getElementById('client-cep') || {}).value || ''),
+      street: String((document.getElementById('client-street') || {}).value || '').trim(),
+      number: String((document.getElementById('client-number') || {}).value || '').trim(),
+      complement: String((document.getElementById('client-complement') || {}).value || '').trim(),
+      neighborhood: String((document.getElementById('client-neighborhood') || {}).value || '').trim(),
+      city: String((document.getElementById('client-city') || {}).value || '').trim(),
+      state: String((document.getElementById('client-state') || {}).value || '').trim().toUpperCase().slice(0, 2),
+      notes: String((document.getElementById('client-notes') || {}).value || '').trim(),
+      emergencyName: String((document.getElementById('client-emergency-name') || {}).value || '').trim(),
+      emergencyPhone: String((document.getElementById('client-emergency-phone') || {}).value || '').trim(),
+      emergencyRelation: String((document.getElementById('client-emergency-relation') || {}).value || '').trim(),
+      anamnese: this.getAnamneseData()
     };
 
     if (window.clientModule && typeof window.clientModule.saveClient === 'function') {
@@ -1973,8 +2406,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     if (window.loadPartial) {
       await Promise.all([
-        window.loadPartial('src/components/partials/login-screen.html', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html', 'app-root')
+        window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
+        window.loadPartial('src/components/partials/main-shell.html?v=20260729-3', 'app-root')
       ]);
     }
   } catch (err) {

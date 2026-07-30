@@ -220,7 +220,10 @@
             <option value="invalidos">Sem WhatsApp</option>
           </select>
         </div>
-        <button class="btn btn-primary" id="btn-new-client" type="button" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="plus"></i> Novo Paciente</button>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+          <button class="btn btn-secondary" id="btn-print-selected-clients" type="button" onclick="app.printSelectedClientsReports()" ontouchstart="app.printSelectedClientsReports()" disabled><i data-lucide="printer"></i> Imprimir Selecionados (0)</button>
+          <button class="btn btn-primary" id="btn-new-client" type="button" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="plus"></i> Novo Paciente</button>
+        </div>
       </div>
       <div class="card">
         <div class="card-body">
@@ -228,6 +231,7 @@
             <table class="data-table">
               <thead>
                 <tr>
+                  <th style="width:52px;text-align:center;"><input type="checkbox" id="clientes-select-all-print" title="Selecionar todos visíveis" onchange="app.toggleAllVisibleClientReports(this.checked)"></th>
                   <th>ID</th>
                   <th>Nome</th>
                   <th>Telefone</th>

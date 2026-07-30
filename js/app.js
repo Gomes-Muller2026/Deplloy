@@ -198,6 +198,8 @@ class ConsultorioApp {
     this.whatsAppSelectedBirthdayTemplateId = '';
     this.lastDashboardCardAction = '';
     this.lastDashboardCardActionAt = 0;
+    this.lastAnamneseIndividualCepLookup = '';
+    this.selectedClientReportIds = new Set();
     this.loadStore();
     this.loadWhatsAppTemplates();
   }
@@ -647,6 +649,18 @@ class ConsultorioApp {
     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
+  async fetchCepData(rawCep) {
+    const cep = this.normalizeCep(rawCep);
+    if (cep.length !== 8) return { cep, data: null, notFound: false };
+
+    const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Falha na consulta de CEP');
+
+    const data = await response.json();
+    if (data && data.erro) return { cep, data: null, notFound: true };
+    return { cep, data, notFound: false };
+  }
+
   async fillAddressByCep(rawCep) {
     const cepInput = document.getElementById('client-cep');
     const cep = this.normalizeCep(rawCep);
@@ -655,14 +669,12 @@ class ConsultorioApp {
     if (cep.length !== 8) return;
 
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { cache: 'no-store' });
-      if (!response.ok) throw new Error('Falha na consulta de CEP');
-
-      const data = await response.json();
-      if (data && data.erro) {
+      const result = await this.fetchCepData(cep);
+      if (result.notFound || !result.data) {
         this.showToast('CEP não encontrado.', 'warning');
         return;
       }
+      const data = result.data;
 
       const setIfPresent = (id, value) => {
         const field = document.getElementById(id);
@@ -687,6 +699,49 @@ class ConsultorioApp {
 
       this.showToast('Endereço preenchido automaticamente pelo CEP.', 'success');
     } catch (err) {
+      this.showToast('Não foi possível consultar o CEP agora.', 'warning');
+    }
+  }
+
+  async fillAnamneseIndividualAddressByCep(rawCep) {
+    const cepField = document.querySelector('[data-anamnese="individual.cep"]');
+    const cep = this.normalizeCep(rawCep);
+
+    if (cepField) cepField.value = this.formatCep(cep);
+    if (cep.length !== 8) return;
+
+    try {
+      const result = await this.fetchCepData(cep);
+      if (result.notFound || !result.data) {
+        this.showToast('CEP não encontrado.', 'warning');
+        return;
+      }
+
+      const data = result.data;
+      const setAnamneseIfPresent = (key, value) => {
+        const field = document.querySelector(`[data-anamnese="individual.${key}"]`);
+        if (!field) return;
+        field.value = String(value || '').trim();
+      };
+
+      setAnamneseIfPresent('endereco', data.logradouro);
+      setAnamneseIfPresent('bairro', data.bairro);
+      setAnamneseIfPresent('municipio', data.localidade);
+      setAnamneseIfPresent('uf', data.uf);
+
+      const complementField = document.querySelector('[data-anamnese="individual.endereco_complemento"]');
+      if (complementField && !String(complementField.value || '').trim()) {
+        complementField.value = String(data.complemento || '').trim();
+      }
+
+      const numberField = document.querySelector('[data-anamnese="individual.numero_residencia"]');
+      if (numberField && !String(numberField.value || '').trim()) {
+        numberField.focus();
+      }
+
+      this.showToast('Endereço da anamnese preenchido automaticamente pelo CEP.', 'success');
+    } catch (err) {
+      this.lastAnamneseIndividualCepLookup = '';
       this.showToast('Não foi possível consultar o CEP agora.', 'warning');
     }
   }
@@ -1198,6 +1253,31 @@ class ConsultorioApp {
       });
     }
 
+    const anamneseIndividualCepInput = document.querySelector('[data-anamnese="individual.cep"]');
+    if (anamneseIndividualCepInput) {
+      anamneseIndividualCepInput.addEventListener('input', () => {
+        anamneseIndividualCepInput.value = this.formatCep(anamneseIndividualCepInput.value);
+
+        const cep = this.normalizeCep(anamneseIndividualCepInput.value);
+        if (cep.length < 8) {
+          this.lastAnamneseIndividualCepLookup = '';
+          return;
+        }
+
+        if (cep === this.lastAnamneseIndividualCepLookup) return;
+        this.lastAnamneseIndividualCepLookup = cep;
+        void this.fillAnamneseIndividualAddressByCep(cep);
+      });
+      anamneseIndividualCepInput.addEventListener('blur', () => {
+        const cep = this.normalizeCep(anamneseIndividualCepInput.value);
+        if (cep.length !== 8) return;
+        if (cep === this.lastAnamneseIndividualCepLookup) return;
+
+        this.lastAnamneseIndividualCepLookup = cep;
+        void this.fillAnamneseIndividualAddressByCep(cep);
+      });
+    }
+
     const formAppointment = document.getElementById('form-appointment');
     if (formAppointment) formAppointment.addEventListener('submit', (e) => { e.preventDefault(); this.saveAppointmentForm(); });
 
@@ -1395,7 +1475,9 @@ class ConsultorioApp {
       'btn-report-despesas': () => this.generateDespesasReport(),
       'btn-report-aniversarios': () => this.generateAniversariosReport(),
       'btn-report-patient-individual': () => this.generatePacienteIndividualReport(false),
-      'btn-print-patient-individual': () => this.generatePacienteIndividualReport(true)
+      'btn-print-patient-individual': () => this.generatePacienteIndividualReport(true),
+      'btn-print-client-individual': () => this.printClientIndividualReport(),
+      'btn-print-selected-clients': () => this.printSelectedClientsReports()
     };
 
     Object.keys(reportHandlers).forEach((id) => {
@@ -2205,6 +2287,11 @@ class ConsultorioApp {
     const tbody = document.getElementById('clientes-table-body');
     if (!tbody) return;
 
+    const existingClientIds = new Set(this.clients.map((c) => c.id));
+    this.selectedClientReportIds.forEach((id) => {
+      if (!existingClientIds.has(id)) this.selectedClientReportIds.delete(id);
+    });
+
     const search = String((document.getElementById('clientes-search') || {}).value || '').toLowerCase().trim();
     const phoneFilter = (document.getElementById('clientes-phone-filter') || {}).value || 'todos';
 
@@ -2228,27 +2315,39 @@ class ConsultorioApp {
     if (!filtered.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6">
+          <td colspan="7">
             <div class="empty-state"><p>Nenhum cliente encontrado.</p></div>
           </td>
         </tr>
       `;
+      this.updateClientPrintSelectionUI();
       return;
     }
 
     tbody.innerHTML = filtered.map((c) => `
       <tr>
+        <td>
+          <input
+            type="checkbox"
+            class="client-print-check"
+            data-print-client-id="${safeText(c.id || '')}"
+            ${this.selectedClientReportIds.has(c.id) ? 'checked' : ''}
+            onchange="app.toggleClientReportSelection('${c.id}', this.checked)">
+        </td>
         <td><strong>${c.registrationNumber || '-'}</strong></td>
         <td>${safeText(c.name || '-')}</td>
         <td>${safeText(c.phone || '-')}</td>
         <td>${safeText(c.email || '-')}</td>
         <td>${formatDateBR(c.createdAt || '')}</td>
         <td>
+          <button class="btn btn-sm btn-secondary" onclick="app.printClientIndividualReport('${c.id}')">Imprimir</button>
           <button class="btn btn-sm btn-secondary" onclick="app.openClientModal('${c.id}')">Editar</button>
           <button class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="app.deleteClient('${c.id}')">Excluir</button>
         </td>
       </tr>
     `).join('');
+
+    this.updateClientPrintSelectionUI();
   }
 
   renderFinanceiroTable() {
@@ -3145,35 +3244,34 @@ class ConsultorioApp {
     this.openReportWindow('Relatório de Aniversários', lines.join('\n'));
   }
 
-  generatePacienteIndividualReport(autoPrint = false) {
-    const search = String((document.getElementById('report-patient-search') || {}).value || '').trim().toLowerCase();
-    if (!search) {
-      this.showToast('Digite o nome, telefone ou ID do paciente para gerar o relatório individual.', 'warning');
-      return;
-    }
+  getClientByReportSearch(searchTerm) {
+    const search = String(searchTerm || '').trim().toLowerCase();
+    if (!search) return null;
 
-    const patient = this.clients.find((c) =>
+    return this.clients.find((c) =>
+      String(c.id || '').toLowerCase() === search ||
       String(c.name || '').toLowerCase().includes(search) ||
       String(c.phone || '').toLowerCase().includes(search) ||
       String(c.registrationNumber || '').toLowerCase().includes(search)
-    );
+    ) || null;
+  }
 
-    if (!patient) {
-      this.showToast('Paciente não encontrado para relatório individual.', 'warning');
-      return;
-    }
-
-    const patientAppointments = this.appointments
-      .filter((a) => a.clientId === patient.id)
+  getPatientAppointments(patientId) {
+    return this.appointments
+      .filter((a) => a.clientId === patientId)
       .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+  }
 
+  buildPacienteIndividualReportLines(patient) {
+    const patientAppointments = this.getPatientAppointments(patient.id);
     const total = patientAppointments.reduce((sum, a) => sum + toNumber(a.price), 0);
     const paid = patientAppointments.reduce((sum, a) => sum + toNumber(a.amountPaid), 0);
     const pending = Math.max(0, total - paid);
 
-    const lines = [
+    return [
       `RELATÓRIO INDIVIDUAL - ${patient.name || '-'}`,
       '',
+      `Cadastro: ${patient.registrationNumber || '-'}`,
       `Telefone: ${patient.phone || '-'}`,
       `E-mail: ${patient.email || '-'}`,
       `CPF: ${patient.cpf || '-'}`,
@@ -3186,6 +3284,121 @@ class ConsultorioApp {
       'Histórico:',
       ...patientAppointments.map((a) => `- ${formatDateBR(a.date)} ${a.time || ''} | ${a.procedure || '-'} | ${formatCurrency(a.price)} | Pago: ${formatCurrency(a.amountPaid || 0)} | ${a.status || '-'}`)
     ];
+  }
+
+  printClientIndividualReport(clientId = '') {
+    let patient = null;
+
+    if (clientId) {
+      patient = this.clients.find((c) => c.id === clientId) || null;
+    }
+
+    if (!patient && this.selectedClientReportIds.size === 1) {
+      const [selectedId] = Array.from(this.selectedClientReportIds);
+      patient = this.clients.find((c) => c.id === selectedId) || null;
+    }
+
+    if (!patient) {
+      const typed = window.prompt('Digite nome, telefone, ID ou número de cadastro do paciente para imprimir o relatório individual:');
+      if (!typed) return;
+      patient = this.getClientByReportSearch(typed);
+    }
+
+    if (!patient) {
+      this.showToast('Paciente não encontrado para relatório individual.', 'warning');
+      return;
+    }
+
+    const lines = this.buildPacienteIndividualReportLines(patient);
+    this.openReportWindow(`Relatório - ${patient.name || 'Paciente'}`, lines.join('\n'), true);
+  }
+
+  toggleClientReportSelection(clientId, checked) {
+    if (!clientId) return;
+
+    if (checked) this.selectedClientReportIds.add(clientId);
+    else this.selectedClientReportIds.delete(clientId);
+
+    this.updateClientPrintSelectionUI();
+  }
+
+  toggleAllVisibleClientReports(checked) {
+    const checkboxes = Array.from(document.querySelectorAll('#clientes-table-body .client-print-check'));
+    checkboxes.forEach((checkbox) => {
+      const clientId = String(checkbox.getAttribute('data-print-client-id') || '').trim();
+      if (!clientId) return;
+
+      checkbox.checked = Boolean(checked);
+      if (checked) this.selectedClientReportIds.add(clientId);
+      else this.selectedClientReportIds.delete(clientId);
+    });
+
+    this.updateClientPrintSelectionUI();
+  }
+
+  updateClientPrintSelectionUI() {
+    const selectedCount = Array.from(this.selectedClientReportIds)
+      .filter((id) => this.clients.some((c) => c.id === id)).length;
+
+    const btnPrintSelected = document.getElementById('btn-print-selected-clients');
+    if (btnPrintSelected) {
+      btnPrintSelected.disabled = selectedCount === 0;
+      btnPrintSelected.innerHTML = `<i data-lucide="printer"></i> Imprimir Selecionados (${selectedCount})`;
+    }
+
+    const selectAll = document.getElementById('clientes-select-all-print');
+    if (selectAll) {
+      const checkboxes = Array.from(document.querySelectorAll('#clientes-table-body .client-print-check'));
+      const totalVisible = checkboxes.length;
+      const visibleChecked = checkboxes.filter((checkbox) => checkbox.checked).length;
+
+      selectAll.checked = totalVisible > 0 && visibleChecked === totalVisible;
+      selectAll.indeterminate = visibleChecked > 0 && visibleChecked < totalVisible;
+    }
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  printSelectedClientsReports() {
+    const selectedClients = this.clients
+      .filter((client) => this.selectedClientReportIds.has(client.id))
+      .sort((a, b) => Number(a.registrationNumber || 0) - Number(b.registrationNumber || 0));
+
+    if (!selectedClients.length) {
+      this.showToast('Marque ao menos um paciente para imprimir.', 'warning');
+      return;
+    }
+
+    const reportLines = [];
+    selectedClients.forEach((patient, index) => {
+      if (index > 0) {
+        reportLines.push('');
+        reportLines.push('------------------------------------------------------------');
+        reportLines.push('');
+      }
+      reportLines.push(...this.buildPacienteIndividualReportLines(patient));
+    });
+
+    this.openReportWindow('Relatório de Pacientes Selecionados', reportLines.join('\n'), true);
+  }
+
+  generatePacienteIndividualReport(autoPrint = false) {
+    const search = String((document.getElementById('report-patient-search') || {}).value || '').trim().toLowerCase();
+    if (!search) {
+      this.showToast('Digite o nome, telefone ou ID do paciente para gerar o relatório individual.', 'warning');
+      return;
+    }
+
+    const patient = this.getClientByReportSearch(search);
+
+    if (!patient) {
+      this.showToast('Paciente não encontrado para relatório individual.', 'warning');
+      return;
+    }
+
+    const lines = this.buildPacienteIndividualReportLines(patient);
 
     this.openReportWindow(`Relatório - ${patient.name || 'Paciente'}`, lines.join('\n'), autoPrint);
   }

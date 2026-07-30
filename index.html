@@ -276,7 +276,10 @@
                 <option value="invalidos">Sem WhatsApp</option>
               </select>
             </div>
-            <button class="btn btn-primary" id="btn-new-client" type="button" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="plus"></i> Novo Paciente</button>
+            <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+              <button class="btn btn-secondary" id="btn-print-selected-clients" type="button" onclick="app.printSelectedClientsReports()" ontouchstart="app.printSelectedClientsReports()" disabled><i data-lucide="printer"></i> Imprimir Selecionados (0)</button>
+              <button class="btn btn-primary" id="btn-new-client" type="button" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="plus"></i> Novo Paciente</button>
+            </div>
           </div>
           <div class="card">
             <div class="card-body">
@@ -284,6 +287,7 @@
                 <table class="data-table">
                   <thead>
                     <tr>
+                      <th style="width:52px;text-align:center;"><input type="checkbox" id="clientes-select-all-print" title="Selecionar todos visíveis" onchange="app.toggleAllVisibleClientReports(this.checked)"></th>
                       <th>ID</th>
                       <th>Nome</th>
                       <th>Telefone</th>
@@ -592,8 +596,8 @@
                 <div class="anamnese-section-title">1. Ficha de Identificação</div>
                 <div class="anamnese-fields-grid">
                   <div class="anamnese-field"><label>Data da ficha</label><input type="text" class="form-control" placeholder="dd/mm/aaaa" data-anamnese="individual.ficha_data"></div>
-                  <div class="anamnese-field"><label>Nome completo</label><input type="text" class="form-control" data-anamnese="individual.nome_completo"></div>
                   <div class="anamnese-field"><label>Endereço</label><input type="text" class="form-control" data-anamnese="individual.endereco"></div>
+                  <div class="anamnese-field"><label>Número da residência</label><input type="text" class="form-control" data-anamnese="individual.numero_residencia"></div>
                   <div class="anamnese-field"><label>Complemento</label><input type="text" class="form-control" data-anamnese="individual.endereco_complemento"></div>
                   <div class="anamnese-field"><label>CEP</label><input type="text" class="form-control" data-anamnese="individual.cep"></div>
                   <div class="anamnese-field"><label>Bairro</label><input type="text" class="form-control" data-anamnese="individual.bairro"></div>

@@ -10,9 +10,9 @@
   --bg-card-hover: rgba(15, 23, 42, 0.86);
   --text-main: #f8fafc;
   --text-muted: #cbd5e1;
-  --primary: #22d3ee;
-  --primary-hover: #06b6d4;
-  --primary-light: rgba(34, 211, 238, 0.16);
+  --primary: #6e8f4a;
+  --primary-hover: #5f7f3f;
+  --primary-light: rgba(110, 143, 74, 0.2);
   --success: #22c55e;
   --success-hover: #16a34a;
   --success-light: rgba(34, 197, 94, 0.16);
@@ -44,9 +44,9 @@ body {
   font-family: 'Plus Jakarta Sans', sans-serif;
   color: var(--text-main);
   background:
-    radial-gradient(circle at top left, rgba(34, 211, 238, 0.16), transparent 35%),
-    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.14), transparent 30%),
-    linear-gradient(180deg, #07111f 0%, #0f172a 44%, #111827 100%);
+    radial-gradient(circle at top left, rgba(136, 172, 92, 0.22), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(62, 91, 48, 0.24), transparent 32%),
+    linear-gradient(180deg, #07120f 0%, #0f1f18 44%, #101d16 100%);
   overflow-x: hidden;
 }
 
@@ -75,8 +75,8 @@ img {
   place-items: center;
   padding: 1.5rem;
   background:
-    radial-gradient(circle at top, rgba(34, 211, 238, 0.18), transparent 35%),
-    linear-gradient(180deg, rgba(2, 6, 23, 0.96), rgba(15, 23, 42, 0.98));
+    radial-gradient(circle at top, rgba(136, 172, 92, 0.24), transparent 35%),
+    linear-gradient(180deg, rgba(4, 12, 8, 0.96), rgba(14, 26, 18, 0.98));
 }
 
 .login-card {
@@ -160,15 +160,15 @@ img {
   min-height: 100vh;
   display: flex;
   background:
-    radial-gradient(circle at top left, rgba(34, 211, 238, 0.08), transparent 32%),
-    linear-gradient(180deg, rgba(7, 17, 31, 0.96), rgba(15, 23, 42, 0.98));
+    radial-gradient(circle at top left, rgba(110, 143, 74, 0.2), transparent 35%),
+    linear-gradient(180deg, rgba(8, 18, 14, 0.96), rgba(14, 24, 19, 0.98));
 }
 
 .sidebar {
   width: 300px;
   flex: 0 0 300px;
   padding: 1.1rem 1rem 1.25rem;
-  background: linear-gradient(180deg, rgba(4, 12, 24, 0.98), rgba(11, 25, 49, 0.96));
+  background: linear-gradient(180deg, rgba(6, 16, 20, 0.98), rgba(20, 44, 30, 0.96));
   border-right: 1px solid rgba(148, 163, 184, 0.16);
   display: flex;
   flex-direction: column;
@@ -246,21 +246,21 @@ img {
 .sidebar-nav .nav-item:hover,
 .sidebar-nav .nav-item.active,
 .btn-quick-action:hover {
-  background: rgba(34, 211, 238, 0.12);
-  border-color: rgba(34, 211, 238, 0.26);
+  background: rgba(110, 143, 74, 0.16);
+  border-color: rgba(110, 143, 74, 0.32);
   transform: translateX(1px);
 }
 
 /* Botão voltar na sidebar */
 .nav-back-btn {
   color: var(--primary) !important;
-  border-color: rgba(34, 211, 238, 0.22) !important;
-  background: rgba(34, 211, 238, 0.08) !important;
+  border-color: rgba(110, 143, 74, 0.32) !important;
+  background: rgba(110, 143, 74, 0.14) !important;
   margin-bottom: 0.25rem;
 }
 .nav-back-btn:hover {
-  background: rgba(34, 211, 238, 0.18) !important;
-  border-color: rgba(34, 211, 238, 0.45) !important;
+  background: rgba(110, 143, 74, 0.22) !important;
+  border-color: rgba(110, 143, 74, 0.5) !important;
 }
 
 .sidebar-nav .nav-item i,
@@ -413,8 +413,8 @@ img {
 input[type="date"],
 input[type="time"],
 select.form-control {
-  background: rgba(255, 255, 255, 0.26);
-  border: 1px solid rgba(255, 255, 255, 0.38);
+  background: linear-gradient(165deg, rgba(142, 171, 108, 0.2), rgba(77, 100, 59, 0.34) 55%, rgba(28, 45, 33, 0.86));
+  border: 1px solid rgba(179, 211, 133, 0.35);
   color: #f8fafc;
   padding: 0.65rem 1rem;
   border-radius: var(--radius-sm);
@@ -463,9 +463,9 @@ input[type="date"]:focus,
 input[type="time"]:focus,
 select.form-control:focus {
   outline: none;
-  border-color: rgba(56, 189, 248, 0.95);
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.22);
-  background: rgba(255, 255, 255, 0.32);
+  border-color: rgba(163, 230, 53, 0.72);
+  box-shadow: 0 0 0 4px rgba(110, 143, 74, 0.24);
+  background: linear-gradient(165deg, rgba(160, 197, 118, 0.26), rgba(93, 122, 68, 0.42) 55%, rgba(34, 53, 39, 0.92));
 }
 
 .field-note {
@@ -542,9 +542,9 @@ select.form-control:focus {
 #modal-appointment #appt-status:focus,
 #modal-appointment #appt-payment-status:focus,
 #modal-appointment #btn-session-status:focus-visible {
-  border-color: rgba(125, 211, 252, 0.65);
+  border-color: rgba(190, 242, 100, 0.65);
   box-shadow:
-    0 0 0 3px rgba(56, 189, 248, 0.18),
+    0 0 0 3px rgba(110, 143, 74, 0.22),
     0 10px 18px rgba(2, 6, 23, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
     inset 0 -8px 12px rgba(15, 23, 42, 0.3);
@@ -579,7 +579,7 @@ select.form-control:focus {
 #modal-appointment .btn:hover,
 #modal-appointment .session-status-option:hover {
   transform: translateY(-1px);
-  border-color: rgba(125, 211, 252, 0.5);
+  border-color: rgba(190, 242, 100, 0.5);
   box-shadow:
     0 14px 24px rgba(2, 6, 23, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
@@ -597,7 +597,7 @@ select.form-control:focus {
 
 #modal-appointment .modal-footer .btn-primary {
   background: linear-gradient(155deg, rgba(14, 165, 233, 0.94), rgba(2, 132, 199, 0.94));
-  border-color: rgba(125, 211, 252, 0.52);
+  border-color: rgba(190, 242, 100, 0.52);
 }
 
 #modal-appointment .modal-footer .btn-secondary {
@@ -641,7 +641,7 @@ select.form-control:focus {
 
 .session-status-option:hover {
   background: rgba(14, 165, 233, 0.2);
-  border-color: rgba(56, 189, 248, 0.55);
+  border-color: rgba(110, 143, 74, 0.55);
 }
 
 .session-status-clear {
@@ -710,9 +710,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .agenda-filter-date:focus,
 input[type="date"]:focus {
   outline: none;
-  border-color: rgba(14, 165, 233, 0.85);
-  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.18);
-  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(163, 230, 53, 0.72);
+  box-shadow: 0 0 0 4px rgba(110, 143, 74, 0.24);
+  background: linear-gradient(165deg, rgba(160, 197, 118, 0.26), rgba(93, 122, 68, 0.42) 55%, rgba(34, 53, 39, 0.92));
 
 }
 
@@ -892,7 +892,7 @@ input[type="date"]:focus {
   right: -110px;
   top: -95px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(186, 230, 253, 0.3), rgba(125, 211, 252, 0));
+  background: radial-gradient(circle, rgba(217, 249, 157, 0.3), rgba(190, 242, 100, 0));
   filter: blur(14px);
   opacity: 0.8;
   pointer-events: none;
@@ -991,7 +991,7 @@ input[type="date"]:focus {
 .stat-card.active {
   box-shadow:
     0 30px 54px rgba(2, 6, 23, 0.54),
-    0 0 24px rgba(125, 211, 252, 0.35);
+    0 0 24px rgba(190, 242, 100, 0.35);
   transform: perspective(1000px) translateY(-4px) scale(1.02);
 }
 
@@ -1014,7 +1014,7 @@ input[type="date"]:focus {
 .stat-card:focus-visible {
   box-shadow:
     0 34px 58px rgba(2, 6, 23, 0.5),
-    0 0 26px rgba(125, 211, 252, 0.38);
+    0 0 26px rgba(190, 242, 100, 0.38);
 }
 
 .stat-icon {
@@ -1044,12 +1044,12 @@ input[type="date"]:focus {
 
 .card-blue {
   background: linear-gradient(145deg,
-    rgba(56, 189, 248, 0.4) 0%,
-    rgba(14, 116, 144, 0.24) 55%,
+    rgba(110, 143, 74, 0.38) 0%,
+    rgba(69, 93, 46, 0.28) 55%,
     rgba(7, 17, 31, 0.62) 100%);
 }
-.card-blue::after { background: radial-gradient(circle, rgba(56,189,248,0.9), transparent 65%); }
-.card-blue .stat-icon { background: rgba(14,165,233,0.22); color: #7dd3fc; }
+.card-blue::after { background: radial-gradient(circle, rgba(110,143,74,0.9), transparent 65%); }
+.card-blue .stat-icon { background: rgba(110,143,74,0.24); color: #d9f99d; }
 
 .card-green {
   background: linear-gradient(145deg,
@@ -1232,7 +1232,7 @@ input[type="date"]:focus {
 
 .dash-bubble-item:hover,
 .dash-bubble-item:focus-visible {
-  border-color: rgba(56, 189, 248, 0.62);
+  border-color: rgba(110, 143, 74, 0.62);
   background: rgba(15, 23, 42, 0.78);
   box-shadow: 0 8px 22px rgba(14, 165, 233, 0.16);
   transform: translateY(-1px);
@@ -1249,8 +1249,8 @@ input[type="date"]:focus {
   padding: 0.3rem 0.5rem;
   border-radius: 10px;
   background: rgba(14, 165, 233, 0.18);
-  color: #7dd3fc;
-  border: 1px solid rgba(125, 211, 252, 0.28);
+  color: #bef264;
+  border: 1px solid rgba(190, 242, 100, 0.28);
 }
 
 .dash-bubble-date span {
@@ -1335,13 +1335,13 @@ input[type="date"]:focus {
 }
 
 .anamnese-main-label {
-  font-size: 0.88rem;
+  font-size: 0.94rem;
   font-weight: 700;
   color: var(--text-main);
 }
 
 .anamnese-hint {
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
 }
 
@@ -1361,23 +1361,23 @@ input[type="date"]:focus {
   border: 1px solid rgba(148,163,184,0.3);
   background: rgba(30,41,59,0.6);
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 .anamnese-type-card:hover:not(:disabled) {
-  border-color: rgba(56,189,248,0.55);
-  color: #bae6fd;
-  background: rgba(14,165,233,0.12);
+  border-color: rgba(110,143,74,0.55);
+  color: #ecfccb;
+  background: rgba(110,143,74,0.16);
 }
 
 .anamnese-type-card.active {
-  border-color: rgba(56,189,248,0.7);
-  background: rgba(14,165,233,0.2);
-  color: #7dd3fc;
-  box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
+  border-color: rgba(110,143,74,0.72);
+  background: rgba(110,143,74,0.24);
+  color: #bef264;
+  box-shadow: 0 0 0 3px rgba(110,143,74,0.2);
 }
 
 .anamnese-type-soon {
@@ -1395,22 +1395,22 @@ input[type="date"]:focus {
 }
 
 .anamnese-abordagem {
-  font-size: 0.77rem;
+  font-size: 0.83rem;
   color: var(--text-muted);
   font-style: italic;
   margin-bottom: 0.3rem;
 }
 
 .anamnese-section-title {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 800;
-  color: #7dd3fc;
+  color: #bef264;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-top: 0.8rem;
   margin-bottom: 0.1rem;
   padding-bottom: 0.3rem;
-  border-bottom: 1px solid rgba(56,189,248,0.2);
+  border-bottom: 1px solid rgba(110,143,74,0.28);
 }
 
 .anamnese-roteiro-title {
@@ -1419,7 +1419,7 @@ input[type="date"]:focus {
 }
 
 .anamnese-roteiro-title span {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: var(--text-muted);
   text-transform: none;
@@ -1443,13 +1443,13 @@ input[type="date"]:focus {
 }
 
 .anamnese-field label {
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   color: var(--text-muted);
   font-weight: 500;
 }
 
 .anamnese-field .form-control {
-  font-size: 0.85rem;
+  font-size: 0.92rem;
 }
 
 .anamnese-roteiro-list {
@@ -1461,7 +1461,7 @@ input[type="date"]:focus {
 }
 
 .anamnese-roteiro-list li {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   color: var(--text-muted);
   line-height: 1.45;
 }
@@ -1617,8 +1617,8 @@ input[type="date"]:focus {
 
 #tab-agenda .filter-group .input-icon input:focus {
   outline: none;
-  border-color: rgba(56, 189, 248, 0.95);
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.22);
+  border-color: rgba(163, 230, 53, 0.72);
+  box-shadow: 0 0 0 4px rgba(110, 143, 74, 0.24);
   background: #ffffff;
 }
 
@@ -1669,7 +1669,7 @@ input[type="date"]:focus {
   height: 2rem;
   padding: 0 0.72rem;
   border-radius: 999px;
-  border: 1px solid rgba(56, 189, 248, 0.4);
+  border: 1px solid rgba(110, 143, 74, 0.38);
   background: rgba(14, 165, 233, 0.16);
   color: #c7eeff;
   font-size: 0.78rem;
@@ -1827,7 +1827,7 @@ input[type="date"]:focus {
   gap: 0.25rem;
   padding: 0.6rem;
   border-radius: 12px;
-  background-color: rgba(56, 189, 248, 0.12);
+  background-color: rgba(110, 143, 74, 0.12);
   border: 1px solid rgba(14, 165, 233, 0.2);
   color: #f8fafc;
   font-size: 0.82rem;
@@ -1839,13 +1839,13 @@ input[type="date"]:focus {
 
 .agenda-event:hover {
   transform: translateY(-1px);
-  border-color: rgba(125, 211, 252, 0.42);
+  border-color: rgba(190, 242, 100, 0.42);
   box-shadow: 0 6px 16px rgba(0,0,0,0.22);
 }
 
 .agenda-event:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.28), 0 6px 16px rgba(0, 0, 0, 0.24);
+  box-shadow: 0 0 0 3px rgba(110, 143, 74, 0.28), 0 6px 16px rgba(0, 0, 0, 0.24);
 }
 
 .agenda-event-delete {
@@ -2041,9 +2041,9 @@ input[type="date"]:focus {
 .report-patient-search-input .form-control:focus {
   background:
     linear-gradient(165deg, rgba(148, 163, 184, 0.34), rgba(71, 85, 105, 0.58) 55%, rgba(30, 41, 59, 0.96));
-  border-color: rgba(125, 211, 252, 0.82) !important;
+  border-color: rgba(163, 230, 53, 0.72) !important;
   box-shadow:
-    0 0 0 3px rgba(56, 189, 248, 0.18),
+    0 0 0 3px rgba(110, 143, 74, 0.22),
     0 12px 20px rgba(2, 6, 23, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     inset 0 -8px 12px rgba(15, 23, 42, 0.26);
@@ -2067,14 +2067,26 @@ input[type="date"]:focus {
     inset 0 -8px 12px rgba(15, 23, 42, 0.26);
 }
 
+
+#clientes-select-all-print,
+.client-print-check {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+#clientes-table-body td:first-child {
+  text-align: center;
+}
 /* Form Controls */
 .form-control,
 input[type="date"],
 input[type="time"],
 select.form-control {
   width: 100%;
-  background-color: rgba(255, 255, 255, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.38);
+  background: linear-gradient(165deg, rgba(142, 171, 108, 0.2), rgba(77, 100, 59, 0.34) 55%, rgba(28, 45, 33, 0.86));
+  border: 1px solid rgba(179, 211, 133, 0.35);
   border-radius: var(--radius-md);
   padding: 0.65rem 0.9rem;
   color: #f8fafc;
@@ -2091,9 +2103,9 @@ select.form-control:focus,
 .top-date-input:focus,
 .agenda-filter-date:focus {
   outline: none;
-  border-color: rgba(56, 189, 248, 0.95);
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.22);
-  background: rgba(255, 255, 255, 0.32);
+  border-color: rgba(163, 230, 53, 0.72);
+  box-shadow: 0 0 0 4px rgba(110, 143, 74, 0.24);
+  background: linear-gradient(165deg, rgba(160, 197, 118, 0.26), rgba(93, 122, 68, 0.42) 55%, rgba(34, 53, 39, 0.92));
 }
 
 input[type="date"],
@@ -2199,9 +2211,9 @@ button.badge:active {
 }
 /* Status variants */
 .badge-agendado {
-  color: #bfe9ff;
-  border-color: rgba(56,189,248,0.45);
-  background: rgba(14,165,233,0.2);
+  color: #ecfccb;
+  border-color: rgba(110,143,74,0.45);
+  background: rgba(110,143,74,0.24);
 }
 .badge-concluido {
   color: #bbf7d0;
@@ -2261,8 +2273,8 @@ button.badge:active {
 }
 
 .money-pill-total {
-  color: #bfe9ff;
-  border-color: rgba(56, 189, 248, 0.45);
+  color: #ecfccb;
+  border-color: rgba(110, 143, 74, 0.45);
   background: rgba(14, 165, 233, 0.2);
 }
 
@@ -2288,8 +2300,8 @@ button.badge:active {
 }
 
 #tab-financeiro .data-table th:nth-child(3) {
-  color: #7dd3fc;
-  text-shadow: 0 0 10px rgba(56, 189, 248, 0.32);
+  color: #bef264;
+  text-shadow: 0 0 10px rgba(110, 143, 74, 0.32);
 }
 
 #tab-financeiro .data-table th:nth-child(4) {
@@ -2626,7 +2638,7 @@ body.analytics-focus-mode .analytics-grid {
   right: -110px;
   top: -95px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(186, 230, 253, 0.3), rgba(125, 211, 252, 0));
+  background: radial-gradient(circle, rgba(217, 249, 157, 0.3), rgba(190, 242, 100, 0));
   filter: blur(14px);
   opacity: 0.8;
   pointer-events: none;
@@ -2645,7 +2657,7 @@ body.analytics-focus-mode .analytics-grid {
   outline: none;
   box-shadow:
     0 28px 46px rgba(2, 6, 23, 0.42),
-    0 0 24px rgba(125, 211, 252, 0.32);
+    0 0 24px rgba(190, 242, 100, 0.32);
 }
 
 .fin-card:active {
@@ -2859,7 +2871,7 @@ body.analytics-focus-mode .analytics-grid {
   font-size: 0.72rem;
 }
 
-.pay-amount-total  { color: #bfe9ff; font-size: 1rem; font-weight: 800; }
+.pay-amount-total  { color: #ecfccb; font-size: 1rem; font-weight: 800; }
 .pay-amount-paid   { color: #bbf7d0; font-size: 1rem; font-weight: 800; }
 .pay-amount-pending{ color: #fde68a; font-size: 1rem; font-weight: 800; }
 
@@ -2902,12 +2914,12 @@ body.analytics-focus-mode .analytics-grid {
 }
 
 #modal-client .modal-body::-webkit-scrollbar-thumb {
-  background: rgba(56, 189, 248, 0.52);
+  background: rgba(110, 143, 74, 0.52);
   border-radius: 999px;
 }
 
 #modal-client .modal-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.72);
+  background: rgba(110, 143, 74, 0.72);
 }
 
 #modal-client-groups [data-group-edit] {
@@ -2940,12 +2952,12 @@ body.analytics-focus-mode .analytics-grid {
 }
 
 #modal-appointment .modal-body::-webkit-scrollbar-thumb {
-  background: rgba(56, 189, 248, 0.52);
+  background: rgba(110, 143, 74, 0.52);
   border-radius: 999px;
 }
 
 #modal-appointment .modal-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.72);
+  background: rgba(110, 143, 74, 0.72);
 }
 
 /* Ensure form controls don't force horizontal overflow inside modal */
@@ -3021,8 +3033,8 @@ textarea.form-control,
   background: rgba(255,255,255,0.03);
 }
 .combobox .combobox-list .combobox-item.active {
-  background: rgba(14,165,233,0.12);
-  outline: 2px solid rgba(14,165,233,0.18);
+  background: rgba(110,143,74,0.16);
+  outline: 2px solid rgba(110,143,74,0.26);
 }
 .visually-hidden { display: none !important; }
 
@@ -3359,3 +3371,5 @@ textarea.form-control,
     padding: 0.7rem 0.75rem;
   }
 }
+
+

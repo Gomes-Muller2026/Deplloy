@@ -2570,16 +2570,30 @@ class ConsultorioApp {
         { name: 'appointments', data: this.appointments },
         { name: 'expenses', data: this.expenses }
       ];
+      let shouldSeedRemoteFromLocal = false;
 
       for (const item of collections) {
         const snapshot = await this.firebaseDb.collection(item.name).get();
-        const remoteData = snapshot.empty
-          ? []
-          : snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        if (snapshot.empty) {
+          if (Array.isArray(item.data) && item.data.length) {
+            shouldSeedRemoteFromLocal = true;
+          } else {
+            if (item.name === 'clients') this.clients = [];
+            if (item.name === 'appointments') this.appointments = [];
+            if (item.name === 'expenses') this.expenses = [];
+          }
+          continue;
+        }
+
+        const remoteData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
         if (item.name === 'clients') this.clients = remoteData;
         if (item.name === 'appointments') this.appointments = remoteData;
         if (item.name === 'expenses') this.expenses = remoteData;
+      }
+
+      if (shouldSeedRemoteFromLocal) {
+        await this.pushAllDataToFirebase();
       }
 
       this.saveStore();

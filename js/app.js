@@ -12,6 +12,31 @@ const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
 const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
+const WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_template';
+const WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_template';
+const WHATSAPP_CONFIRM_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_confirm_templates';
+const WHATSAPP_BIRTHDAY_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_birthday_templates';
+const WHATSAPP_CONFIRM_SELECTED_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_selected';
+const WHATSAPP_BIRTHDAY_SELECTED_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_selected';
+const DEFAULT_WHATSAPP_CONFIRM_TEMPLATE = [
+  'Olá, {{cliente}}!',
+  '',
+  'Passando para confirmar sua consulta:',
+  'Data: {{data}}',
+  'Horário: {{hora}}',
+  'Procedimento: {{procedimento}}',
+  'Valor: {{valor}}',
+  '',
+  '{{assinatura}}'
+].join('\n');
+const DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE = [
+  'Olá, {{cliente}}!',
+  '',
+  'Passando para desejar um feliz aniversário! Que seu novo ciclo seja de muita saúde, paz e conquistas.',
+  '',
+  'Com carinho,',
+  '{{assinatura}}'
+].join('\n');
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCKFg8ypyYLRbD8PoeP9NqO2KHBrmN70uk',
   authDomain: 'consultorio-a07c8.firebaseapp.com',
@@ -87,6 +112,36 @@ const safeText = (value) => String(value == null ? '' : value)
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;');
 
+const DEFAULT_APPOINTMENT_COLOR = '#0ea5e9';
+
+const normalizeHexColor = (value, fallback = DEFAULT_APPOINTMENT_COLOR) => {
+  const raw = String(value || '').trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(raw)) {
+    const r = raw[1];
+    const g = raw[2];
+    const b = raw[3];
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  return fallback;
+};
+
+const hexToRgb = (hexColor) => {
+  const hex = normalizeHexColor(hexColor);
+  const value = hex.slice(1);
+  return {
+    r: parseInt(value.slice(0, 2), 16),
+    g: parseInt(value.slice(2, 4), 16),
+    b: parseInt(value.slice(4, 6), 16)
+  };
+};
+
+const agendaEventInlineStyle = (hexColor) => {
+  const color = normalizeHexColor(hexColor);
+  const rgb = hexToRgb(color);
+  return `background-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18); border-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.52);`;
+};
+
 const ensureLoginCredentials = () => {
   try {
     if (!localStorage.getItem(LOGIN_USER_STORAGE_KEY)) {
@@ -135,9 +190,16 @@ class ConsultorioApp {
       financeiro: 'dash-card-resultado',
       clientes: 'dash-card-clientes'
     };
+    this.whatsAppConfirmTemplate = DEFAULT_WHATSAPP_CONFIRM_TEMPLATE;
+    this.whatsAppBirthdayTemplate = DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE;
+    this.whatsAppConfirmTemplates = [];
+    this.whatsAppBirthdayTemplates = [];
+    this.whatsAppSelectedConfirmTemplateId = '';
+    this.whatsAppSelectedBirthdayTemplateId = '';
     this.lastDashboardCardAction = '';
     this.lastDashboardCardActionAt = 0;
     this.loadStore();
+    this.loadWhatsAppTemplates();
   }
 
   setDashboardCardActive(cardId, animate = true) {
@@ -208,6 +270,323 @@ class ConsultorioApp {
     localStorage.setItem('consultorio_appointments', JSON.stringify(this.appointments));
     localStorage.setItem('consultorio_expenses', JSON.stringify(this.expenses));
     localStorage.setItem(CLIENT_GROUPS_STORAGE_KEY, JSON.stringify(this.clientGroups));
+  }
+
+  saveData() {
+    this.saveStore();
+    this.updateCloudSyncMeta();
+
+    if (this.firebaseConnected && this.firebaseDb) {
+      // Sync in background; UI should not block local save flow.
+      void this.syncDataWithFirebase().catch((err) => {
+        console.log('Falha ao sincronizar após salvar:', err);
+      });
+    }
+  }
+
+  createWhatsAppTemplateId(prefix) {
+    return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  }
+
+  getWhatsAppTemplateState(kind) {
+    if (kind === 'birthday') {
+      return {
+        templates: this.whatsAppBirthdayTemplates,
+        selectedId: this.whatsAppSelectedBirthdayTemplateId,
+        defaultText: DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE,
+        defaultName: 'Aniversário Padrão',
+        prefix: 'tpl-birthday',
+        selectId: 'ws-birthday-template-select',
+        nameId: 'ws-birthday-template-name',
+        textId: 'ws-birthday-template'
+      };
+    }
+
+    return {
+      templates: this.whatsAppConfirmTemplates,
+      selectedId: this.whatsAppSelectedConfirmTemplateId,
+      defaultText: DEFAULT_WHATSAPP_CONFIRM_TEMPLATE,
+      defaultName: 'Confirmação Padrão',
+      prefix: 'tpl-confirm',
+      selectId: 'ws-confirm-template-select',
+      nameId: 'ws-confirm-template-name',
+      textId: 'ws-confirm-template'
+    };
+  }
+
+  setWhatsAppSelectedTemplate(kind, templateId) {
+    const state = this.getWhatsAppTemplateState(kind);
+    const selected = state.templates.find((item) => item.id === templateId);
+    if (!selected && state.templates.length) {
+      templateId = state.templates[0].id;
+    }
+
+    if (kind === 'birthday') {
+      this.whatsAppSelectedBirthdayTemplateId = String(templateId || '');
+    } else {
+      this.whatsAppSelectedConfirmTemplateId = String(templateId || '');
+    }
+
+    this.syncActiveWhatsAppTemplateTexts();
+  }
+
+  syncActiveWhatsAppTemplateTexts() {
+    const confirmSelected = this.whatsAppConfirmTemplates.find((tpl) => tpl.id === this.whatsAppSelectedConfirmTemplateId);
+    const birthdaySelected = this.whatsAppBirthdayTemplates.find((tpl) => tpl.id === this.whatsAppSelectedBirthdayTemplateId);
+    this.whatsAppConfirmTemplate = String((confirmSelected && confirmSelected.text) || DEFAULT_WHATSAPP_CONFIRM_TEMPLATE);
+    this.whatsAppBirthdayTemplate = String((birthdaySelected && birthdaySelected.text) || DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE);
+  }
+
+  ensureWhatsAppTemplateCollections() {
+    if (!Array.isArray(this.whatsAppConfirmTemplates) || !this.whatsAppConfirmTemplates.length) {
+      this.whatsAppConfirmTemplates = [{
+        id: 'tpl-confirm-default',
+        name: 'Confirmação Padrão',
+        text: this.whatsAppConfirmTemplate || DEFAULT_WHATSAPP_CONFIRM_TEMPLATE
+      }];
+    }
+
+    if (!Array.isArray(this.whatsAppBirthdayTemplates) || !this.whatsAppBirthdayTemplates.length) {
+      this.whatsAppBirthdayTemplates = [{
+        id: 'tpl-birthday-default',
+        name: 'Aniversário Padrão',
+        text: this.whatsAppBirthdayTemplate || DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE
+      }];
+    }
+
+    if (!this.whatsAppSelectedConfirmTemplateId || !this.whatsAppConfirmTemplates.some((tpl) => tpl.id === this.whatsAppSelectedConfirmTemplateId)) {
+      this.whatsAppSelectedConfirmTemplateId = this.whatsAppConfirmTemplates[0].id;
+    }
+    if (!this.whatsAppSelectedBirthdayTemplateId || !this.whatsAppBirthdayTemplates.some((tpl) => tpl.id === this.whatsAppSelectedBirthdayTemplateId)) {
+      this.whatsAppSelectedBirthdayTemplateId = this.whatsAppBirthdayTemplates[0].id;
+    }
+    this.syncActiveWhatsAppTemplateTexts();
+  }
+
+  loadWhatsAppTemplates() {
+    try {
+      const legacyConfirm = localStorage.getItem(WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY);
+      const legacyBirthday = localStorage.getItem(WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY);
+      this.whatsAppConfirmTemplate = String(legacyConfirm || DEFAULT_WHATSAPP_CONFIRM_TEMPLATE).trim() || DEFAULT_WHATSAPP_CONFIRM_TEMPLATE;
+      this.whatsAppBirthdayTemplate = String(legacyBirthday || DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE).trim() || DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE;
+
+      const confirmRaw = JSON.parse(localStorage.getItem(WHATSAPP_CONFIRM_TEMPLATES_STORAGE_KEY) || '[]');
+      const birthdayRaw = JSON.parse(localStorage.getItem(WHATSAPP_BIRTHDAY_TEMPLATES_STORAGE_KEY) || '[]');
+
+      this.whatsAppConfirmTemplates = Array.isArray(confirmRaw)
+        ? confirmRaw
+          .map((item) => ({
+            id: String(item && item.id ? item.id : ''),
+            name: String(item && item.name ? item.name : '').trim(),
+            text: String(item && item.text ? item.text : '').trim()
+          }))
+          .filter((item) => item.id && item.name && item.text)
+        : [];
+
+      this.whatsAppBirthdayTemplates = Array.isArray(birthdayRaw)
+        ? birthdayRaw
+          .map((item) => ({
+            id: String(item && item.id ? item.id : ''),
+            name: String(item && item.name ? item.name : '').trim(),
+            text: String(item && item.text ? item.text : '').trim()
+          }))
+          .filter((item) => item.id && item.name && item.text)
+        : [];
+
+      this.whatsAppSelectedConfirmTemplateId = String(localStorage.getItem(WHATSAPP_CONFIRM_SELECTED_TEMPLATE_STORAGE_KEY) || '').trim();
+      this.whatsAppSelectedBirthdayTemplateId = String(localStorage.getItem(WHATSAPP_BIRTHDAY_SELECTED_TEMPLATE_STORAGE_KEY) || '').trim();
+      this.ensureWhatsAppTemplateCollections();
+    } catch (err) {
+      this.whatsAppConfirmTemplate = DEFAULT_WHATSAPP_CONFIRM_TEMPLATE;
+      this.whatsAppBirthdayTemplate = DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE;
+      this.whatsAppConfirmTemplates = [];
+      this.whatsAppBirthdayTemplates = [];
+      this.whatsAppSelectedConfirmTemplateId = '';
+      this.whatsAppSelectedBirthdayTemplateId = '';
+      this.ensureWhatsAppTemplateCollections();
+    }
+  }
+
+  saveWhatsAppTemplates() {
+    try {
+      this.ensureWhatsAppTemplateCollections();
+      localStorage.setItem(WHATSAPP_CONFIRM_TEMPLATES_STORAGE_KEY, JSON.stringify(this.whatsAppConfirmTemplates));
+      localStorage.setItem(WHATSAPP_BIRTHDAY_TEMPLATES_STORAGE_KEY, JSON.stringify(this.whatsAppBirthdayTemplates));
+      localStorage.setItem(WHATSAPP_CONFIRM_SELECTED_TEMPLATE_STORAGE_KEY, this.whatsAppSelectedConfirmTemplateId);
+      localStorage.setItem(WHATSAPP_BIRTHDAY_SELECTED_TEMPLATE_STORAGE_KEY, this.whatsAppSelectedBirthdayTemplateId);
+      localStorage.setItem(WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY, this.whatsAppConfirmTemplate);
+      localStorage.setItem(WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY, this.whatsAppBirthdayTemplate);
+    } catch (err) {
+      console.log('Falha ao salvar templates de WhatsApp:', err);
+    }
+  }
+
+  renderWhatsAppTemplateEditor(kind) {
+    const state = this.getWhatsAppTemplateState(kind);
+    const selectEl = document.getElementById(state.selectId);
+    const nameEl = document.getElementById(state.nameId);
+    const textEl = document.getElementById(state.textId);
+    if (!selectEl || !nameEl || !textEl) return;
+
+    const selectedId = state.selectedId;
+    selectEl.innerHTML = state.templates
+      .map((tpl) => `<option value="${safeText(tpl.id)}">${safeText(tpl.name)}</option>`)
+      .join('');
+
+    const selected = state.templates.find((tpl) => tpl.id === selectedId) || state.templates[0];
+    if (!selected) return;
+
+    selectEl.value = selected.id;
+    nameEl.value = selected.name;
+    textEl.value = selected.text;
+  }
+
+  selectWhatsAppTemplate(kind, templateId) {
+    this.setWhatsAppSelectedTemplate(kind, templateId);
+    this.saveWhatsAppTemplates();
+    this.renderWhatsAppTemplateEditor(kind);
+  }
+
+  saveNewWhatsAppTemplate(kind) {
+    const state = this.getWhatsAppTemplateState(kind);
+    const nameEl = document.getElementById(state.nameId);
+    const textEl = document.getElementById(state.textId);
+    const name = String((nameEl || {}).value || '').trim();
+    const text = String((textEl || {}).value || '').trim();
+
+    if (!name) {
+      this.showToast('Informe um nome para o novo envio.', 'warning');
+      return;
+    }
+    if (!text) {
+      this.showToast('Informe o texto do envio personalizado.', 'warning');
+      return;
+    }
+
+    const next = {
+      id: this.createWhatsAppTemplateId(state.prefix),
+      name,
+      text
+    };
+
+    if (kind === 'birthday') {
+      this.whatsAppBirthdayTemplates.unshift(next);
+      this.whatsAppSelectedBirthdayTemplateId = next.id;
+    } else {
+      this.whatsAppConfirmTemplates.unshift(next);
+      this.whatsAppSelectedConfirmTemplateId = next.id;
+    }
+
+    this.syncActiveWhatsAppTemplateTexts();
+    this.saveWhatsAppTemplates();
+    this.renderWhatsAppTemplateEditor(kind);
+    this.showToast('Novo envio personalizado cadastrado.', 'success');
+  }
+
+  updateSelectedWhatsAppTemplate(kind) {
+    const state = this.getWhatsAppTemplateState(kind);
+    const nameEl = document.getElementById(state.nameId);
+    const textEl = document.getElementById(state.textId);
+    const name = String((nameEl || {}).value || '').trim();
+    const text = String((textEl || {}).value || '').trim();
+    if (!name || !text) {
+      this.showToast('Nome e texto são obrigatórios para atualizar.', 'warning');
+      return;
+    }
+
+    let changed = false;
+    if (kind === 'birthday') {
+      this.whatsAppBirthdayTemplates = this.whatsAppBirthdayTemplates.map((tpl) => {
+        if (tpl.id !== this.whatsAppSelectedBirthdayTemplateId) return tpl;
+        changed = true;
+        return { ...tpl, name, text };
+      });
+    } else {
+      this.whatsAppConfirmTemplates = this.whatsAppConfirmTemplates.map((tpl) => {
+        if (tpl.id !== this.whatsAppSelectedConfirmTemplateId) return tpl;
+        changed = true;
+        return { ...tpl, name, text };
+      });
+    }
+
+    if (!changed) {
+      this.showToast('Selecione um envio para atualizar.', 'warning');
+      return;
+    }
+
+    this.syncActiveWhatsAppTemplateTexts();
+    this.saveWhatsAppTemplates();
+    this.renderWhatsAppTemplateEditor(kind);
+    this.showToast('Envio personalizado atualizado.', 'success');
+  }
+
+  deleteSelectedWhatsAppTemplate(kind) {
+    const state = this.getWhatsAppTemplateState(kind);
+    if (state.templates.length <= 1) {
+      this.showToast('Mantenha ao menos um envio cadastrado.', 'warning');
+      return;
+    }
+
+    if (kind === 'birthday') {
+      this.whatsAppBirthdayTemplates = this.whatsAppBirthdayTemplates.filter((tpl) => tpl.id !== this.whatsAppSelectedBirthdayTemplateId);
+      this.whatsAppSelectedBirthdayTemplateId = this.whatsAppBirthdayTemplates[0].id;
+    } else {
+      this.whatsAppConfirmTemplates = this.whatsAppConfirmTemplates.filter((tpl) => tpl.id !== this.whatsAppSelectedConfirmTemplateId);
+      this.whatsAppSelectedConfirmTemplateId = this.whatsAppConfirmTemplates[0].id;
+    }
+
+    this.syncActiveWhatsAppTemplateTexts();
+    this.saveWhatsAppTemplates();
+    this.renderWhatsAppTemplateEditor(kind);
+    this.showToast('Envio personalizado removido.', 'info');
+  }
+
+  duplicateSelectedWhatsAppTemplate(kind) {
+    const state = this.getWhatsAppTemplateState(kind);
+    const selected = state.templates.find((tpl) => tpl.id === state.selectedId) || state.templates[0];
+    if (!selected) {
+      this.showToast('Selecione um envio para duplicar.', 'warning');
+      return;
+    }
+
+    const copy = {
+      id: this.createWhatsAppTemplateId(state.prefix),
+      name: `${selected.name} (copia)`,
+      text: selected.text
+    };
+
+    if (kind === 'birthday') {
+      this.whatsAppBirthdayTemplates.unshift(copy);
+      this.whatsAppSelectedBirthdayTemplateId = copy.id;
+    } else {
+      this.whatsAppConfirmTemplates.unshift(copy);
+      this.whatsAppSelectedConfirmTemplateId = copy.id;
+    }
+
+    this.syncActiveWhatsAppTemplateTexts();
+    this.saveWhatsAppTemplates();
+    this.renderWhatsAppTemplateEditor(kind);
+    this.showToast('Envio duplicado com sucesso.', 'success');
+  }
+
+  resetSelectedWhatsAppTemplate(kind) {
+    const state = this.getWhatsAppTemplateState(kind);
+    const selectedId = state.selectedId;
+
+    if (kind === 'birthday') {
+      this.whatsAppBirthdayTemplates = this.whatsAppBirthdayTemplates.map((tpl) =>
+        tpl.id === selectedId ? { ...tpl, text: state.defaultText } : tpl
+      );
+    } else {
+      this.whatsAppConfirmTemplates = this.whatsAppConfirmTemplates.map((tpl) =>
+        tpl.id === selectedId ? { ...tpl, text: state.defaultText } : tpl
+      );
+    }
+
+    this.syncActiveWhatsAppTemplateTexts();
+    this.saveWhatsAppTemplates();
+    this.renderWhatsAppTemplateEditor(kind);
+    this.showToast('Texto do envio restaurado para o padrão.', 'info');
   }
 
   normalizeClientGroupName(groupName) {
@@ -456,6 +835,18 @@ class ConsultorioApp {
       .join('');
   }
 
+  selectAppointmentColor(color) {
+    const normalized = normalizeHexColor(color);
+    const hidden = document.getElementById('appt-color');
+    if (hidden) hidden.value = normalized;
+
+    document.querySelectorAll('#appt-color-palette .color-swatch').forEach((swatch) => {
+      const swatchColor = normalizeHexColor(swatch.getAttribute('data-color'));
+      swatch.classList.toggle('selected', swatchColor === normalized);
+      swatch.setAttribute('aria-pressed', swatchColor === normalized ? 'true' : 'false');
+    });
+  }
+
 
   initEvents() {
     const loginForm = document.getElementById('login-form');
@@ -528,6 +919,75 @@ class ConsultorioApp {
     const globalClickGuard = (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+
+      const paymentSaveTrigger = target.closest('#btn-save-payment');
+      if (paymentSaveTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.savePaymentForm();
+        return;
+      }
+
+      const paymentCloseTrigger = target.closest('#btn-cancel-payment, #btn-close-payment, #btn-cancel-pay, #btn-close-pay');
+      if (paymentCloseTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closePaymentModal();
+        return;
+      }
+
+      const paymentQuitarTrigger = target.closest('#btn-pay-quitar');
+      if (paymentQuitarTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        const balanceEl = document.getElementById('pay-balance');
+        const input = document.getElementById('pay-amount-now');
+        if (input && balanceEl) {
+          const raw = String(balanceEl.textContent || '').replace(/[^\d,\.]/g, '').replace(',', '.');
+          input.value = parseFloat(raw) || 0;
+        }
+        return;
+      }
+
+      const clientCloseTrigger = target.closest('#btn-cancel-client, #btn-close-client');
+      if (clientCloseTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeClientModal();
+        return;
+      }
+
+      const clientGroupsOpenTrigger = target.closest('#btn-manage-client-groups');
+      if (clientGroupsOpenTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.openClientGroupsModal();
+        return;
+      }
+
+      const clientGroupsCloseTrigger = target.closest('#btn-close-client-groups, #btn-close-client-groups-footer');
+      if (clientGroupsCloseTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeClientGroupsModal();
+        return;
+      }
+
+      const appointmentCloseTrigger = target.closest('#btn-cancel-appointment, #btn-close-appointment');
+      if (appointmentCloseTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeAppointmentModal();
+        return;
+      }
+
+      const expenseCloseTrigger = target.closest('#btn-cancel-expense, #btn-close-expense');
+      if (expenseCloseTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeExpenseModal();
+        return;
+      }
 
       if (target.closest('.agenda-event-whatsapp')) {
         return;
@@ -773,12 +1233,19 @@ class ConsultorioApp {
       if (btn) btn.addEventListener('click', () => this.closeExpenseModal());
     });
 
-    ['btn-cancel-payment', 'btn-close-payment'].forEach((id) => {
+    ['btn-cancel-payment', 'btn-close-payment', 'btn-cancel-pay', 'btn-close-pay'].forEach((id) => {
       const btn = document.getElementById(id);
       if (btn) btn.addEventListener('click', () => this.closePaymentModal());
     });
     const btnSavePayment = document.getElementById('btn-save-payment');
     if (btnSavePayment) btnSavePayment.addEventListener('click', () => this.savePaymentForm());
+    const formQuickPay = document.getElementById('form-quick-pay');
+    if (formQuickPay) {
+      formQuickPay.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.savePaymentForm();
+      });
+    }
     const btnPayQuitar = document.getElementById('btn-pay-quitar');
     if (btnPayQuitar) btnPayQuitar.addEventListener('click', () => {
       const balanceEl = document.getElementById('pay-balance');
@@ -936,11 +1403,54 @@ class ConsultorioApp {
       if (btn) btn.addEventListener('click', reportHandlers[id]);
     });
 
+    const confirmSelect = document.getElementById('ws-confirm-template-select');
+    if (confirmSelect) {
+      confirmSelect.addEventListener('change', () => this.selectWhatsAppTemplate('confirm', confirmSelect.value));
+    }
+
+    const birthdaySelect = document.getElementById('ws-birthday-template-select');
+    if (birthdaySelect) {
+      birthdaySelect.addEventListener('change', () => this.selectWhatsAppTemplate('birthday', birthdaySelect.value));
+    }
+
+    const btnConfirmSaveNew = document.getElementById('btn-ws-confirm-save-new');
+    if (btnConfirmSaveNew) btnConfirmSaveNew.addEventListener('click', () => this.saveNewWhatsAppTemplate('confirm'));
+
+    const btnConfirmUpdate = document.getElementById('btn-ws-confirm-update');
+    if (btnConfirmUpdate) btnConfirmUpdate.addEventListener('click', () => this.updateSelectedWhatsAppTemplate('confirm'));
+
+    const btnConfirmDelete = document.getElementById('btn-ws-confirm-delete');
+    if (btnConfirmDelete) btnConfirmDelete.addEventListener('click', () => this.deleteSelectedWhatsAppTemplate('confirm'));
+
+    const btnConfirmDuplicate = document.getElementById('btn-ws-confirm-duplicate');
+    if (btnConfirmDuplicate) btnConfirmDuplicate.addEventListener('click', () => this.duplicateSelectedWhatsAppTemplate('confirm'));
+
+    const btnResetConfirmTemplate = document.getElementById('btn-ws-confirm-reset');
+    if (btnResetConfirmTemplate) btnResetConfirmTemplate.addEventListener('click', () => this.resetSelectedWhatsAppTemplate('confirm'));
+
+    const btnBirthdaySaveNew = document.getElementById('btn-ws-birthday-save-new');
+    if (btnBirthdaySaveNew) btnBirthdaySaveNew.addEventListener('click', () => this.saveNewWhatsAppTemplate('birthday'));
+
+    const btnBirthdayUpdate = document.getElementById('btn-ws-birthday-update');
+    if (btnBirthdayUpdate) btnBirthdayUpdate.addEventListener('click', () => this.updateSelectedWhatsAppTemplate('birthday'));
+
+    const btnBirthdayDelete = document.getElementById('btn-ws-birthday-delete');
+    if (btnBirthdayDelete) btnBirthdayDelete.addEventListener('click', () => this.deleteSelectedWhatsAppTemplate('birthday'));
+
+    const btnBirthdayDuplicate = document.getElementById('btn-ws-birthday-duplicate');
+    if (btnBirthdayDuplicate) btnBirthdayDuplicate.addEventListener('click', () => this.duplicateSelectedWhatsAppTemplate('birthday'));
+
+    const btnResetBirthdayTemplate = document.getElementById('btn-ws-birthday-reset');
+    if (btnResetBirthdayTemplate) btnResetBirthdayTemplate.addEventListener('click', () => this.resetSelectedWhatsAppTemplate('birthday'));
+
+    const btnRefreshBirthdays = document.getElementById('btn-ws-birthday-refresh');
+    if (btnRefreshBirthdays) btnRefreshBirthdays.addEventListener('click', () => this.renderWhatsAppBirthdayList());
+
     const birthdaysBtn = document.getElementById('btn-open-birthdays');
     if (birthdaysBtn) {
       birthdaysBtn.addEventListener('click', () => {
-        this.switchTab('clientes');
-        this.showToast('Painel de aniversários simplificado: use a busca de clientes por data de nascimento.', 'info');
+        this.switchTab('whatsapp');
+        this.renderWhatsAppBirthdayList();
       });
     }
   }
@@ -1295,6 +1805,133 @@ class ConsultorioApp {
     return digits;
   }
 
+  applyTemplateVars(templateText, vars) {
+    return String(templateText || '').replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => {
+      const value = vars[key];
+      return value == null ? '' : String(value);
+    });
+  }
+
+  getSignatureName() {
+    const creds = getLoginCredentials();
+    return creds && creds.username ? creds.username : 'Consultório';
+  }
+
+  buildAppointmentWhatsAppMessage(appointment, client) {
+    const vars = {
+      cliente: (client && client.name) || appointment.clientName || 'Cliente',
+      data: formatDateBR(appointment.date),
+      hora: appointment.time || '--:--',
+      procedimento: appointment.procedure || 'Consulta',
+      valor: formatCurrency(appointment.price || 0),
+      status: appointment.status || 'Agendado',
+      assinatura: this.getSignatureName()
+    };
+    return this.applyTemplateVars(this.whatsAppConfirmTemplate, vars).trim();
+  }
+
+  buildBirthdayWhatsAppMessage(client) {
+    const firstName = String(client.name || '').trim().split(' ')[0] || 'Cliente';
+    const vars = {
+      cliente: client.name || 'Cliente',
+      primeiro_nome: firstName,
+      aniversario: formatDateBR(client.dob || ''),
+      assinatura: this.getSignatureName()
+    };
+    return this.applyTemplateVars(this.whatsAppBirthdayTemplate, vars).trim();
+  }
+
+  getBirthdaysFromWindow(windowDays = 30) {
+    const today = new Date();
+    const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const clientsWithDob = this.clients.filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(String(c.dob || '')));
+
+    const list = clientsWithDob.map((client) => {
+      const dob = parseIsoDate(client.dob);
+      if (!dob) return null;
+
+      let nextBirthday = new Date(base.getFullYear(), dob.getMonth(), dob.getDate());
+      if (nextBirthday < base) nextBirthday = new Date(base.getFullYear() + 1, dob.getMonth(), dob.getDate());
+
+      const diffMs = nextBirthday.getTime() - base.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+      return {
+        client,
+        nextBirthday,
+        diffDays
+      };
+    }).filter(Boolean);
+
+    return list
+      .filter((item) => item.diffDays >= 0 && item.diffDays <= windowDays)
+      .sort((a, b) => a.diffDays - b.diffDays);
+  }
+
+  renderWhatsAppBirthdayList() {
+    const container = document.getElementById('ws-birthday-list');
+    const birthdays = this.getBirthdaysFromWindow(30);
+    const birthdaysToday = birthdays.filter((item) => item.diffDays === 0).length;
+    const birthdayBadge = document.querySelector('#btn-open-birthdays .btn-notification-badge');
+    if (birthdayBadge) birthdayBadge.textContent = String(birthdaysToday);
+
+    if (!container) return;
+
+    if (!birthdays.length) {
+      container.innerHTML = '<div class="empty-state"><p>Nenhum aniversariante nos próximos 30 dias.</p></div>';
+      return;
+    }
+
+    container.innerHTML = birthdays.map((item) => {
+      const c = item.client;
+      const whenLabel = item.diffDays === 0 ? 'Hoje' : (item.diffDays === 1 ? 'Amanhã' : `Em ${item.diffDays} dias`);
+      const phoneValid = Boolean(this.normalizeWhatsAppPhone(c.phone || ''));
+      return `
+        <div class="pending-mini-item" style="margin-bottom:0.6rem;">
+          <div class="pending-mini-info">
+            <h4>${safeText(c.name || '-')}</h4>
+            <p>${safeText(formatDateBR(c.dob || ''))} • ${safeText(whenLabel)} • ${safeText(c.phone || 'Sem telefone')}</p>
+          </div>
+          <div style="display:flex; gap:0.45rem; align-items:center;">
+            <button class="btn btn-sm btn-secondary" type="button" onclick="app.sendBirthdayWhatsApp('${safeText(c.id || '')}')" ${phoneValid ? '' : 'disabled'}>
+              <i data-lucide="message-circle"></i> Parabenizar
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  renderWhatsAppTab() {
+    this.ensureWhatsAppTemplateCollections();
+    this.renderWhatsAppTemplateEditor('confirm');
+    this.renderWhatsAppTemplateEditor('birthday');
+
+    this.renderWhatsAppBirthdayList();
+  }
+
+  sendBirthdayWhatsApp(clientId) {
+    const client = this.clients.find((c) => String(c.id || '') === String(clientId || ''));
+    if (!client) {
+      this.showToast('Cliente não encontrado para envio.', 'warning');
+      return;
+    }
+
+    const phone = this.normalizeWhatsAppPhone(client.phone || '');
+    if (!phone) {
+      this.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
+      return;
+    }
+
+    const text = this.buildBirthdayWhatsAppMessage(client);
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener');
+    this.showToast('Mensagem de aniversário preparada.', 'success');
+  }
+
   filterAppointmentsForAgenda() {
     const search = String((document.getElementById('agenda-search') || {}).value || '').toLowerCase().trim();
     const start = (document.getElementById('agenda-filter-start') || {}).value || '';
@@ -1451,7 +2088,7 @@ class ConsultorioApp {
                     ? 'agenda-event-pago'
                     : (String(a.paymentStatus || '').toLowerCase().includes('parcial') ? 'agenda-event-parcial' : 'agenda-event-pendente');
                   return `
-                    <div class="agenda-event ${statusClass}" role="button" tabindex="0" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
+                    <div class="agenda-event ${statusClass}" style="${agendaEventInlineStyle(a.color || DEFAULT_APPOINTMENT_COLOR)}" role="button" tabindex="0" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
                       <div class="agenda-event-time">${safeText(a.time || '--:--')}</div>
                       <div class="agenda-event-title-row">
                         <div class="agenda-event-title">${safeText(a.clientName || '-')}</div>
@@ -1493,6 +2130,13 @@ class ConsultorioApp {
     tbody.innerHTML = filtered.map((a) => {
       const payment = String(a.paymentStatus || 'Pendente');
       const status = String(a.status || 'Agendado');
+      const pendingBalance = Math.max(0, toNumber(a.price) - toNumber(a.amountPaid));
+      const paymentAction = pendingBalance > 0
+        ? `app.openPaymentModal('${a.id}')`
+        : `app.openAppointmentModal('${a.id}')`;
+      const paymentTitle = pendingBalance > 0
+        ? 'Clique para dar baixa'
+        : 'Pagamento quitado';
       const statusClass = String(status).toLowerCase().includes('concl')
         ? 'badge-concluido'
         : (String(status).toLowerCase().includes('cancel') ? 'badge-cancelado' : 'badge-agendado');
@@ -1506,7 +2150,7 @@ class ConsultorioApp {
           <td>${safeText(a.procedure || '-')}</td>
           <td><strong>${formatCurrency(a.price || 0)}</strong></td>
           <td><button type="button" class="badge ${statusClass}" onclick="app.cycleAppointmentStatus('${a.id}')" title="Clique para alterar status">${safeText(status)}</button></td>
-          <td><button type="button" class="badge ${paymentClass}" onclick="app.cycleAppointmentPayment('${a.id}')" title="Clique para alterar pagamento">${safeText(payment)}</button></td>
+          <td><button type="button" class="badge ${paymentClass}" onclick="${paymentAction}" title="${paymentTitle}">${safeText(payment)}</button></td>
           <td style="text-align: right;">
             <button class="btn btn-sm btn-secondary" onclick="app.openAppointmentModal('${a.id}')"><i data-lucide="pencil"></i> Editar</button>
             <button class="btn btn-sm btn-secondary" onclick="app.sendAppointmentWhatsApp('${a.id}')"><i data-lucide="message-circle"></i> WhatsApp</button>
@@ -1671,6 +2315,10 @@ class ConsultorioApp {
 
     tbody.innerHTML = rows.map((r) => {
       const status = r.pending > 0 ? (r.paid > 0 ? 'Parcial' : 'Pendente') : 'Pago';
+      const statusAction = r.pending > 0
+        ? `app.openPendingAppointmentByClient('${safeText(r.clientId)}')`
+        : `app.openLatestAppointmentByClient('${safeText(r.clientId)}')`;
+      const rowActionLabel = r.pending > 0 ? 'Baixar' : 'Editar';
       return `
         <tr>
           <td>
@@ -1678,13 +2326,13 @@ class ConsultorioApp {
           </td>
           <td>${r.qty}</td>
           <td><button type="button" class="money-pill money-pill-total" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')" title="Clique para editar">${formatCurrency(r.total)}</button></td>
-          <td><button type="button" class="money-pill money-pill-pending" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')" title="Clique para editar">${formatCurrency(r.pending)}</button></td>
+          <td><button type="button" class="money-pill money-pill-pending" onclick="app.openPendingAppointmentByClient('${safeText(r.clientId)}')" title="Clique para dar baixa">${formatCurrency(r.pending)}</button></td>
           <td><button type="button" class="money-pill money-pill-paid" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')" title="Clique para editar">${formatCurrency(r.paid)}</button></td>
           <td>
-            <button class="finance-status-link" type="button" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')">${safeText(status)}</button>
+            <button class="finance-status-link" type="button" onclick="${statusAction}">${safeText(status)}</button>
           </td>
           <td>
-            <button class="btn btn-sm btn-secondary" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')">Editar</button>
+            <button class="btn btn-sm btn-secondary" onclick="${statusAction}">${rowActionLabel}</button>
           </td>
         </tr>
       `;
@@ -1709,6 +2357,27 @@ class ConsultorioApp {
 
     this.switchTab('agenda');
     this.openAppointmentModal(matches[0].id);
+  }
+
+  openPendingAppointmentByClient(clientId) {
+    const key = String(clientId || '').trim();
+    if (!key) {
+      this.showToast('Cliente inválido para baixa.', 'warning');
+      return;
+    }
+
+    const pendingMatches = this.appointments
+      .filter((a) => String(a.clientId || '') === key)
+      .filter((a) => Math.max(0, toNumber(a.price) - toNumber(a.amountPaid)) > 0)
+      .sort((a, b) => `${b.date || ''} ${b.time || ''}`.localeCompare(`${a.date || ''} ${a.time || ''}`));
+
+    if (!pendingMatches.length) {
+      this.showToast('Este cliente não possui consulta pendente para baixa.', 'info');
+      this.openLatestAppointmentByClient(key);
+      return;
+    }
+
+    this.openPaymentModal(pendingMatches[0].id);
   }
 
   renderDespesasTable() {
@@ -2115,8 +2784,11 @@ class ConsultorioApp {
 
     const idInput = document.getElementById('appointment-id');
     const title = document.getElementById('modal-appointment-title');
+    const colorInput = document.getElementById('appt-color');
     if (idInput) idInput.value = '';
     if (title) title.textContent = 'Agendar Consulta';
+    if (colorInput) colorInput.value = DEFAULT_APPOINTMENT_COLOR;
+    this.selectAppointmentColor(DEFAULT_APPOINTMENT_COLOR);
 
     const dateInput = document.getElementById('appt-date');
     if (dateInput && !dateInput.value) dateInput.value = getTodayStr();
@@ -2139,7 +2811,8 @@ class ConsultorioApp {
         set('appt-payment-status', a.paymentStatus || 'Pendente');
         set('appt-amount-paid', a.amountPaid || 0);
         set('appt-notes', a.notes || '');
-        if (title) title.textContent = 'Editar Consulta';
+        this.selectAppointmentColor(a.color || DEFAULT_APPOINTMENT_COLOR);
+        if (title) title.textContent = 'Editar Consulta/Financeiro';
       }
     }
 
@@ -2154,25 +2827,44 @@ class ConsultorioApp {
   openPaymentModal(appointmentId) {
     const appt = this.appointments.find((a) => a.id === appointmentId);
     if (!appt) return;
-    const modal = document.getElementById('modal-payment');
+    const modal = document.getElementById('modal-payment') || document.getElementById('modal-payment-quick');
     if (!modal) return;
 
-    document.getElementById('pay-appointment-id').value = appt.id;
-    document.getElementById('pay-client-name').textContent = appt.clientName || '-';
-    document.getElementById('pay-date-time').textContent = `${formatDateBR(appt.date)} às ${appt.time || '--:--'}`;
-    document.getElementById('pay-procedure').textContent = appt.procedure || '-';
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+
+    const setValue = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value;
+    };
+
+    setValue('pay-appointment-id', appt.id);
+    setValue('pay-appt-id', appt.id);
+    setText('pay-client-name', appt.clientName || '-');
+    setText('pay-date-time', `${formatDateBR(appt.date)} às ${appt.time || '--:--'}`);
+    setText('pay-procedure', appt.procedure || '-');
 
     const total = toNumber(appt.price);
     const paid = toNumber(appt.amountPaid);
     const balance = Math.max(0, total - paid);
-    document.getElementById('pay-total').textContent = formatCurrency(total);
-    document.getElementById('pay-paid').textContent = formatCurrency(paid);
-    document.getElementById('pay-balance').textContent = formatCurrency(balance);
+    setText('pay-total', formatCurrency(total));
+    setText('pay-paid', formatCurrency(paid));
+    setText('pay-balance', formatCurrency(balance));
+    setValue('pay-total-display', formatCurrency(total));
 
     const methodEl = document.getElementById('pay-method');
     if (methodEl) methodEl.value = appt.paymentMethod || 'Pix';
     const amountNowEl = document.getElementById('pay-amount-now');
     if (amountNowEl) amountNowEl.value = balance > 0 ? balance : '';
+    const amountInputLegacy = document.getElementById('pay-amount-input');
+    if (amountInputLegacy) amountInputLegacy.value = paid;
+
+    const statusSelect = document.getElementById('pay-status-select');
+    if (statusSelect) {
+      statusSelect.value = balance <= 0 ? 'Pago' : (paid > 0 ? 'Parcial' : 'Pendente');
+    }
 
     modal.classList.add('active');
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
@@ -2180,21 +2872,61 @@ class ConsultorioApp {
 
   closePaymentModal() {
     const modal = document.getElementById('modal-payment');
+    const modalQuick = document.getElementById('modal-payment-quick');
     if (modal) modal.classList.remove('active');
+    if (modalQuick) modalQuick.classList.remove('active');
   }
 
   savePaymentForm() {
-    const id = (document.getElementById('pay-appointment-id') || {}).value || '';
+    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
     const appt = this.appointments.find((a) => a.id === id);
     if (!appt) { this.showToast('Agendamento não encontrado.', 'warning'); return; }
 
-    const amountNow = toNumber((document.getElementById('pay-amount-now') || {}).value);
+    const amountNowField = document.getElementById('pay-amount-now');
+    const amountLegacyField = document.getElementById('pay-amount-input');
+    const amountNow = toNumber((amountNowField || amountLegacyField || {}).value);
     const method = String((document.getElementById('pay-method') || {}).value || appt.paymentMethod || 'Pix');
+    const total = toNumber(appt.price);
+    const currentPaid = toNumber(appt.amountPaid);
+    const balance = Math.max(0, total - currentPaid);
+
+    const statusSelect = document.getElementById('pay-status-select');
+    const explicitStatus = String((statusSelect || {}).value || '').trim();
+
+    if (explicitStatus === 'Pendente') {
+      appt.amountPaid = 0;
+      appt.paymentMethod = method;
+      appt.paymentStatus = 'Pendente';
+      this.saveData();
+      this.render();
+      this.closePaymentModal();
+      this.showToast('Pagamento marcado como pendente.', 'success');
+      return;
+    }
+
+    if (explicitStatus === 'Pago') {
+      appt.amountPaid = total;
+      appt.paymentMethod = method;
+      appt.paymentStatus = 'Pago';
+      this.saveData();
+      this.render();
+      this.closePaymentModal();
+      this.showToast(`Pagamento quitado em ${formatCurrency(total)}.`, 'success');
+      return;
+    }
+
+    if (balance <= 0) {
+      this.showToast('Esta consulta já está quitada.', 'info');
+      return;
+    }
 
     if (amountNow <= 0) { this.showToast('Informe um valor maior que zero.', 'warning'); return; }
+    if (amountNow > balance) {
+      this.showToast(`O valor informado excede o saldo pendente (${formatCurrency(balance)}).`, 'warning');
+      return;
+    }
 
-    const newPaid = toNumber(appt.amountPaid) + amountNow;
-    const total = toNumber(appt.price);
+    const newPaid = currentPaid + amountNow;
     appt.amountPaid = newPaid;
     appt.paymentMethod = method;
     appt.paymentStatus = newPaid >= total ? 'Pago' : (newPaid > 0 ? 'Parcial' : 'Pendente');
@@ -2203,6 +2935,14 @@ class ConsultorioApp {
     this.render();
     this.closePaymentModal();
     this.showToast(`Pagamento de ${formatCurrency(amountNow)} registrado.`, 'success');
+  }
+
+  openQuickPayModal(appointmentId) {
+    this.openPaymentModal(appointmentId);
+  }
+
+  editAppointment(appointmentId) {
+    this.openAppointmentModal(appointmentId);
   }
 
   saveAppointmentForm() {
@@ -2232,6 +2972,7 @@ class ConsultorioApp {
       time,
       procedure,
       price,
+      color: normalizeHexColor((document.getElementById('appt-color') || {}).value || DEFAULT_APPOINTMENT_COLOR),
       paymentMethod: String((document.getElementById('appt-payment-method') || {}).value || 'Pix'),
       status: String((document.getElementById('appt-status') || {}).value || 'Agendado'),
       paymentStatus: String((document.getElementById('appt-payment-status') || {}).value || 'Pendente'),
@@ -2455,6 +3196,7 @@ class ConsultorioApp {
     this.renderClientsTable();
     this.renderFinanceiroTable();
     this.renderDespesasTable();
+    this.renderWhatsAppTab();
     this.populateClientSelectOptions();
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -2482,7 +3224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260729-3', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260730-5', 'app-root')
       ]);
     }
   } catch (err) {

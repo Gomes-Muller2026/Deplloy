@@ -52,15 +52,17 @@ const agendaModule = {
       return;
     }
 
-    const text = [
-      `Olá, ${(client && client.name) || appointment.clientName || 'cliente'}!`,
-      '',
-      'Passando para confirmar seu agendamento:',
-      `Data: ${formatDateBR(appointment.date)}`,
-      `Horário: ${appointment.time || ''}`,
-      `Procedimento: ${appointment.procedure || 'Consulta'}`,
-      `Valor: ${formatCurrency(appointment.price || 0)}`
-    ].join('\n');
+    const text = typeof app.buildAppointmentWhatsAppMessage === 'function'
+      ? app.buildAppointmentWhatsAppMessage(appointment, client)
+      : [
+          `Olá, ${(client && client.name) || appointment.clientName || 'cliente'}!`,
+          '',
+          'Passando para confirmar seu agendamento:',
+          `Data: ${formatDateBR(appointment.date)}`,
+          `Horário: ${appointment.time || ''}`,
+          `Procedimento: ${appointment.procedure || 'Consulta'}`,
+          `Valor: ${formatCurrency(appointment.price || 0)}`
+        ].join('\n');
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener');

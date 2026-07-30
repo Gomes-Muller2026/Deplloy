@@ -1,6 +1,6 @@
 ﻿// oi
 // Service Worker - Consultório Control PWA
-const CACHE_NAME = 'consultorio-app-v44';
+const CACHE_NAME = 'consultorio-app-v45';
 
 const ASSETS_TO_CACHE = [
   './',

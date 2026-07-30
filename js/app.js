@@ -11,6 +11,7 @@ const LOGIN_PASSWORD_STORAGE_KEY = 'consultorio_login_password';
 const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
 const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
+const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
 const WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_template';
 const WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_template';
@@ -334,12 +335,33 @@ class ConsultorioApp {
   saveData() {
     this.saveStore();
     this.updateCloudSyncMeta();
+    this.setFirebaseSyncDirty(true);
 
     if (this.firebaseConnected && this.firebaseDb) {
       // Sync in background; UI should not block local save flow.
-      void this.pushAllDataToFirebase().catch((err) => {
-        console.log('Falha ao enviar dados para o Firebase:', err);
-      });
+      void this.pushAllDataToFirebase()
+        .then(() => {
+          this.setFirebaseSyncDirty(false);
+        })
+        .catch((err) => {
+          console.log('Falha ao enviar dados para o Firebase:', err);
+        });
+    }
+  }
+
+  isFirebaseSyncDirty() {
+    try {
+      return localStorage.getItem(FIREBASE_SYNC_DIRTY_STORAGE_KEY) === '1';
+    } catch (err) {
+      return false;
+    }
+  }
+
+  setFirebaseSyncDirty(isDirty) {
+    try {
+      localStorage.setItem(FIREBASE_SYNC_DIRTY_STORAGE_KEY, isDirty ? '1' : '0');
+    } catch (err) {
+      console.log('Falha ao atualizar estado de sincronização local:', err);
     }
   }
 
@@ -1312,7 +1334,7 @@ class ConsultorioApp {
   initEvents() {
     const loginForm = document.getElementById('login-form');
     const saveFirebaseBtn = document.getElementById('btn-save-firebase');
-    const refreshFirebaseBtn = document.getElementById('btn-refresh-firebase');
+    const refreshFirebaseBtns = document.querySelectorAll('[data-action="refresh-firebase"]');
     const validateFirebaseBtn = document.getElementById('btn-validate-firebase');
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
     const firebaseConfigInput = document.getElementById('cfg-firebase-json');
@@ -1406,11 +1428,11 @@ class ConsultorioApp {
       });
     }
 
-    if (refreshFirebaseBtn) {
-      refreshFirebaseBtn.addEventListener('click', () => {
+    refreshFirebaseBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
         void this.refreshFirebaseDataNow();
       });
-    }
+    });
 
     if (disconnectFirebaseBtn) {
       disconnectFirebaseBtn.addEventListener('click', () => {
@@ -2524,6 +2546,11 @@ class ConsultorioApp {
       this.showToast('Firebase conectado com sucesso.', 'success');
 
       try {
+        if (this.isFirebaseSyncDirty()) {
+          await this.pushAllDataToFirebase();
+          this.setFirebaseSyncDirty(false);
+        }
+
         await this.syncDataWithFirebase();
       } catch (syncErr) {
         const message = syncErr && syncErr.message ? syncErr.message : 'Erro desconhecido';
@@ -4789,7 +4816,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260730-7', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260730-8', 'app-root')
       ]);
     }
   } catch (err) {

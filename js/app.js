@@ -38,13 +38,30 @@ const DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE = [
   '{{assinatura}}'
 ].join('\n');
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyCKFg8ypyYLRbD8PoeP9NqO2KHBrmN70uk',
-  authDomain: 'consultorio-a07c8.firebaseapp.com',
-  projectId: 'consultorio-a07c8',
-  storageBucket: 'consultorio-a07c8.firebasestorage.app',
-  messagingSenderId: '399470846657',
-  appId: '1:399470846657:web:9ec1b5dd326a766100aa40',
-  measurementId: 'G-1G96K5B02L'
+  apiKey: 'AIzaSyAp-6HFGCVfMr_W8Anw82V70qiUh9sh8WQ',
+  authDomain: 'consultorio-patricia.firebaseapp.com',
+  projectId: 'consultorio-patricia',
+  storageBucket: 'consultorio-patricia.firebasestorage.app',
+  messagingSenderId: '210238418315',
+  appId: '1:210238418315:web:54fb4fdc33036cecd4538e',
+  measurementId: 'G-FQN28L95LC'
+};
+
+const normalizeFirebaseConfig = (rawConfig) => {
+  if (!rawConfig || typeof rawConfig !== 'object') return null;
+
+  const normalized = { ...rawConfig };
+  if (String(normalized.projectId || '').trim() === 'consultorio-a07c8') {
+    normalized.projectId = 'consultorio-patricia';
+  }
+  if (String(normalized.authDomain || '').trim() === 'consultorio-a07c8.firebaseapp.com') {
+    normalized.authDomain = 'consultorio-patricia.firebaseapp.com';
+  }
+  if (String(normalized.storageBucket || '').trim() === 'consultorio-a07c8.firebasestorage.app') {
+    normalized.storageBucket = 'consultorio-patricia.firebasestorage.app';
+  }
+
+  return normalized;
 };
 
 const getTodayStr = () => {
@@ -1386,7 +1403,7 @@ class ConsultorioApp {
       firebaseConfigInput.addEventListener('input', () => {
         try {
           const parsed = JSON.parse(firebaseConfigInput.value || '{}');
-          this.firebaseConfig = parsed;
+          this.firebaseConfig = normalizeFirebaseConfig(parsed);
         } catch (err) {
           this.firebaseConfig = null;
         }
@@ -2202,7 +2219,14 @@ class ConsultorioApp {
       const raw = localStorage.getItem(FIREBASE_CONFIG_STORAGE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : null;
+      if (!parsed || typeof parsed !== 'object') return null;
+
+      const normalized = normalizeFirebaseConfig(parsed);
+      if (normalized && JSON.stringify(parsed) !== JSON.stringify(normalized)) {
+        localStorage.setItem(FIREBASE_CONFIG_STORAGE_KEY, JSON.stringify(normalized));
+      }
+
+      return normalized;
     } catch (err) {
       return null;
     }
@@ -2280,7 +2304,7 @@ class ConsultorioApp {
     if (!code) return String(this.firebaseLastErrorMessage || '').trim();
 
     if (code === 'auth/configuration-not-found') {
-      return 'Configuração Auth não encontrada. Verifique se apiKey/authDomain pertencem ao projeto consultorio-a07c8 e habilite Authentication no Console.';
+      return 'Configuração Auth não encontrada. Verifique se apiKey/authDomain pertencem ao projeto consultorio-patricia e habilite Authentication no Console.';
     }
     if (code === 'auth/operation-not-allowed') {
       return 'Ative Anonymous em Firebase Authentication > Sign-in method.';
@@ -2354,7 +2378,7 @@ class ConsultorioApp {
       { state: 'pending', text: 'Validando acesso ao Firestore...' }
     ]);
 
-    const config = this.firebaseConfig || this.loadFirebaseConfig() || DEFAULT_FIREBASE_CONFIG;
+    const config = normalizeFirebaseConfig(this.firebaseConfig || this.loadFirebaseConfig() || DEFAULT_FIREBASE_CONFIG);
     const hasCoreConfig = Boolean(config && config.apiKey && config.authDomain && config.projectId && config.appId);
     const hasFirebaseSdk = Boolean(window.firebase && window.firebase.apps && window.firebase.firestore);
     const hasAuthSdk = Boolean(window.firebase && window.firebase.auth);
@@ -2408,7 +2432,7 @@ class ConsultorioApp {
 
   async initFirebase() {
     const input = document.getElementById('cfg-firebase-json');
-    const config = this.firebaseConfig || this.loadFirebaseConfig() || DEFAULT_FIREBASE_CONFIG;
+    const config = normalizeFirebaseConfig(this.firebaseConfig || this.loadFirebaseConfig() || DEFAULT_FIREBASE_CONFIG);
 
     if (!config || !config.projectId) {
       this.setFirebaseStatus(false, 'Configure o JSON do Firebase', 'local');

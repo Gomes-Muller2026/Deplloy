@@ -2609,21 +2609,41 @@ class ConsultorioApp {
     if (!this.firebaseDb) return;
     try {
       const operations = [];
+      const localIdsByCollection = {
+        clients: new Set(),
+        appointments: new Set(),
+        expenses: new Set()
+      };
 
       this.clients.forEach((client) => {
         if (!client.id) return;
-        operations.push({ collection: 'clients', id: String(client.id), data: client });
+        const id = String(client.id);
+        localIdsByCollection.clients.add(id);
+        operations.push({ type: 'set', collection: 'clients', id, data: client });
       });
 
       this.appointments.forEach((appt) => {
         if (!appt.id) return;
-        operations.push({ collection: 'appointments', id: String(appt.id), data: appt });
+        const id = String(appt.id);
+        localIdsByCollection.appointments.add(id);
+        operations.push({ type: 'set', collection: 'appointments', id, data: appt });
       });
 
       this.expenses.forEach((expense) => {
         if (!expense.id) return;
-        operations.push({ collection: 'expenses', id: String(expense.id), data: expense });
+        const id = String(expense.id);
+        localIdsByCollection.expenses.add(id);
+        operations.push({ type: 'set', collection: 'expenses', id, data: expense });
       });
+
+      const collections = ['clients', 'appointments', 'expenses'];
+      for (const collectionName of collections) {
+        const snapshot = await this.firebaseDb.collection(collectionName).get();
+        snapshot.docs.forEach((doc) => {
+          if (localIdsByCollection[collectionName].has(doc.id)) return;
+          operations.push({ type: 'delete', collection: collectionName, id: doc.id });
+        });
+      }
 
       const maxBatchSize = 450;
       for (let index = 0; index < operations.length; index += maxBatchSize) {
@@ -2632,6 +2652,11 @@ class ConsultorioApp {
 
         chunk.forEach((operation) => {
           const ref = this.firebaseDb.collection(operation.collection).doc(operation.id);
+          if (operation.type === 'delete') {
+            batch.delete(ref);
+            return;
+          }
+
           batch.set(ref, operation.data);
         });
 

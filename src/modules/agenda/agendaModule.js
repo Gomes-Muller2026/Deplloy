@@ -27,7 +27,7 @@ const agendaModule = {
       app.showToast('Consulta agendada com sucesso.', 'success');
     }
 
-    app.saveStore();
+    app.saveData();
     app.render();
     app.closeAppointmentModal();
   },
@@ -35,7 +35,7 @@ const agendaModule = {
   deleteAppointment(app, appointmentId) {
     if (!confirm('Deseja realmente excluir esta consulta?')) return;
     app.appointments = app.appointments.filter((a) => a.id !== appointmentId);
-    app.saveStore();
+    app.saveData();
     app.render();
     app.showToast('Consulta excluída com sucesso.', 'success');
   },

@@ -28,7 +28,7 @@ const clientModule = {
 
     app.rememberClientGroup(normalized.group);
 
-    app.saveStore();
+    app.saveData();
     app.render();
     app.closeClientModal();
   },
@@ -37,7 +37,7 @@ const clientModule = {
     if (!confirm('Deseja realmente excluir este cliente?')) return;
     app.clients = app.clients.filter((c) => c.id !== clientId);
     app.appointments = app.appointments.filter((a) => a.clientId !== clientId);
-    app.saveStore();
+    app.saveData();
     app.render();
     app.showToast('Cliente excluído com sucesso.', 'success');
   }

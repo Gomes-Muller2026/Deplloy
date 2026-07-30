@@ -24,7 +24,7 @@ const financeiroModule = {
       app.showToast('Despesa cadastrada com sucesso.', 'success');
     }
 
-    app.saveStore();
+    app.saveData();
     app.render();
     app.closeExpenseModal();
   },
@@ -32,7 +32,7 @@ const financeiroModule = {
   deleteExpense(app, expenseId) {
     if (!confirm('Deseja realmente excluir esta despesa?')) return;
     app.expenses = app.expenses.filter((e) => e.id !== expenseId);
-    app.saveStore();
+    app.saveData();
     app.render();
     app.showToast('Despesa excluída com sucesso.', 'success');
   }

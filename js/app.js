@@ -2573,12 +2573,13 @@ class ConsultorioApp {
 
       for (const item of collections) {
         const snapshot = await this.firebaseDb.collection(item.name).get();
-        if (!snapshot.empty) {
-          const remoteData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-          if (item.name === 'clients') this.clients = remoteData;
-          if (item.name === 'appointments') this.appointments = remoteData;
-          if (item.name === 'expenses') this.expenses = remoteData;
-        }
+        const remoteData = snapshot.empty
+          ? []
+          : snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+        if (item.name === 'clients') this.clients = remoteData;
+        if (item.name === 'appointments') this.appointments = remoteData;
+        if (item.name === 'expenses') this.expenses = remoteData;
       }
 
       this.saveStore();
@@ -2593,27 +2594,35 @@ class ConsultorioApp {
   async pushAllDataToFirebase() {
     if (!this.firebaseDb) return;
     try {
-      const batch = this.firebaseDb.batch();
+      const operations = [];
 
       this.clients.forEach((client) => {
         if (!client.id) return;
-        const ref = this.firebaseDb.collection('clients').doc(String(client.id));
-        batch.set(ref, client);
+        operations.push({ collection: 'clients', id: String(client.id), data: client });
       });
 
       this.appointments.forEach((appt) => {
         if (!appt.id) return;
-        const ref = this.firebaseDb.collection('appointments').doc(String(appt.id));
-        batch.set(ref, appt);
+        operations.push({ collection: 'appointments', id: String(appt.id), data: appt });
       });
 
       this.expenses.forEach((expense) => {
         if (!expense.id) return;
-        const ref = this.firebaseDb.collection('expenses').doc(String(expense.id));
-        batch.set(ref, expense);
+        operations.push({ collection: 'expenses', id: String(expense.id), data: expense });
       });
 
-      await batch.commit();
+      const maxBatchSize = 450;
+      for (let index = 0; index < operations.length; index += maxBatchSize) {
+        const batch = this.firebaseDb.batch();
+        const chunk = operations.slice(index, index + maxBatchSize);
+
+        chunk.forEach((operation) => {
+          const ref = this.firebaseDb.collection(operation.collection).doc(operation.id);
+          batch.set(ref, operation.data);
+        });
+
+        await batch.commit();
+      }
     } catch (err) {
       console.log('Falha ao enviar dados para o Firestore:', err);
       throw err;
@@ -4741,7 +4750,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260730-6', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260730-7', 'app-root')
       ]);
     }
   } catch (err) {

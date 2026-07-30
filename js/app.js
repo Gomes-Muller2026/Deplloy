@@ -2933,6 +2933,8 @@ class ConsultorioApp {
       if (el) el.textContent = String(value);
     };
 
+    const currentUserName = this.getSignatureName();
+
     setText('dash-consultas-hoje', todayApps.length);
     setText('dash-consultas-hoje-sub', `${doneToday} concluídas`);
     setText('dash-received-month', formatCurrency(received));
@@ -2941,6 +2943,9 @@ class ConsultorioApp {
     setText('dash-result-total', formatCurrency(result));
     setText('dash-result-sub', result > 0 ? `Superávit de ${formatCurrency(result)}` : (result < 0 ? `Déficit de ${formatCurrency(Math.abs(result))}` : 'Equilíbrio no período'));
     setText('dash-total-clients', this.clients.length);
+    setText('dash-current-user', currentUserName);
+    setText('dash-current-user-sub', 'Usuário da sessão atual');
+    setText('header-current-user-name', `Olá, ${currentUserName}`);
     setText('nav-pending-badge', this.appointments.filter((a) => toNumber(a.price) - toNumber(a.amountPaid) > 0).length);
 
     const dashToday = document.getElementById('dash-today-list');

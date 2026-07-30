@@ -130,6 +130,10 @@
               <i data-lucide="refresh-cw"></i>
               <span>Atualizar Agora</span>
             </button>
+            <span id="header-current-user" class="header-user-pill" title="Usuário da sessão atual">
+              <i data-lucide="user-round"></i>
+              <span id="header-current-user-name">-</span>
+            </span>
             <button class="btn btn-secondary btn-icon-text" id="btn-header-new-client" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="user-plus"></i><span>Novo Paciente</span></button>
             <button class="btn btn-secondary btn-icon-text" id="btn-open-birthdays"><i data-lucide="cake"></i><span>Aniversários</span><span class="btn-notification-badge">0</span></button>
             <button class="btn btn-secondary btn-icon-text" id="btn-logout-session"><i data-lucide="log-out"></i><span>Sair</span></button>
@@ -183,6 +187,15 @@
                 <span class="stat-sub">Cadastrados no sistema</span>
               </div>
             </button>
+
+            <div class="stat-card card-cyan" id="dash-card-current-user" aria-label="Usuário atual">
+              <div class="stat-icon"><i data-lucide="user-round"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Usuário Atual</span>
+                <h3 class="stat-value" id="dash-current-user">-</h3>
+                <span class="stat-sub" id="dash-current-user-sub">Sessão ativa</span>
+              </div>
+            </div>
           </div>
 
           <div class="dashboard-grid">

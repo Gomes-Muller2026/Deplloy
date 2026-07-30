@@ -458,6 +458,32 @@ img {
   border-color: rgba(251, 113, 133, 0.42);
 }
 
+.header-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.46rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 211, 238, 0.34);
+  background: linear-gradient(145deg, rgba(34, 211, 238, 0.2), rgba(15, 23, 42, 0.76));
+  color: #e0f2fe;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: 230px;
+}
+
+.header-user-pill i {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+#header-current-user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .firebase-auth-meta.auth-offline {
   color: var(--text-muted);
   border-color: rgba(148, 163, 184, 0.24);
@@ -1258,6 +1284,21 @@ input[type="date"]:focus {
 }
 .card-purple::after { background: radial-gradient(circle, rgba(167,139,250,0.9), transparent 65%); }
 .card-purple .stat-icon { background: rgba(139,92,246,0.24); color: #c4b5fd; }
+
+.card-cyan {
+  background: linear-gradient(145deg,
+    rgba(34, 211, 238, 0.32) 0%,
+    rgba(14, 116, 144, 0.24) 55%,
+    rgba(7, 17, 31, 0.62) 100%);
+}
+.card-cyan::after { background: radial-gradient(circle, rgba(34,211,238,0.9), transparent 65%); }
+.card-cyan .stat-icon { background: rgba(6,182,212,0.24); color: #a5f3fc; }
+
+#dash-current-user {
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
 
 .stat-card.result-positive {
   background: linear-gradient(145deg, rgba(34,197,94,0.32) 0%, rgba(6,78,59,0.22) 55%, rgba(7,17,31,0.72) 100%);

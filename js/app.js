@@ -167,6 +167,20 @@ const getLoginCredentials = () => {
   }
 };
 
+const setLoginCredentials = (username, password) => {
+  const safeUser = String(username || '').trim();
+  const safePass = String(password || '');
+  if (!safeUser || !safePass) return false;
+
+  try {
+    localStorage.setItem(LOGIN_USER_STORAGE_KEY, safeUser);
+    localStorage.setItem(LOGIN_PASSWORD_STORAGE_KEY, safePass);
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
+
 class ConsultorioApp {
   constructor() {
     this.clients = [];
@@ -200,6 +214,8 @@ class ConsultorioApp {
     this.lastDashboardCardActionAt = 0;
     this.lastAnamneseIndividualCepLookup = '';
     this.selectedClientReportIds = new Set();
+    this.selectedFinanceReportClientIds = new Set();
+    this.lastFinanceiroRows = [];
     this.loadStore();
     this.loadWhatsAppTemplates();
   }
@@ -791,6 +807,98 @@ class ConsultorioApp {
     console.log(`[${level}] ${message}`);
   }
 
+  prefillSenhaTabFields() {
+    const creds = getLoginCredentials();
+    const currentUser = document.getElementById('senha-current-user');
+    const newUser = document.getElementById('novo-user-name');
+
+    if (currentUser) currentUser.value = creds.username || '';
+    if (newUser && !String(newUser.value || '').trim()) newUser.value = creds.username || '';
+  }
+
+  handleChangePasswordForm() {
+    const currentPassword = String((document.getElementById('senha-current-pass') || {}).value || '');
+    const newPassword = String((document.getElementById('senha-new-pass') || {}).value || '');
+    const confirmPassword = String((document.getElementById('senha-confirm-pass') || {}).value || '');
+    const creds = getLoginCredentials();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      this.showToast('Preencha todos os campos para alterar a senha.', 'warning');
+      return;
+    }
+
+    if (currentPassword !== creds.password) {
+      this.showToast('Senha atual incorreta.', 'warning');
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      this.showToast('A nova senha deve ter ao menos 4 caracteres.', 'warning');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      this.showToast('A confirmação da nova senha não confere.', 'warning');
+      return;
+    }
+
+    if (!setLoginCredentials(creds.username, newPassword)) {
+      this.showToast('Não foi possível salvar a nova senha.', 'warning');
+      return;
+    }
+
+    const form = document.getElementById('form-change-password');
+    if (form) form.reset();
+
+    const currentUser = document.getElementById('senha-current-user');
+    if (currentUser) currentUser.value = creds.username || '';
+
+    const loginUserInput = document.getElementById('login-username');
+    if (loginUserInput) loginUserInput.value = creds.username || '';
+
+    this.showToast('Senha alterada com sucesso.', 'success');
+  }
+
+  handleCreateUserForm() {
+    const newUsername = String((document.getElementById('novo-user-name') || {}).value || '').trim();
+    const newPassword = String((document.getElementById('novo-user-pass') || {}).value || '');
+    const confirmPassword = String((document.getElementById('novo-user-pass-confirm') || {}).value || '');
+
+    if (!newUsername || !newPassword || !confirmPassword) {
+      this.showToast('Preencha usuário e senha para criar o novo acesso.', 'warning');
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      this.showToast('A senha do novo usuário deve ter ao menos 4 caracteres.', 'warning');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      this.showToast('A confirmação da senha do novo usuário não confere.', 'warning');
+      return;
+    }
+
+    if (!setLoginCredentials(newUsername, newPassword)) {
+      this.showToast('Não foi possível salvar o novo usuário.', 'warning');
+      return;
+    }
+
+    const form = document.getElementById('form-create-user');
+    if (form) form.reset();
+
+    const newUser = document.getElementById('novo-user-name');
+    if (newUser) newUser.value = newUsername;
+
+    const currentUser = document.getElementById('senha-current-user');
+    if (currentUser) currentUser.value = newUsername;
+
+    const loginUserInput = document.getElementById('login-username');
+    if (loginUserInput) loginUserInput.value = newUsername;
+
+    this.showToast('Novo usuário cadastrado com sucesso.', 'success');
+  }
+
   initDOM() {
     ensureLoginCredentials();
 
@@ -809,6 +917,7 @@ class ConsultorioApp {
     this.loadSoundSettings();
     this.updateSoundControlsUI();
     this.populateClientGroupOptions();
+    this.prefillSenhaTabFields();
     this.prefillFirebaseConfig();
     this.updateCloudSyncMeta('Modo local', 'local');
   }
@@ -911,6 +1020,13 @@ class ConsultorioApp {
     const loginUserInput = document.getElementById('login-username');
     const loginPassInput = document.getElementById('login-password');
     const showPassInput = document.getElementById('login-show-password');
+    const changePasswordForm = document.getElementById('form-change-password');
+    const createUserForm = document.getElementById('form-create-user');
+    const toggleSenhaCurrent = document.getElementById('senha-toggle-current');
+    const toggleSenhaNew = document.getElementById('senha-toggle-new');
+    const toggleSenhaConfirm = document.getElementById('senha-toggle-confirm');
+    const toggleNovoUserPass = document.getElementById('novo-user-toggle-pass');
+    const toggleNovoUserConfirm = document.getElementById('novo-user-toggle-confirm');
 
     if (loginForm) {
       loginForm.addEventListener('submit', (event) => {
@@ -933,6 +1049,55 @@ class ConsultorioApp {
     if (showPassInput && loginPassInput) {
       showPassInput.addEventListener('change', () => {
         loginPassInput.type = showPassInput.checked ? 'text' : 'password';
+      });
+    }
+
+    if (changePasswordForm) {
+      changePasswordForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.handleChangePasswordForm();
+      });
+    }
+
+    if (createUserForm) {
+      createUserForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.handleCreateUserForm();
+      });
+    }
+
+    if (toggleSenhaCurrent) {
+      toggleSenhaCurrent.addEventListener('change', () => {
+        const input = document.getElementById('senha-current-pass');
+        if (input) input.type = toggleSenhaCurrent.checked ? 'text' : 'password';
+      });
+    }
+
+    if (toggleSenhaNew) {
+      toggleSenhaNew.addEventListener('change', () => {
+        const input = document.getElementById('senha-new-pass');
+        if (input) input.type = toggleSenhaNew.checked ? 'text' : 'password';
+      });
+    }
+
+    if (toggleSenhaConfirm) {
+      toggleSenhaConfirm.addEventListener('change', () => {
+        const input = document.getElementById('senha-confirm-pass');
+        if (input) input.type = toggleSenhaConfirm.checked ? 'text' : 'password';
+      });
+    }
+
+    if (toggleNovoUserPass) {
+      toggleNovoUserPass.addEventListener('change', () => {
+        const input = document.getElementById('novo-user-pass');
+        if (input) input.type = toggleNovoUserPass.checked ? 'text' : 'password';
+      });
+    }
+
+    if (toggleNovoUserConfirm) {
+      toggleNovoUserConfirm.addEventListener('change', () => {
+        const input = document.getElementById('novo-user-pass-confirm');
+        if (input) input.type = toggleNovoUserConfirm.checked ? 'text' : 'password';
       });
     }
 
@@ -1477,7 +1642,9 @@ class ConsultorioApp {
       'btn-report-patient-individual': () => this.generatePacienteIndividualReport(false),
       'btn-print-patient-individual': () => this.generatePacienteIndividualReport(true),
       'btn-print-client-individual': () => this.printClientIndividualReport(),
-      'btn-print-selected-clients': () => this.printSelectedClientsReports()
+      'btn-print-selected-clients': () => this.printSelectedClientsReports(),
+      'btn-print-selected-finance': () => this.printSelectedFinanceiroReports(),
+      'btn-print-total-finance': () => this.printFinanceiroTotalReport()
     };
 
     Object.keys(reportHandlers).forEach((id) => {
@@ -1655,6 +1822,7 @@ class ConsultorioApp {
     const errorEl = document.getElementById('login-error');
     const passInput = document.getElementById('login-password');
     const showPassInput = document.getElementById('login-show-password');
+    const userInput = document.getElementById('login-username');
 
     if (loginScreen) loginScreen.classList.remove('app-hidden');
     if (appShell) appShell.classList.add('app-hidden');
@@ -1671,6 +1839,10 @@ class ConsultorioApp {
     if (passInput) {
       passInput.value = '';
       passInput.type = 'password';
+    }
+    if (userInput) {
+      const creds = getLoginCredentials();
+      userInput.value = creds.username || '';
     }
     if (showPassInput) showPassInput.checked = false;
 
@@ -2402,13 +2574,16 @@ class ConsultorioApp {
     }
 
     rows.sort((a, b) => b.pending - a.pending);
+    this.lastFinanceiroRows = rows.slice();
 
     if (!rows.length) {
+      this.lastFinanceiroRows = [];
       tbody.innerHTML = `
         <tr>
-          <td colspan="7"><div class="empty-state"><p>Nenhum registro financeiro encontrado.</p></div></td>
+          <td colspan="8"><div class="empty-state"><p>Nenhum registro financeiro encontrado.</p></div></td>
         </tr>
       `;
+      this.updateFinancePrintSelectionUI();
       return;
     }
 
@@ -2420,6 +2595,14 @@ class ConsultorioApp {
       const rowActionLabel = r.pending > 0 ? 'Baixar' : 'Editar';
       return `
         <tr>
+          <td>
+            <input
+              type="checkbox"
+              class="finance-print-check"
+              data-finance-client-id="${safeText(r.clientId || '')}"
+              ${this.selectedFinanceReportClientIds.has(r.clientId) ? 'checked' : ''}
+              onchange="app.toggleFinanceReportSelection('${safeText(r.clientId)}', this.checked)">
+          </td>
           <td>
             <button class="finance-client-link" type="button" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')">${safeText(r.clientName)}</button>
           </td>
@@ -2436,6 +2619,122 @@ class ConsultorioApp {
         </tr>
       `;
     }).join('');
+
+    this.updateFinancePrintSelectionUI();
+  }
+
+  toggleFinanceReportSelection(clientId, checked) {
+    const key = String(clientId || '').trim();
+    if (!key) return;
+
+    if (checked) this.selectedFinanceReportClientIds.add(key);
+    else this.selectedFinanceReportClientIds.delete(key);
+
+    this.updateFinancePrintSelectionUI();
+  }
+
+  toggleAllVisibleFinanceReports(checked) {
+    const checkboxes = Array.from(document.querySelectorAll('#financeiro-table-body .finance-print-check'));
+    checkboxes.forEach((checkbox) => {
+      const clientId = String(checkbox.getAttribute('data-finance-client-id') || '').trim();
+      if (!clientId) return;
+
+      checkbox.checked = Boolean(checked);
+      if (checked) this.selectedFinanceReportClientIds.add(clientId);
+      else this.selectedFinanceReportClientIds.delete(clientId);
+    });
+
+    this.updateFinancePrintSelectionUI();
+  }
+
+  updateFinancePrintSelectionUI() {
+    const rows = Array.isArray(this.lastFinanceiroRows) ? this.lastFinanceiroRows : [];
+    const selectedCount = rows.filter((row) => this.selectedFinanceReportClientIds.has(String(row.clientId || ''))).length;
+
+    const btnPrintSelected = document.getElementById('btn-print-selected-finance');
+    if (btnPrintSelected) {
+      btnPrintSelected.disabled = selectedCount === 0;
+      btnPrintSelected.innerHTML = `<i data-lucide="printer"></i> Imprimir Selecionados (${selectedCount})`;
+    }
+
+    const btnPrintTotal = document.getElementById('btn-print-total-finance');
+    if (btnPrintTotal) {
+      btnPrintTotal.disabled = rows.length === 0;
+    }
+
+    const selectAll = document.getElementById('financeiro-select-all-print');
+    if (selectAll) {
+      const checkboxes = Array.from(document.querySelectorAll('#financeiro-table-body .finance-print-check'));
+      const totalVisible = checkboxes.length;
+      const visibleChecked = checkboxes.filter((checkbox) => checkbox.checked).length;
+      selectAll.checked = totalVisible > 0 && visibleChecked === totalVisible;
+      selectAll.indeterminate = visibleChecked > 0 && visibleChecked < totalVisible;
+    }
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  buildFinanceiroRowsReportLines(rows) {
+    const safeRows = Array.isArray(rows) ? rows : [];
+    const grandTotal = safeRows.reduce((sum, row) => sum + toNumber(row.total), 0);
+    const grandPaid = safeRows.reduce((sum, row) => sum + toNumber(row.paid), 0);
+    const grandPending = safeRows.reduce((sum, row) => sum + toNumber(row.pending), 0);
+
+    const lines = [
+      'RELATÓRIO FINANCEIRO',
+      '',
+      `Filtro atual: ${this.financeViewFilter === 'pending' ? 'Pendentes' : (this.financeViewFilter === 'paid' ? 'Recebidos' : 'Todos')}`,
+      `Clientes no relatório: ${safeRows.length}`,
+      `Total lançado: ${formatCurrency(grandTotal)}`,
+      `Total pago: ${formatCurrency(grandPaid)}`,
+      `Total pendente: ${formatCurrency(grandPending)}`,
+      '',
+      'Detalhamento por cliente:'
+    ];
+
+    safeRows.forEach((row) => {
+      const status = row.pending > 0 ? (row.paid > 0 ? 'Parcial' : 'Pendente') : 'Pago';
+      lines.push(`- ${row.clientName || 'Sem cliente'} | Qtd: ${row.qty} | Total: ${formatCurrency(row.total)} | Pendente: ${formatCurrency(row.pending)} | Pago: ${formatCurrency(row.paid)} | Status: ${status}`);
+
+      const appointmentDetails = this.appointments
+        .filter((appt) => String(appt.clientId || '') === String(row.clientId || ''))
+        .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
+
+      appointmentDetails.forEach((appt) => {
+        const price = toNumber(appt.price);
+        const paid = toNumber(appt.amountPaid);
+        const open = Math.max(0, price - paid);
+        lines.push(`  • ${formatDateBR(appt.date)} ${appt.time || ''} | ${appt.procedure || '-'} | Total: ${formatCurrency(price)} | Pago: ${formatCurrency(paid)} | Aberto: ${formatCurrency(open)} | ${appt.status || '-'}`);
+      });
+
+      lines.push('');
+    });
+
+    return lines;
+  }
+
+  printSelectedFinanceiroReports() {
+    const rows = (this.lastFinanceiroRows || []).filter((row) => this.selectedFinanceReportClientIds.has(String(row.clientId || '')));
+    if (!rows.length) {
+      this.showToast('Marque ao menos um cliente no financeiro para imprimir.', 'warning');
+      return;
+    }
+
+    const lines = this.buildFinanceiroRowsReportLines(rows);
+    this.openReportWindow('Relatório Financeiro (Selecionados)', lines.join('\n'), true);
+  }
+
+  printFinanceiroTotalReport() {
+    const rows = this.lastFinanceiroRows || [];
+    if (!rows.length) {
+      this.showToast('Não há dados financeiros no filtro atual para imprimir.', 'warning');
+      return;
+    }
+
+    const lines = this.buildFinanceiroRowsReportLines(rows);
+    this.openReportWindow('Relatório Financeiro (Total)', lines.join('\n'), true);
   }
 
   openLatestAppointmentByClient(clientId) {
@@ -3127,28 +3426,64 @@ class ConsultorioApp {
   }
 
   openReportWindow(title, content, autoPrint = false) {
-    const popup = window.open('', '_blank', 'noopener');
-    if (!popup) return;
+    const popup = window.open('', '_blank');
+    if (!popup) {
+      this.showToast('Permita pop-ups para gerar o PDF do relatório.', 'warning');
+      return;
+    }
 
-    popup.document.write(`
-      <html>
+    const logoUrl = new URL('./assets/icons/icon-512.png', window.location.href).href;
+
+    const html = `
+      <!doctype html>
+      <html lang="pt-BR">
         <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>${safeText(title)}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 24px; white-space: pre-wrap; line-height: 1.5; }
-            h1 { font-size: 20px; margin: 0 0 12px 0; }
+            body { font-family: Arial, sans-serif; padding: 24px; white-space: pre-wrap; line-height: 1.5; color: #0f172a; }
+            .report-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; border-bottom: 2px solid #d1d5db; padding-bottom: 10px; }
+            .report-logo { width: 42px; height: 42px; border-radius: 10px; object-fit: cover; border: 1px solid #cbd5e1; }
+            .report-title-wrap { display: flex; flex-direction: column; gap: 2px; }
+            h1 { font-size: 20px; margin: 0; }
+            .report-meta { font-size: 12px; color: #334155; }
+            .report-content { font-size: 14px; }
+            @media print {
+              body { padding: 12px; }
+            }
           </style>
         </head>
         <body>
-          <h1>${safeText(title)}</h1>
-          <div>${safeText(content).replace(/\n/g, '<br>')}</div>
+          <div class="report-header">
+            <img class="report-logo" src="${logoUrl}" alt="Logo" onerror="this.style.display='none'">
+            <div class="report-title-wrap">
+              <h1>${safeText(title)}</h1>
+              <div class="report-meta">Emitido em: ${new Date().toLocaleString('pt-BR')}</div>
+            </div>
+          </div>
+          <div class="report-content">${safeText(content).replace(/\n/g, '<br>')}</div>
         </body>
       </html>
-    `);
+    `;
+
+    popup.document.open();
+    popup.document.write(html);
     popup.document.close();
+
     if (autoPrint) {
-      popup.focus();
-      popup.print();
+      const triggerPrint = () => {
+        try {
+          popup.focus();
+          popup.print();
+        } catch (err) {
+          this.showToast('Não foi possível abrir a impressão automaticamente.', 'warning');
+        }
+      };
+
+      // Some browsers need a small delay after document render.
+      popup.addEventListener('load', () => setTimeout(triggerPrint, 120), { once: true });
+      setTimeout(triggerPrint, 300);
     }
   }
 
@@ -3264,25 +3599,39 @@ class ConsultorioApp {
 
   buildPacienteIndividualReportLines(patient) {
     const patientAppointments = this.getPatientAppointments(patient.id);
-    const total = patientAppointments.reduce((sum, a) => sum + toNumber(a.price), 0);
-    const paid = patientAppointments.reduce((sum, a) => sum + toNumber(a.amountPaid), 0);
-    const pending = Math.max(0, total - paid);
+    const fullAddress = [
+      patient.street,
+      patient.number ? `Nº ${patient.number}` : '',
+      patient.complement,
+      patient.neighborhood,
+      patient.city,
+      patient.state,
+      patient.cep
+    ].filter((part) => String(part || '').trim()).join(' - ');
 
     return [
       `RELATÓRIO INDIVIDUAL - ${patient.name || '-'}`,
       '',
+      'FICHA DE CADASTRO',
+      '',
       `Cadastro: ${patient.registrationNumber || '-'}`,
+      `Nome: ${patient.name || '-'}`,
       `Telefone: ${patient.phone || '-'}`,
       `E-mail: ${patient.email || '-'}`,
       `CPF: ${patient.cpf || '-'}`,
+      `RG: ${patient.rg || '-'}`,
+      `Nascimento: ${patient.dob ? formatDateBR(patient.dob) : '-'}`,
+      `Grupo: ${patient.group || '-'}`,
+      `Endereço: ${fullAddress || '-'}`,
+      `Contato de emergência: ${patient.emergencyName || '-'} | ${patient.emergencyPhone || '-'} | ${patient.emergencyRelation || '-'}`,
+      `Observações: ${patient.notes || '-'}`,
+      '',
+      'ATENDIMENTOS',
       '',
       `Total de consultas: ${patientAppointments.length}`,
-      `Valor total: ${formatCurrency(total)}`,
-      `Valor pago: ${formatCurrency(paid)}`,
-      `Valor em aberto: ${formatCurrency(pending)}`,
       '',
       'Histórico:',
-      ...patientAppointments.map((a) => `- ${formatDateBR(a.date)} ${a.time || ''} | ${a.procedure || '-'} | ${formatCurrency(a.price)} | Pago: ${formatCurrency(a.amountPaid || 0)} | ${a.status || '-'}`)
+      ...patientAppointments.map((a) => `- ${formatDateBR(a.date)} ${a.time || ''} | ${a.procedure || '-'} | Status: ${a.status || '-'}`)
     ];
   }
 

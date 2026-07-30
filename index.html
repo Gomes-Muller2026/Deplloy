@@ -318,6 +318,10 @@
               <button class="btn btn-secondary btn-sm" type="button" data-finance-view="pending" onclick="app.financeViewFilter='pending';app.renderFinanceiroTable()">Pendentes</button>
               <button class="btn btn-secondary btn-sm" type="button" data-finance-view="paid" onclick="app.financeViewFilter='paid';app.renderFinanceiroTable()">Recebidos</button>
             </div>
+            <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+              <button class="btn btn-secondary" id="btn-print-selected-finance" type="button" onclick="app.printSelectedFinanceiroReports()" ontouchstart="app.printSelectedFinanceiroReports()" disabled><i data-lucide="printer"></i> Imprimir Selecionados (0)</button>
+              <button class="btn btn-primary" id="btn-print-total-finance" type="button" onclick="app.printFinanceiroTotalReport()" ontouchstart="app.printFinanceiroTotalReport()"><i data-lucide="file-text"></i> Imprimir Total</button>
+            </div>
           </div>
           <div class="card">
             <div class="card-body">
@@ -325,6 +329,7 @@
                 <table class="data-table">
                   <thead>
                     <tr>
+                      <th style="width:52px;text-align:center;"><input type="checkbox" id="financeiro-select-all-print" title="Selecionar todos visíveis" onchange="app.toggleAllVisibleFinanceReports(this.checked)"></th>
                       <th>Cliente</th>
                       <th>Qtd</th>
                       <th>Total</th>
@@ -439,7 +444,66 @@
         </section>
 
         <section class="tab-content" id="tab-senha">
-          <div class="card"><div class="card-body"><p>Alteração de senha simplificada nesta versão.</p></div></div>
+          <div class="config-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3><i data-lucide="lock"></i> Alterar Senha</h3>
+              </div>
+              <form id="form-change-password" class="card-body">
+                <div class="form-group">
+                  <label for="senha-current-user">Usuário atual</label>
+                  <input type="text" id="senha-current-user" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                  <label for="senha-current-pass">Senha atual</label>
+                  <input type="password" id="senha-current-pass" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label for="senha-new-pass">Nova senha</label>
+                  <input type="password" id="senha-new-pass" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label for="senha-confirm-pass">Confirmar nova senha</label>
+                  <input type="password" id="senha-confirm-pass" class="form-control" required>
+                </div>
+                <div class="grid-2" style="margin-top:0.6rem; gap:0.5rem;">
+                  <label class="login-show-password"><input type="checkbox" id="senha-toggle-current"> Mostrar senha atual</label>
+                  <label class="login-show-password"><input type="checkbox" id="senha-toggle-new"> Mostrar nova senha</label>
+                  <label class="login-show-password"><input type="checkbox" id="senha-toggle-confirm"> Mostrar confirmação</label>
+                </div>
+                <div class="config-actions" style="margin-top:0.9rem;">
+                  <button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Salvar Nova Senha</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3><i data-lucide="user-plus"></i> Cadastrar Novo Usuário</h3>
+              </div>
+              <form id="form-create-user" class="card-body">
+                <div class="form-group">
+                  <label for="novo-user-name">Novo usuário</label>
+                  <input type="text" id="novo-user-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label for="novo-user-pass">Senha</label>
+                  <input type="password" id="novo-user-pass" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label for="novo-user-pass-confirm">Confirmar senha</label>
+                  <input type="password" id="novo-user-pass-confirm" class="form-control" required>
+                </div>
+                <div class="grid-2" style="margin-top:0.6rem; gap:0.5rem;">
+                  <label class="login-show-password"><input type="checkbox" id="novo-user-toggle-pass"> Mostrar senha</label>
+                  <label class="login-show-password"><input type="checkbox" id="novo-user-toggle-confirm"> Mostrar confirmação</label>
+                </div>
+                <div class="config-actions" style="margin-top:0.9rem;">
+                  <button class="btn btn-primary" type="submit"><i data-lucide="user-check"></i> Cadastrar Usuário</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </section>
 
         <section class="tab-content" id="tab-graficos">

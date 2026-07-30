@@ -1190,28 +1190,45 @@ input[type="date"]:focus {
 
 .pending-mini-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 0.75rem 0.9rem;
+  width: calc(100% - 0.5rem);
+  margin: 0 auto;
+  gap: 0.55rem;
+  padding: 0.62rem 0.78rem;
   background-color: rgba(15, 23, 42, 0.72);
 
   border-left: 4px solid var(--warning);
   border-radius: var(--radius-sm);
 }
 
+.pending-mini-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
 .pending-mini-info h4 {
-  font-size: 0.95rem;
+  margin: 0;
+  font-size: 0.92rem;
   font-weight: 700;
+  line-height: 1.25;
   color: var(--text-main);
+  word-break: break-word;
 }
 
 .pending-mini-info p {
-  font-size: 0.82rem;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.3;
   color: rgba(226, 232, 240, 0.95);
+  word-break: break-word;
 }
 
 .pending-mini-val {
-  font-size: 0.95rem;
+  flex: 0 0 auto;
+  font-size: 0.9rem;
   font-weight: 900;
   color: #f8fafc;
   text-shadow: 0 1px 0 rgba(15, 23, 42, 0.15);
@@ -1220,9 +1237,11 @@ input[type="date"]:focus {
 .dash-bubble-item {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 0.6rem;
+  width: calc(100% - 0.6rem);
+  margin: 0 auto;
+  gap: 0.45rem;
   align-items: center;
-  padding: 0.55rem 0.85rem;
+  padding: 0.5rem 0.72rem;
   border-radius: 12px;
   border: 1px solid rgba(148, 163, 184, 0.28);
   background: rgba(15, 23, 42, 0.58);
@@ -1272,15 +1291,17 @@ input[type="date"]:focus {
 .dash-bubble-content strong {
   display: block;
   color: var(--text-main);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   line-height: 1.2;
+  word-break: break-word;
 }
 
 .dash-bubble-content p {
   margin: 0.08rem 0 0;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   line-height: 1.25;
+  word-break: break-word;
 }
 
 .dash-status-chip,
@@ -1289,8 +1310,8 @@ input[type="date"]:focus {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  padding: 0.35rem 0.7rem;
-  font-size: 0.82rem;
+  padding: 0.3rem 0.62rem;
+  font-size: 0.78rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -2077,6 +2098,18 @@ input[type="date"]:focus {
 }
 
 #clientes-table-body td:first-child {
+  text-align: center;
+}
+
+#financeiro-select-all-print,
+.finance-print-check {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+#financeiro-table-body td:first-child {
   text-align: center;
 }
 /* Form Controls */

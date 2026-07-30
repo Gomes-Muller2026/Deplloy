@@ -255,6 +255,8 @@ class ConsultorioApp {
     this.reminderIntervalId = null;
     this.reminderNotifiedKeys = new Set();
     this.reminderCheckIntervalMs = 30000;
+    this.firebaseSyncIntervalId = null;
+    this.firebaseSyncIntervalMs = 5 * 60 * 1000;
     this.loadStore();
     this.loadWhatsAppTemplates();
   }
@@ -335,8 +337,8 @@ class ConsultorioApp {
 
     if (this.firebaseConnected && this.firebaseDb) {
       // Sync in background; UI should not block local save flow.
-      void this.syncDataWithFirebase().catch((err) => {
-        console.log('Falha ao sincronizar após salvar:', err);
+      void this.pushAllDataToFirebase().catch((err) => {
+        console.log('Falha ao enviar dados para o Firebase:', err);
       });
     }
   }
@@ -1310,6 +1312,7 @@ class ConsultorioApp {
   initEvents() {
     const loginForm = document.getElementById('login-form');
     const saveFirebaseBtn = document.getElementById('btn-save-firebase');
+    const refreshFirebaseBtn = document.getElementById('btn-refresh-firebase');
     const validateFirebaseBtn = document.getElementById('btn-validate-firebase');
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
     const firebaseConfigInput = document.getElementById('cfg-firebase-json');
@@ -1400,6 +1403,12 @@ class ConsultorioApp {
     if (saveFirebaseBtn) {
       saveFirebaseBtn.addEventListener('click', () => {
         void this.initFirebase();
+      });
+    }
+
+    if (refreshFirebaseBtn) {
+      refreshFirebaseBtn.addEventListener('click', () => {
+        void this.refreshFirebaseDataNow();
       });
     }
 
@@ -2440,6 +2449,11 @@ class ConsultorioApp {
   }
 
   disconnectFirebase() {
+    if (this.firebaseSyncIntervalId) {
+      window.clearInterval(this.firebaseSyncIntervalId);
+      this.firebaseSyncIntervalId = null;
+    }
+
     this.firebaseConnected = false;
     this.firebaseApp = null;
     this.firebaseDb = null;
@@ -2506,6 +2520,7 @@ class ConsultorioApp {
       this.firebaseDb = window.firebase.firestore(this.firebaseApp);
       this.firebaseConnected = true;
       this.setFirebaseStatus(true, 'Conectado ao Firebase', 'live');
+      this.startFirebaseAutoRefresh();
       this.showToast('Firebase conectado com sucesso.', 'success');
 
       try {
@@ -2573,6 +2588,74 @@ class ConsultorioApp {
       console.log('Falha ao sincronizar com Firestore:', message);
       throw err;
     }
+  }
+
+  async pushAllDataToFirebase() {
+    if (!this.firebaseDb) return;
+    try {
+      const batch = this.firebaseDb.batch();
+
+      this.clients.forEach((client) => {
+        if (!client.id) return;
+        const ref = this.firebaseDb.collection('clients').doc(String(client.id));
+        batch.set(ref, client);
+      });
+
+      this.appointments.forEach((appt) => {
+        if (!appt.id) return;
+        const ref = this.firebaseDb.collection('appointments').doc(String(appt.id));
+        batch.set(ref, appt);
+      });
+
+      this.expenses.forEach((expense) => {
+        if (!expense.id) return;
+        const ref = this.firebaseDb.collection('expenses').doc(String(expense.id));
+        batch.set(ref, expense);
+      });
+
+      await batch.commit();
+    } catch (err) {
+      console.log('Falha ao enviar dados para o Firestore:', err);
+      throw err;
+    }
+  }
+
+  async refreshFirebaseDataNow() {
+    this.updateCloudSyncMeta('Atualizando dados do Firebase...', 'live');
+
+    if (!this.firebaseConnected || !this.firebaseDb) {
+      const connected = await this.initFirebase();
+      if (!connected || !this.firebaseDb) return;
+    }
+
+    try {
+      await this.syncDataWithFirebase();
+      this.updateCloudSyncMeta('Dados atualizados do Firebase', 'live');
+      this.showToast('Dados atualizados com sucesso.', 'success');
+    } catch (err) {
+      const message = err && err.message ? err.message : 'Erro desconhecido';
+      this.updateCloudSyncMeta('Falha ao atualizar dados do Firebase', 'local');
+      this.showToast(`Falha ao atualizar dados: ${message}`, 'warning');
+    }
+  }
+
+  startFirebaseAutoRefresh() {
+    if (this.firebaseSyncIntervalId) {
+      window.clearInterval(this.firebaseSyncIntervalId);
+      this.firebaseSyncIntervalId = null;
+    }
+
+    this.firebaseSyncIntervalId = window.setInterval(() => {
+      if (!this.firebaseConnected || !this.firebaseDb) return;
+
+      void this.syncDataWithFirebase()
+        .then(() => {
+          this.updateCloudSyncMeta('Dados atualizados do Firebase', 'live');
+        })
+        .catch((err) => {
+          console.log('Falha ao atualizar dados automaticamente do Firebase:', err);
+        });
+    }, this.firebaseSyncIntervalMs);
   }
 
   updateCloudSyncMeta(customText = '', mode = 'local') {
@@ -4670,7 +4753,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.app.initEvents();
   window.app.render();
   window.app.showLoginScreen();
-  window.app.initFirebase();
+  await window.app.initFirebase();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')

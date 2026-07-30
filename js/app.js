@@ -43,8 +43,8 @@ const DEFAULT_FIREBASE_CONFIG = {
   projectId: 'consultorio-a07c8',
   storageBucket: 'consultorio-a07c8.firebasestorage.app',
   messagingSenderId: '399470846657',
-  appId: '1:399470846657:web:dc9ac3d7af7c348100aa40',
-  measurementId: 'G-68H2HBV9MB'
+  appId: '1:399470846657:web:9ec1b5dd326a766100aa40',
+  measurementId: 'G-1G96K5B02L'
 };
 
 const getTodayStr = () => {
@@ -892,19 +892,25 @@ class ConsultorioApp {
 
   async ensureNotificationPermission(showFeedback = false) {
     if (!('Notification' in window)) {
+      this.updateNotificationPermissionUI();
       if (showFeedback) this.showToast('Este navegador não suporta notificações do sistema.', 'warning');
       return 'unsupported';
     }
 
-    if (Notification.permission === 'granted') return 'granted';
+    if (Notification.permission === 'granted') {
+      this.updateNotificationPermissionUI();
+      return 'granted';
+    }
 
     if (Notification.permission === 'denied') {
+      this.updateNotificationPermissionUI();
       if (showFeedback) this.showToast('Notificações bloqueadas no navegador. Libere nas permissões do site.', 'warning');
       return 'denied';
     }
 
     try {
       const permission = await Notification.requestPermission();
+      this.updateNotificationPermissionUI();
       if (permission === 'granted' && showFeedback) {
         this.showToast('Notificações do sistema ativadas.', 'success');
       } else if (permission !== 'granted' && showFeedback) {
@@ -912,6 +918,7 @@ class ConsultorioApp {
       }
       return permission;
     } catch (err) {
+      this.updateNotificationPermissionUI();
       if (showFeedback) this.showToast('Falha ao solicitar permissão de notificação.', 'warning');
       return 'error';
     }
@@ -1162,6 +1169,48 @@ class ConsultorioApp {
     if (toggleBtn) toggleBtn.classList.toggle('sound-off', !this.soundEnabled);
     if (statusText) statusText.textContent = this.soundEnabled ? 'Avisos: ON' : 'Avisos: OFF';
     if (minutesInput) minutesInput.value = String(this.reminderMinutes);
+    this.updateNotificationPermissionUI();
+  }
+
+  updateNotificationPermissionUI() {
+    const pill = document.getElementById('notification-permission-pill');
+    const enableBtn = document.getElementById('btn-enable-notifications');
+
+    if (!pill && !enableBtn) return;
+
+    const resetPillState = () => {
+      if (!pill) return;
+      pill.classList.remove('is-granted', 'is-prompt', 'is-denied', 'is-unsupported', 'is-default');
+    };
+
+    const unsupported = !('Notification' in window);
+    const permission = unsupported ? 'unsupported' : Notification.permission;
+
+    if (pill) {
+      resetPillState();
+      if (permission === 'granted') {
+        pill.classList.add('is-granted');
+        pill.textContent = 'Notificação: Permitida';
+      } else if (permission === 'denied') {
+        pill.classList.add('is-denied');
+        pill.textContent = 'Notificação: Bloqueada';
+      } else if (permission === 'prompt') {
+        pill.classList.add('is-prompt');
+        pill.textContent = 'Notificação: Pendente';
+      } else {
+        pill.classList.add('is-unsupported');
+        pill.textContent = 'Notificação: Indisponível';
+      }
+    }
+
+    if (enableBtn) {
+      const shouldShow = permission === 'prompt' || permission === 'denied';
+      enableBtn.style.display = shouldShow ? 'inline-flex' : 'none';
+      enableBtn.disabled = permission === 'denied';
+      enableBtn.title = permission === 'denied'
+        ? 'Notificação bloqueada no navegador. Libere nas permissões do site.'
+        : 'Ativar permissão de notificações do navegador';
+    }
   }
 
   playReminderSound() {
@@ -1789,6 +1838,7 @@ class ConsultorioApp {
     }
 
     const btnTestSound = document.getElementById('btn-test-sound');
+    const btnEnableNotifications = document.getElementById('btn-enable-notifications');
     if (btnTestSound) {
       btnTestSound.addEventListener('click', async () => {
         await this.ensureNotificationPermission(true);
@@ -1799,6 +1849,13 @@ class ConsultorioApp {
           time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         };
         void this.notifyUpcomingAppointment(simulatedAppointment, 0, true);
+      });
+    }
+
+    if (btnEnableNotifications) {
+      btnEnableNotifications.addEventListener('click', async () => {
+        await this.ensureNotificationPermission(true);
+        this.updateNotificationPermissionUI();
       });
     }
 
@@ -1816,11 +1873,15 @@ class ConsultorioApp {
     }
 
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) this.checkAppointmentReminders();
+      if (!document.hidden) {
+        this.checkAppointmentReminders();
+        this.updateNotificationPermissionUI();
+      }
     });
 
     window.addEventListener('focus', () => {
       this.checkAppointmentReminders();
+      this.updateNotificationPermissionUI();
     });
 
     const clearFinanceFilterBtn = document.getElementById('btn-clear-finance-filter');
@@ -2144,11 +2205,40 @@ class ConsultorioApp {
     this.updateCloudSyncMeta(message, mode);
   }
 
+  updateFirebaseAuthStatus(state = 'offline', label = '') {
+    const el = document.getElementById('firebase-auth-status');
+    if (!el) return;
+
+    el.classList.remove('auth-ok', 'auth-pending', 'auth-error', 'auth-offline');
+
+    if (state === 'ok') {
+      el.classList.add('auth-ok');
+      el.textContent = label || 'Auth Firebase: OK';
+      return;
+    }
+
+    if (state === 'pending') {
+      el.classList.add('auth-pending');
+      el.textContent = label || 'Auth Firebase: Autenticando';
+      return;
+    }
+
+    if (state === 'error') {
+      el.classList.add('auth-error');
+      el.textContent = label || 'Auth Firebase: Bloqueado';
+      return;
+    }
+
+    el.classList.add('auth-offline');
+    el.textContent = label || 'Auth Firebase: Desconectado';
+  }
+
   disconnectFirebase() {
     this.firebaseConnected = false;
     this.firebaseApp = null;
     this.firebaseDb = null;
     this.setFirebaseStatus(false, 'Desconectado do Firebase', 'local');
+    this.updateFirebaseAuthStatus('offline', 'Auth Firebase: Desconectado');
     this.showToast('Firebase desconectado.', 'info');
   }
 
@@ -2158,6 +2248,7 @@ class ConsultorioApp {
 
     if (!config || !config.projectId) {
       this.setFirebaseStatus(false, 'Configure o JSON do Firebase', 'local');
+      this.updateFirebaseAuthStatus('error', 'Auth Firebase: Configuração inválida');
       this.showToast('Cole a configuração do Firebase no campo indicado.', 'warning');
       return false;
     }
@@ -2165,9 +2256,11 @@ class ConsultorioApp {
     if (input) input.value = JSON.stringify(config, null, 2);
     this.firebaseConfig = config;
     this.saveFirebaseConfig(config);
+    this.updateFirebaseAuthStatus('pending', 'Auth Firebase: Autenticando');
 
     try {
       if (!window.firebase || !window.firebase.apps || !window.firebase.firestore) {
+        this.updateFirebaseAuthStatus('error', 'Auth Firebase: SDK ausente');
         throw new Error('SDK do Firebase não carregada');
       }
 
@@ -2182,9 +2275,20 @@ class ConsultorioApp {
           try {
             await auth.signInAnonymously();
           } catch (authErr) {
-            console.log('Falha ao autenticar anonimamente:', authErr);
+            const authMessage = authErr && authErr.message ? authErr.message : 'Autenticação anônima indisponível.';
+            this.updateFirebaseAuthStatus('error', 'Auth Firebase: anônimo bloqueado');
+            throw new Error(`Falha ao autenticar no Firebase: ${authMessage}`);
           }
         }
+
+        if (!auth.currentUser) {
+          this.updateFirebaseAuthStatus('error', 'Auth Firebase: sem usuário');
+          throw new Error('Sem usuário autenticado no Firebase. Verifique Auth anônimo no Console.');
+        }
+
+        this.updateFirebaseAuthStatus('ok', 'Auth Firebase: OK');
+      } else {
+        this.updateFirebaseAuthStatus('error', 'Auth Firebase: SDK Auth ausente');
       }
 
       this.firebaseDb = window.firebase.firestore(this.firebaseApp);
@@ -2199,19 +2303,22 @@ class ConsultorioApp {
         this.firebaseConnected = false;
         this.firebaseDb = null;
         this.setFirebaseStatus(false, 'Firebase indisponível para sincronização', 'local');
+        this.updateFirebaseAuthStatus('error', 'Auth Firebase: sem permissão');
         this.showToast(`Sincronização cancelada: ${message}`, 'warning');
       }
       return true;
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
       const isPermissionError = /permission|permissions/i.test(message);
+      const isAuthError = /auth|autentica|signInAnonymously|anonymous/i.test(message);
       const isNetworkError = /network|Failed to fetch|ERR_ABORTED|unavailable/i.test(message);
       this.firebaseConnected = false;
       this.firebaseDb = null;
-      this.setFirebaseStatus(false, isPermissionError ? 'Firebase sem permissão' : 'Falha ao conectar no Firebase', 'local');
+      this.setFirebaseStatus(false, (isPermissionError || isAuthError) ? 'Firebase sem permissão' : 'Falha ao conectar no Firebase', 'local');
+      this.updateFirebaseAuthStatus((isPermissionError || isAuthError) ? 'error' : 'offline', (isPermissionError || isAuthError) ? 'Auth Firebase: Bloqueado' : 'Auth Firebase: Offline');
       this.showToast(
-        isPermissionError
-          ? 'O Firebase respondeu, mas as regras não permitiram a leitura. O app continuará em modo local.'
+        (isPermissionError || isAuthError)
+          ? 'Sem permissão no Firebase. Confirme as regras e a autenticação anônima no Console.'
           : 'Não foi possível conectar ao Firebase. O app continuará em modo local.',
         'warning'
       );
@@ -3978,6 +4085,315 @@ class ConsultorioApp {
     this.openReportWindow(`Relatório - ${patient.name || 'Paciente'}`, lines.join('\n'), autoPrint);
   }
 
+  getAnalyticsDateLabels(maxPoints = 12) {
+    const { start: rawStart, end: rawEnd } = this.getTopRange();
+    const today = getTodayStr();
+    let start = rawStart;
+    let end = rawEnd;
+
+    if (!start && !end) {
+      end = today;
+      start = addDaysIso(today, -6);
+    } else if (start && !end) {
+      end = start;
+    } else if (!start && end) {
+      start = end;
+    }
+
+    if (start > end) {
+      const swap = start;
+      start = end;
+      end = swap;
+    }
+
+    // Quando o filtro estiver em apenas 1 dia, expandimos para o mês completo
+    // para exibir a leitura mensal esperada nos gráficos.
+    if (start && end && start === end) {
+      const [year, month] = start.split('-').map((value) => Number(value));
+      if (Number.isFinite(year) && Number.isFinite(month)) {
+        const first = new Date(year, month - 1, 1);
+        const last = new Date(year, month, 0);
+        const fY = first.getFullYear();
+        const fM = String(first.getMonth() + 1).padStart(2, '0');
+        const fD = String(first.getDate()).padStart(2, '0');
+        const lY = last.getFullYear();
+        const lM = String(last.getMonth() + 1).padStart(2, '0');
+        const lD = String(last.getDate()).padStart(2, '0');
+        start = `${fY}-${fM}-${fD}`;
+        end = `${lY}-${lM}-${lD}`;
+      }
+    }
+
+    const labels = [];
+    let cursor = start;
+    let guard = 0;
+    while (cursor <= end && guard < 120) {
+      labels.push(cursor);
+      cursor = addDaysIso(cursor, 1);
+      guard += 1;
+    }
+
+    if (!labels.length) labels.push(today);
+    return labels.length > maxPoints ? labels.slice(labels.length - maxPoints) : labels;
+  }
+
+  build3DBarChartMarkup(labels, series, options = {}) {
+    const safeLabels = Array.isArray(labels) ? labels : [];
+    const safeSeries = Array.isArray(series) ? series : [];
+    const grouped = safeSeries.length > 1;
+    const maxValue = Math.max(1, ...safeSeries.flatMap((item) => item.values || []).map((value) => Number(value || 0)));
+
+    const width = 760;
+    const height = 290;
+    const padLeft = 24;
+    const padRight = 16;
+    const padTop = 20;
+    const padBottom = 62;
+    const plotWidth = width - padLeft - padRight;
+    const plotHeight = height - padTop - padBottom;
+    const labelCount = Math.max(1, safeLabels.length);
+    const seriesCount = Math.max(1, safeSeries.length);
+    const groupWidth = plotWidth / labelCount;
+    const clusterWidth = Math.min(groupWidth * 0.82, grouped ? 58 : 34);
+    const barGap = grouped ? Math.max(3, clusterWidth * 0.08) : 0;
+    const barWidth = grouped
+      ? Math.max(8, (clusterWidth - barGap * (seriesCount - 1)) / seriesCount)
+      : Math.max(10, Math.min(34, clusterWidth));
+    const depthX = options.depthX || 9;
+    const depthY = options.depthY || 7;
+
+    const gridLines = Array.from({ length: 5 }, (_, index) => {
+      const ratio = index / 4;
+      const y = padTop + plotHeight - (plotHeight * ratio);
+      return `<line class="chart-grid-line" x1="${padLeft}" y1="${y.toFixed(2)}" x2="${(padLeft + plotWidth).toFixed(2)}" y2="${y.toFixed(2)}"></line>`;
+    }).join('');
+
+    const bars = safeLabels.map((_, labelIndex) => {
+      const currentGroupWidth = seriesCount * barWidth + (seriesCount - 1) * barGap;
+      const baseX = padLeft + labelIndex * groupWidth + (groupWidth - currentGroupWidth) / 2;
+
+      return safeSeries.map((item, seriesIndex) => {
+        const rawValue = Number((item.values || [])[labelIndex] || 0);
+        const ratio = rawValue <= 0 ? 0 : rawValue / maxValue;
+        const barHeight = Math.max(0, ratio * (plotHeight - 8));
+        const x = baseX + seriesIndex * (barWidth + barGap);
+        const y = padTop + plotHeight - barHeight;
+
+        const frontColor = item.front || '#60a5fa';
+        const topColor = item.top || '#93c5fd';
+        const sideColor = item.side || '#3b82f6';
+
+        const valueLabel = rawValue > 0
+          ? `<text class="chart-value-label" x="${(x + (barWidth / 2) + depthX * 0.4).toFixed(2)}" y="${(y - depthY - 4).toFixed(2)}">${safeText(String(rawValue.toFixed(rawValue % 1 === 0 ? 0 : 2)).replace('.', ','))}</text>`
+          : '';
+
+        const glossHeight = Math.max(8, barHeight * 0.28);
+        const shineWidth = Math.max(2.4, barWidth * 0.18);
+        const shineX = x + barWidth * 0.2;
+
+        return `
+          <g class="chart-bar-group">
+            <rect class="chart-bar-face-front" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="7" ry="7" style="fill:${frontColor};"></rect>
+            <rect class="chart-bar-gloss" x="${(x + 1.2).toFixed(2)}" y="${(y + 1.2).toFixed(2)}" width="${Math.max(0, barWidth - 2.4).toFixed(2)}" height="${glossHeight.toFixed(2)}" rx="6" ry="6" style="fill:${topColor};opacity:0.34;"></rect>
+            <rect class="chart-bar-shine" x="${shineX.toFixed(2)}" y="${(y + 2).toFixed(2)}" width="${shineWidth.toFixed(2)}" height="${Math.max(0, barHeight - 4).toFixed(2)}" rx="3" ry="3"></rect>
+            ${valueLabel}
+          </g>
+        `;
+      }).join('');
+    }).join('');
+
+    const svg = `
+      <svg class="analytics-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gráfico analítico 3D">
+        ${gridLines}
+        ${bars}
+      </svg>
+    `;
+
+    const legend = `
+      <div class="analytics-legend">
+        ${safeSeries.map((item) => `<span><i style="background:${item.front};"></i>${safeText(item.name || '-')}</span>`).join('')}
+      </div>
+    `;
+
+    const axis = `
+      <div class="chart-axis-labels ${grouped ? 'chart-axis-labels-grouped' : ''}" style="--chart-columns:${labelCount};">
+        ${safeLabels.map((dateLabel) => `<span>${safeText(formatDateBR(dateLabel).slice(0, 5))}</span>`).join('')}
+      </div>
+    `;
+
+    return `
+      <div class="analytics-chart-stage">
+        <div class="analytics-chart-panel">
+          ${svg}
+        </div>
+      </div>
+      ${legend}
+      ${axis}
+    `;
+  }
+
+  renderAttendanceChart() {
+    const container = document.getElementById('analytics-attendance-chart');
+    if (!container) return;
+
+    const labels = this.getAnalyticsDateLabels(31);
+    const labelSet = new Set(labels);
+
+    const scheduledByDate = {};
+    const attendedByDate = {};
+    this.appointments.forEach((appt) => {
+      const date = String(appt.date || '');
+      if (!labelSet.has(date)) return;
+
+      const clientKey = String(appt.clientId || appt.clientName || '').trim() || String(appt.id || '').trim();
+      if (!scheduledByDate[date]) scheduledByDate[date] = new Set();
+      if (clientKey) scheduledByDate[date].add(clientKey);
+
+      const status = String(appt.status || '').toLowerCase();
+      if (!(status.includes('conclu') || status.includes('realiz'))) return;
+      attendedByDate[date] = (attendedByDate[date] || 0) + 1;
+    });
+
+    const scheduledValues = labels.map((date) => Number((scheduledByDate[date] && scheduledByDate[date].size) || 0));
+    const attendedValues = labels.map((date) => Number(attendedByDate[date] || 0));
+    const hasData = scheduledValues.some((value) => value > 0) || attendedValues.some((value) => value > 0);
+
+    if (!hasData) {
+      container.innerHTML = '<div class="empty-state analytics-empty-state"><p>Sem clientes agendados no período selecionado.</p></div>';
+      return;
+    }
+
+    container.innerHTML = this.build3DBarChartMarkup(labels, [
+      {
+        name: 'Agendados',
+        values: scheduledValues,
+        front: '#22d3ee',
+        top: '#67e8f9',
+        side: '#0e7490'
+      },
+      {
+        name: 'Atendidos',
+        values: attendedValues,
+        front: '#84cc16',
+        top: '#bef264',
+        side: '#4d7c0f'
+      }
+    ], { depthX: 10, depthY: 8 });
+  }
+
+  renderFinanceComparisonChart() {
+    const container = document.getElementById('analytics-finance-chart');
+    if (!container) return;
+
+    const labels = this.getAnalyticsDateLabels(31);
+    const labelSet = new Set(labels);
+    const revenueByDate = {};
+    const expenseByDate = {};
+
+    this.appointments.forEach((appt) => {
+      const date = String(appt.date || '');
+      if (!labelSet.has(date)) return;
+      revenueByDate[date] = (revenueByDate[date] || 0) + toNumber(appt.amountPaid);
+    });
+
+    this.expenses.forEach((expense) => {
+      const date = String(expense.date || '');
+      if (!labelSet.has(date)) return;
+      expenseByDate[date] = (expenseByDate[date] || 0) + toNumber(expense.amount);
+    });
+
+    const revenueValues = labels.map((date) => Number((revenueByDate[date] || 0).toFixed(2)));
+    const expenseValues = labels.map((date) => Number((expenseByDate[date] || 0).toFixed(2)));
+    const hasData = revenueValues.some((value) => value > 0) || expenseValues.some((value) => value > 0);
+
+    if (!hasData) {
+      container.innerHTML = '<div class="empty-state analytics-empty-state"><p>Sem receita ou despesas no período selecionado.</p></div>';
+      return;
+    }
+
+    container.innerHTML = this.build3DBarChartMarkup(labels, [
+      {
+        name: 'Receita',
+        values: revenueValues,
+        front: '#38bdf8',
+        top: '#93c5fd',
+        side: '#1d4ed8'
+      },
+      {
+        name: 'Despesas',
+        values: expenseValues,
+        front: '#f97316',
+        top: '#fdba74',
+        side: '#c2410c'
+      }
+    ], { depthX: 10, depthY: 8 });
+  }
+
+  toggleChartFocus(cardKey) {
+    const grid = document.querySelector('#tab-graficos .analytics-grid');
+    if (!grid) return;
+
+    const normalized = String(cardKey || '').trim();
+    const cards = Array.from(grid.querySelectorAll('.analytics-card[data-chart-card]'));
+    if (!normalized || !cards.length) return;
+
+    const isAlreadyFocused = grid.classList.contains('is-focus-active')
+      && Boolean(grid.querySelector(`.analytics-card.is-focused[data-chart-card="${normalized}"]`));
+
+    cards.forEach((card) => {
+      const key = String(card.getAttribute('data-chart-card') || '').trim();
+      const isTarget = key === normalized;
+      card.classList.toggle('is-focused', !isAlreadyFocused && isTarget);
+      card.classList.toggle('is-collapsed', !isAlreadyFocused && !isTarget);
+
+      const toggleBtn = card.querySelector('[data-chart-toggle]');
+      if (toggleBtn) {
+        toggleBtn.textContent = !isAlreadyFocused && isTarget ? 'Voltar' : 'Ampliar';
+      }
+    });
+
+    grid.classList.toggle('is-focus-active', !isAlreadyFocused);
+  }
+
+  bindAnalyticsInteractions() {
+    const tab = document.getElementById('tab-graficos');
+    if (!tab || tab.dataset.analyticsBound === '1') return;
+
+    tab.dataset.analyticsBound = '1';
+
+    tab.addEventListener('click', (event) => {
+      const toggleBtn = event.target.closest('[data-chart-toggle]');
+      if (toggleBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const key = toggleBtn.getAttribute('data-chart-toggle') || '';
+        this.toggleChartFocus(key);
+        return;
+      }
+
+      const card = event.target.closest('.analytics-card[data-chart-card]');
+      if (!card) return;
+
+      const key = card.getAttribute('data-chart-card') || '';
+      this.toggleChartFocus(key);
+    });
+
+    tab.addEventListener('keydown', (event) => {
+      const card = event.target.closest('.analytics-card[data-chart-card]');
+      if (!card) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      const key = card.getAttribute('data-chart-card') || '';
+      this.toggleChartFocus(key);
+    });
+  }
+
+  renderGraficosTab() {
+    this.bindAnalyticsInteractions();
+    this.renderAttendanceChart();
+    this.renderFinanceComparisonChart();
+  }
+
   render() {
     this.renderDashboard();
     this.renderAgendaTable();
@@ -3985,6 +4401,7 @@ class ConsultorioApp {
     this.renderFinanceiroTable();
     this.renderDespesasTable();
     this.renderWhatsAppTab();
+    this.renderGraficosTab();
     this.populateClientSelectOptions();
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -4012,7 +4429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260730-5', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260730-6', 'app-root')
       ]);
     }
   } catch (err) {
@@ -4020,6 +4437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   window.app.initDOM();
+  window.app.updateFirebaseAuthStatus('offline', 'Auth Firebase: Desconectado');
   window.app.initEvents();
   window.app.render();
   window.app.showLoginScreen();

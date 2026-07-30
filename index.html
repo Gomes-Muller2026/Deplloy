@@ -97,6 +97,11 @@
                 <i data-lucide="volume-2"></i>
                 <span>Testar Som</span>
               </button>
+              <span id="notification-permission-pill" class="notification-permission-pill is-default" title="Status da notificação do sistema">Notificação: ...</span>
+              <button class="btn btn-secondary btn-sm" id="btn-enable-notifications" title="Ativar permissão de notificações do navegador" style="display:none;">
+                <i data-lucide="bell-ring"></i>
+                <span>Ativar Notificação</span>
+              </button>
               <div class="reminder-mins-box" title="Defina com quantos minutos de antecedência o alarme deve tocar">
                 <span style="font-size:0.75rem;">Avisar</span>
                 <input type="number" id="top-reminder-mins" class="reminder-mins-input" value="15" min="1">
@@ -109,6 +114,7 @@
               <span id="cloud-status-text">Modo Local</span>
             </div>
             <span id="cloud-sync-last" class="cloud-sync-meta">Sem atualização</span>
+            <span id="firebase-auth-status" class="firebase-auth-meta auth-offline" role="button" tabindex="0" title="Clique para ver diagnóstico de autenticação Firebase">Auth Firebase: Desconectado</span>
 
             <div class="top-date-picker">
               <i data-lucide="calendar-range"></i>
@@ -507,7 +513,29 @@
         </section>
 
         <section class="tab-content" id="tab-graficos">
-          <div class="card"><div class="card-body"><p>Gráficos em restauração incremental.</p></div></div>
+          <div class="analytics-grid">
+            <article class="card analytics-card" data-chart-card="attendance" tabindex="0" role="button" aria-label="Ampliar gráfico de agendados por dia">
+              <div class="card-body analytics-chart-body">
+                <div class="analytics-card-head">
+                  <h3>Clientes Agendados por Dia</h3>
+                  <button class="btn btn-secondary btn-sm analytics-expand-btn" type="button" data-chart-toggle="attendance">Ampliar</button>
+                </div>
+                <p>Comparativo de agendados e atendidos (concluídos) no período selecionado.</p>
+                <div id="analytics-attendance-chart" class="analytics-chart-shell"></div>
+              </div>
+            </article>
+
+            <article class="card analytics-card" data-chart-card="finance" tabindex="0" role="button" aria-label="Ampliar gráfico de despesa e receita">
+              <div class="card-body analytics-chart-body">
+                <div class="analytics-card-head">
+                  <h3>Despesas x Receita</h3>
+                  <button class="btn btn-secondary btn-sm analytics-expand-btn" type="button" data-chart-toggle="finance">Ampliar</button>
+                </div>
+                <p>Comparativo diário entre valores recebidos e despesas lançadas.</p>
+                <div id="analytics-finance-chart" class="analytics-chart-shell analytics-chart-shell-grouped"></div>
+              </div>
+            </article>
+          </div>
         </section>
 
         <section class="tab-content" id="tab-config">
@@ -915,6 +943,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260729-1"></script>
   <script src="src/modules/agenda/agendaModule.js"></script>
   <script src="src/modules/financeiro/financeiroModule.js"></script>
-  <script src="js/app.js?v=20260730-5"></script>
+  <script src="js/app.js?v=20260730-6"></script>
 </body>
 </html>

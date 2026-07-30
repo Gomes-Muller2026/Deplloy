@@ -294,7 +294,6 @@ img {
 .btn-quick-action:hover {
   background: rgba(110, 143, 74, 0.16);
   border-color: rgba(110, 143, 74, 0.32);
-  transform: translateX(1px);
 }
 
 /* Botão voltar na sidebar */
@@ -433,6 +432,35 @@ img {
 
 .cloud-sync-meta.local {
   color: #fbbf24;
+}
+
+.firebase-auth-meta {
+  font-size: 0.76rem;
+  white-space: nowrap;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.firebase-auth-meta.auth-ok {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.42);
+}
+
+.firebase-auth-meta.auth-pending {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.42);
+}
+
+.firebase-auth-meta.auth-error {
+  color: #fb7185;
+  border-color: rgba(251, 113, 133, 0.42);
+}
+
+.firebase-auth-meta.auth-offline {
+  color: var(--text-muted);
+  border-color: rgba(148, 163, 184, 0.24);
 }
 
 .top-date-picker {
@@ -820,6 +848,40 @@ input[type="date"]:focus {
   border-color: var(--warning);
 }
 
+.notification-permission-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.34rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.notification-permission-pill.is-granted {
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #86efac;
+}
+
+.notification-permission-pill.is-prompt {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #fde68a;
+}
+
+.notification-permission-pill.is-denied {
+  border-color: rgba(251, 113, 133, 0.45);
+  color: #fda4af;
+}
+
+.notification-permission-pill.is-unsupported {
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #cbd5e1;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -904,18 +966,30 @@ input[type="date"]:focus {
 .card {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(160deg, rgba(51, 65, 85, 0.44) 0%, rgba(15, 23, 42, 0.56) 55%, rgba(2, 6, 23, 0.72) 100%);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.02) 28%, rgba(255, 255, 255, 0) 52%),
+    radial-gradient(140% 120% at 14% -18%, rgba(190, 242, 100, 0.22), rgba(190, 242, 100, 0) 56%),
+    linear-gradient(160deg, rgba(51, 65, 85, 0.4) 0%, rgba(15, 23, 42, 0.58) 52%, rgba(2, 6, 23, 0.76) 100%);
   border: 0;
   border-radius: 30px;
-  backdrop-filter: blur(18px) saturate(1.45);
-  -webkit-backdrop-filter: blur(18px) saturate(1.45);
-  transition: box-shadow 220ms ease, transform 220ms ease;
+  transform-style: preserve-3d;
+  transform: perspective(1200px) translateY(0) rotateX(0deg) rotateY(0deg);
+  backdrop-filter: blur(20px) saturate(1.55) contrast(1.06);
+  -webkit-backdrop-filter: blur(20px) saturate(1.55) contrast(1.06);
+  transition: box-shadow 240ms ease, transform 240ms ease, border-color 240ms ease;
   box-shadow:
-    0 26px 46px rgba(2, 6, 23, 0.42),
-    0 10px 24px rgba(15, 23, 42, 0.32);
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 30px 56px rgba(2, 6, 23, 0.46),
+    0 12px 26px rgba(15, 23, 42, 0.34);
 
   overflow: hidden;
   margin-bottom: 1.5rem;
+}
+
+.card > * {
+  position: relative;
+  z-index: 2;
 }
 
 .card::before {
@@ -924,8 +998,8 @@ input[type="date"]:focus {
   inset: 0;
   border-radius: inherit;
   background:
-    linear-gradient(138deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 28%, rgba(255, 255, 255, 0) 58%),
-    radial-gradient(150px 80px at 18% 8%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0));
+    linear-gradient(132deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.12) 24%, rgba(255, 255, 255, 0) 55%),
+    radial-gradient(220px 110px at 18% 6%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
   pointer-events: none;
   z-index: 1;
 }
@@ -933,24 +1007,35 @@ input[type="date"]:focus {
 .card::after {
   content: '';
   position: absolute;
-  width: 210px;
-  height: 210px;
-  right: -110px;
-  top: -95px;
+  width: 260px;
+  height: 260px;
+  right: -130px;
+  top: -130px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(217, 249, 157, 0.3), rgba(190, 242, 100, 0));
-  filter: blur(14px);
-  opacity: 0.8;
+  background:
+    radial-gradient(circle at 32% 35%, rgba(217, 249, 157, 0.42), rgba(190, 242, 100, 0.22) 42%, rgba(190, 242, 100, 0) 72%),
+    conic-gradient(from 220deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
+  filter: blur(20px);
+  opacity: 0.74;
   pointer-events: none;
   z-index: 0;
+  transition: transform 240ms ease, opacity 240ms ease;
 }
 
 .card:hover,
 .card:focus-within {
-  transform: translateY(-2px);
+  transform: perspective(1200px) translateY(0) rotateX(0deg) rotateY(0deg);
   box-shadow:
-    0 32px 54px rgba(2, 6, 23, 0.46),
-    0 16px 30px rgba(15, 23, 42, 0.34);
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    0 38px 62px rgba(2, 6, 23, 0.54),
+    0 18px 34px rgba(15, 23, 42, 0.38);
+}
+
+.card:hover::after,
+.card:focus-within::after {
+  opacity: 0.9;
+  transform: none;
 }
 
 .stats-grid {
@@ -1016,7 +1101,7 @@ input[type="date"]:focus {
 
 .stat-card:hover,
 .stat-card:focus-visible {
-  transform: perspective(1000px) translateY(-6px) rotateX(4deg) rotateY(-2deg) scale(1.03);
+  transform: perspective(1000px) translateY(0) rotateX(0deg) rotateY(0deg) scale(1);
   outline: none;
   box-shadow:
     0 38px 62px rgba(2, 6, 23, 0.52),
@@ -1028,7 +1113,7 @@ input[type="date"]:focus {
 }
 
 .stat-card:active {
-  transform: perspective(1000px) translateY(-2px) rotateX(2deg) scale(1.015);
+  transform: perspective(1000px) translateY(0) rotateX(0deg) scale(1);
   box-shadow:
     0 18px 34px rgba(2, 6, 23, 0.48),
     0 8px 18px rgba(15, 23, 42, 0.32);
@@ -1038,7 +1123,7 @@ input[type="date"]:focus {
   box-shadow:
     0 30px 54px rgba(2, 6, 23, 0.54),
     0 0 24px rgba(190, 242, 100, 0.35);
-  transform: perspective(1000px) translateY(-4px) scale(1.02);
+  transform: perspective(1000px) translateY(0) scale(1);
 }
 
 .stat-card.is-triggered {
@@ -2530,14 +2615,47 @@ button.money-pill:active {
   cursor: pointer;
 }
 
+.analytics-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.analytics-card-head h3 {
+  margin: 0;
+}
+
+.analytics-expand-btn {
+  min-width: 92px;
+}
+
 .analytics-card:hover {
   border-color: rgba(96, 165, 250, 0.45);
+}
+
+.analytics-grid.is-focus-active {
+  grid-template-columns: 1fr;
+}
+
+.analytics-grid.is-focus-active .analytics-card {
+  display: none;
+}
+
+.analytics-grid.is-focus-active .analytics-card.is-focused {
+  display: block;
+  grid-column: 1 / -1;
+}
+
+.analytics-grid.is-focus-active .analytics-card.is-focused .analytics-chart-panel {
+  transform: rotateX(14deg) rotateY(-2deg);
 }
 
 .analytics-chart-body {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  padding: 1rem 1rem 0.9rem;
 }
 
 .analytics-anamnesis-card {
@@ -2554,6 +2672,54 @@ button.money-pill:active {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.analytics-chart-stage {
+  position: relative;
+  perspective: 1900px;
+  transform-style: preserve-3d;
+}
+
+.analytics-chart-panel {
+  position: relative;
+  border-radius: 20px;
+  padding: 0.65rem 0.6rem 0.35rem;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transform: rotateX(14deg) rotateY(-2deg);
+  border: 1px solid rgba(190, 242, 100, 0.26);
+  background:
+    linear-gradient(148deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 35%, rgba(255, 255, 255, 0) 58%),
+    radial-gradient(120% 100% at 15% -30%, rgba(190, 242, 100, 0.2), rgba(190, 242, 100, 0) 58%),
+    linear-gradient(180deg, rgba(9, 18, 16, 0.86), rgba(6, 12, 10, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    0 26px 44px rgba(2, 6, 23, 0.44);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
+}
+
+.analytics-chart-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(220px 84px at 18% 8%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0)),
+    linear-gradient(132deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 22%, rgba(255, 255, 255, 0) 48%);
+}
+
+.analytics-card:hover .analytics-chart-panel,
+.analytics-card:focus-within .analytics-chart-panel {
+  transform: rotateX(14deg) rotateY(-2deg);
+  border-color: rgba(190, 242, 100, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    0 32px 56px rgba(2, 6, 23, 0.52);
 }
 
 .analytics-chart-shell-grouped {
@@ -2598,6 +2764,63 @@ button.money-pill:active {
   filter: drop-shadow(0 12px 16px rgba(2, 6, 23, 0.18));
 }
 
+.chart-bar-group {
+  transform-origin: center bottom;
+  transition: transform 170ms ease, filter 170ms ease;
+}
+
+.chart-bar-group:hover {
+  transform: none;
+  filter: drop-shadow(0 10px 20px rgba(2, 6, 23, 0.34));
+}
+
+.chart-bar-face-front {
+  filter: drop-shadow(0 14px 14px rgba(2, 6, 23, 0.2));
+  fill-opacity: 0.92;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 1;
+}
+
+.chart-bar-face-top {
+  opacity: 0.96;
+}
+
+.chart-bar-face-side {
+  opacity: 0.94;
+}
+
+.chart-bar-gloss {
+  filter: blur(0.15px);
+}
+
+.chart-bar-shine {
+  fill: rgba(255, 255, 255, 0.22);
+  mix-blend-mode: screen;
+  opacity: 0.72;
+  transform-origin: center top;
+  animation: chart-bar-shimmer 2.8s ease-in-out infinite;
+}
+
+.chart-bar-group:nth-child(2n) .chart-bar-shine {
+  animation-delay: 0.35s;
+}
+
+.chart-bar-group:nth-child(3n) .chart-bar-shine {
+  animation-delay: 0.7s;
+}
+
+@keyframes chart-bar-shimmer {
+  0% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.78;
+  }
+  100% {
+    opacity: 0.2;
+  }
+}
+
 .chart-value-label {
   fill: var(--text-main);
   font-size: 7px;
@@ -2616,6 +2839,12 @@ button.money-pill:active {
 
 .chart-axis-labels span {
   overflow-wrap: anywhere;
+}
+
+.analytics-chart-body > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.83rem;
 }
 
 .chart-axis-labels-grouped {
@@ -3331,7 +3560,7 @@ textarea.form-control,
   .stat-card:focus-visible,
   .stat-card:active,
   .stat-card.active {
-    transform: translateY(-2px) scale(1.01);
+    transform: none;
     box-shadow:
       0 14px 24px rgba(2, 6, 23, 0.38),
       inset 0 1px 0 rgba(255, 255, 255, 0.09);
@@ -3363,6 +3592,15 @@ textarea.form-control,
 
   .chart-value-label {
     font-size: 10px;
+  }
+
+  .analytics-chart-panel {
+    transform: rotateX(8deg) rotateY(-1deg);
+  }
+
+  .analytics-card:hover .analytics-chart-panel,
+  .analytics-card:focus-within .analytics-chart-panel {
+    transform: rotateX(8deg) rotateY(-1deg);
   }
 
   .stat-value {
@@ -3421,6 +3659,11 @@ textarea.form-control,
   .sound-control-group .reminder-mins-box {
     flex-wrap: wrap;
     gap: 0.45rem;
+  }
+
+  .notification-permission-pill {
+    width: 100%;
+    justify-content: center;
   }
 
   .sound-control-group .reminder-mins-input {

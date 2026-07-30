@@ -164,6 +164,52 @@ img {
     linear-gradient(180deg, rgba(8, 18, 14, 0.96), rgba(14, 24, 19, 0.98));
 }
 
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 12000;
+  display: grid;
+  gap: 0.6rem;
+  width: min(92vw, 360px);
+  pointer-events: none;
+}
+
+.toast {
+  padding: 0.78rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(10, 20, 16, 0.95);
+  box-shadow: 0 14px 30px rgba(3, 8, 7, 0.45);
+  color: var(--text-main);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-info {
+  border-left: 4px solid #38bdf8;
+}
+
+.toast-success {
+  border-left: 4px solid #22c55e;
+}
+
+.toast-warning {
+  border-left: 4px solid #f59e0b;
+}
+
+.toast-error {
+  border-left: 4px solid #fb7185;
+}
+
 .sidebar {
   width: 300px;
   flex: 0 0 300px;

@@ -216,6 +216,9 @@ class ConsultorioApp {
     this.selectedClientReportIds = new Set();
     this.selectedFinanceReportClientIds = new Set();
     this.lastFinanceiroRows = [];
+    this.reminderIntervalId = null;
+    this.reminderNotifiedKeys = new Set();
+    this.reminderCheckIntervalMs = 30000;
     this.loadStore();
     this.loadWhatsAppTemplates();
   }
@@ -803,8 +806,214 @@ class ConsultorioApp {
   }
 
   showToast(message, type = 'info') {
-    const level = type === 'danger' ? 'error' : type;
-    console.log(`[${level}] ${message}`);
+    const toneMap = {
+      danger: 'error',
+      error: 'error',
+      warning: 'warning',
+      success: 'success',
+      info: 'info'
+    };
+    const tone = toneMap[String(type || 'info').toLowerCase()] || 'info';
+    const text = String(message || '').trim();
+    if (!text) return;
+
+    const container = this.getToastContainer();
+    if (!container) {
+      console.log(`[${tone}] ${text}`);
+      return;
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${tone}`;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.textContent = text;
+
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('is-visible'));
+
+    const removeToast = () => {
+      toast.classList.remove('is-visible');
+      window.setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 220);
+    };
+
+    window.setTimeout(removeToast, 4200);
+  }
+
+  getToastContainer() {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    return container;
+  }
+
+  getAppointmentDateTime(appointment) {
+    const date = String((appointment && appointment.date) || '').trim();
+    const time = String((appointment && appointment.time) || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    if (!/^\d{2}:\d{2}$/.test(time)) return null;
+
+    const [year, month, day] = date.split('-').map((v) => Number(v));
+    const [hour, minute] = time.split(':').map((v) => Number(v));
+    const parsed = new Date(year, month - 1, day, hour, minute, 0, 0);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }
+
+  isReminderBlockedByStatus(appointment) {
+    const status = String((appointment && appointment.status) || '').toLowerCase();
+    return status.includes('cancel') || status.includes('conclu') || status.includes('realiz');
+  }
+
+  buildReminderKey(appointment) {
+    const id = String((appointment && appointment.id) || '').trim();
+    const date = String((appointment && appointment.date) || '').trim();
+    const time = String((appointment && appointment.time) || '').trim();
+    return `${id}|${date}|${time}`;
+  }
+
+  pruneReminderNotifiedKeys() {
+    const validKeys = new Set(
+      this.appointments
+        .filter((appt) => !this.isReminderBlockedByStatus(appt))
+        .map((appt) => this.buildReminderKey(appt))
+    );
+
+    this.reminderNotifiedKeys.forEach((key) => {
+      if (!validKeys.has(key)) this.reminderNotifiedKeys.delete(key);
+    });
+  }
+
+  async ensureNotificationPermission(showFeedback = false) {
+    if (!('Notification' in window)) {
+      if (showFeedback) this.showToast('Este navegador não suporta notificações do sistema.', 'warning');
+      return 'unsupported';
+    }
+
+    if (Notification.permission === 'granted') return 'granted';
+
+    if (Notification.permission === 'denied') {
+      if (showFeedback) this.showToast('Notificações bloqueadas no navegador. Libere nas permissões do site.', 'warning');
+      return 'denied';
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted' && showFeedback) {
+        this.showToast('Notificações do sistema ativadas.', 'success');
+      } else if (permission !== 'granted' && showFeedback) {
+        this.showToast('Permissão de notificação não concedida.', 'warning');
+      }
+      return permission;
+    } catch (err) {
+      if (showFeedback) this.showToast('Falha ao solicitar permissão de notificação.', 'warning');
+      return 'error';
+    }
+  }
+
+  async sendSystemNotification(title, body, options = {}) {
+    const permission = await this.ensureNotificationPermission(false);
+    if (permission !== 'granted') return false;
+
+    const payload = {
+      body,
+      icon: './assets/icons/icon-192.png',
+      badge: './assets/icons/icon-192.png',
+      tag: options.tag || `consultorio-notification-${Date.now()}`,
+      renotify: true,
+      requireInteraction: false,
+      data: {
+        appointmentId: options.appointmentId || '',
+        url: './'
+      }
+    };
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        if (registration && typeof registration.showNotification === 'function') {
+          await registration.showNotification(title, payload);
+          return true;
+        }
+      }
+
+      // Fallback para navegadores sem suporte completo ao Service Worker.
+      // eslint-disable-next-line no-new
+      new Notification(title, payload);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  async notifyUpcomingAppointment(appointment, minutesLeft, isManualTest = false) {
+    const clientName = String((appointment && appointment.clientName) || 'Paciente').trim() || 'Paciente';
+    const procedure = String((appointment && appointment.procedure) || 'Consulta').trim() || 'Consulta';
+    const time = String((appointment && appointment.time) || '--:--').trim() || '--:--';
+    const whenText = minutesLeft <= 0 ? 'agora' : `em ${minutesLeft} min`;
+
+    const title = isManualTest ? 'Teste de aviso' : 'Lembrete de consulta';
+    const body = `${clientName} - ${procedure} às ${time} (${whenText})`;
+    this.showToast(body, 'warning');
+
+    if (this.soundEnabled) this.playReminderSound();
+
+    const sent = await this.sendSystemNotification(title, body, {
+      appointmentId: appointment && appointment.id ? appointment.id : '',
+      tag: appointment && appointment.id ? `appt-reminder-${appointment.id}` : `appt-reminder-${Date.now()}`
+    });
+
+    if (isManualTest) {
+      if (sent) this.showToast('Notificação do sistema enviada com sucesso.', 'success');
+      else this.showToast('Não foi possível enviar notificação do sistema. Verifique a permissão do navegador.', 'warning');
+    }
+  }
+
+  checkAppointmentReminders() {
+    if (!Array.isArray(this.appointments) || !this.appointments.length) return;
+
+    this.pruneReminderNotifiedKeys();
+
+    const now = new Date();
+    const reminderWindow = Number.isFinite(Number(this.reminderMinutes)) ? Math.max(1, Number(this.reminderMinutes)) : 15;
+
+    this.appointments.forEach((appointment) => {
+      if (!appointment || !appointment.id) return;
+      if (this.isReminderBlockedByStatus(appointment)) return;
+
+      const startsAt = this.getAppointmentDateTime(appointment);
+      if (!startsAt) return;
+
+      const diffMs = startsAt.getTime() - now.getTime();
+      const diffMinutes = diffMs / 60000;
+      if (diffMinutes > reminderWindow) return;
+      if (diffMinutes < -2) return;
+
+      const reminderKey = this.buildReminderKey(appointment);
+      if (this.reminderNotifiedKeys.has(reminderKey)) return;
+      this.reminderNotifiedKeys.add(reminderKey);
+
+      const minutesLeft = Math.max(0, Math.round(diffMinutes));
+      void this.notifyUpcomingAppointment(appointment, minutesLeft, false);
+    });
+  }
+
+  startReminderWatcher() {
+    if (this.reminderIntervalId) {
+      window.clearInterval(this.reminderIntervalId);
+      this.reminderIntervalId = null;
+    }
+
+    this.checkAppointmentReminders();
+    this.reminderIntervalId = window.setInterval(() => {
+      this.checkAppointmentReminders();
+    }, this.reminderCheckIntervalMs);
   }
 
   prefillSenhaTabFields() {
@@ -920,6 +1129,7 @@ class ConsultorioApp {
     this.prefillSenhaTabFields();
     this.prefillFirebaseConfig();
     this.updateCloudSyncMeta('Modo local', 'local');
+    this.startReminderWatcher();
   }
 
   loadSoundSettings() {
@@ -1580,9 +1790,15 @@ class ConsultorioApp {
 
     const btnTestSound = document.getElementById('btn-test-sound');
     if (btnTestSound) {
-      btnTestSound.addEventListener('click', () => {
-        this.playReminderSound();
-        this.showToast('Som de teste reproduzido.', 'success');
+      btnTestSound.addEventListener('click', async () => {
+        await this.ensureNotificationPermission(true);
+        const simulatedAppointment = {
+          id: `appt-test-${Date.now()}`,
+          clientName: 'Paciente de teste',
+          procedure: 'Lembrete de consulta',
+          time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        };
+        void this.notifyUpcomingAppointment(simulatedAppointment, 0, true);
       });
     }
 
@@ -1595,8 +1811,17 @@ class ConsultorioApp {
         reminderInput.value = String(safeValue);
         this.saveSoundSettings();
         this.showToast(`Aviso configurado para ${safeValue} min antes.`, 'success');
+        this.checkAppointmentReminders();
       });
     }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) this.checkAppointmentReminders();
+    });
+
+    window.addEventListener('focus', () => {
+      this.checkAppointmentReminders();
+    });
 
     const clearFinanceFilterBtn = document.getElementById('btn-clear-finance-filter');
     if (clearFinanceFilterBtn) {
@@ -3380,6 +3605,7 @@ class ConsultorioApp {
 
     if (window.agendaModule && typeof window.agendaModule.saveAppointment === 'function') {
       window.agendaModule.saveAppointment(this, payload, id || '');
+      this.checkAppointmentReminders();
     } else {
       this.showToast('Módulo de agenda não carregado.', 'warning');
     }

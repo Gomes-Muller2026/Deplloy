@@ -1277,6 +1277,7 @@ class ConsultorioApp {
   initEvents() {
     const loginForm = document.getElementById('login-form');
     const saveFirebaseBtn = document.getElementById('btn-save-firebase');
+    const validateFirebaseBtn = document.getElementById('btn-validate-firebase');
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
     const firebaseConfigInput = document.getElementById('cfg-firebase-json');
     const loginUserInput = document.getElementById('login-username');
@@ -1372,6 +1373,12 @@ class ConsultorioApp {
     if (disconnectFirebaseBtn) {
       disconnectFirebaseBtn.addEventListener('click', () => {
         this.disconnectFirebase();
+      });
+    }
+
+    if (validateFirebaseBtn) {
+      validateFirebaseBtn.addEventListener('click', () => {
+        void this.runFirebaseValidationChecklist();
       });
     }
 
@@ -2313,6 +2320,80 @@ class ConsultorioApp {
       '',
       action
     ].join('\n'));
+  }
+
+  renderFirebaseValidationPanel(summaryText, items = []) {
+    const panel = document.getElementById('firebase-validation-panel');
+    if (!panel) return;
+
+    const summary = `<p class="firebase-validation-summary">${safeText(summaryText || '')}</p>`;
+    if (!items.length) {
+      panel.innerHTML = summary;
+      return;
+    }
+
+    const list = `
+      <ul class="firebase-validation-list" style="margin-top:0.6rem;">
+        ${items.map((item) => `
+          <li class="firebase-validation-item ${safeText(item.state || 'pending')}">
+            <span class="firebase-validation-bullet" aria-hidden="true"></span>
+            <span>${safeText(item.text || '')}</span>
+          </li>
+        `).join('')}
+      </ul>
+    `;
+
+    panel.innerHTML = summary + list;
+  }
+
+  async runFirebaseValidationChecklist() {
+    this.renderFirebaseValidationPanel('Executando validação do Firebase...', [
+      { state: 'pending', text: 'Verificando configuração local...' },
+      { state: 'pending', text: 'Verificando SDK Firebase...' },
+      { state: 'pending', text: 'Validando autenticação anônima...' },
+      { state: 'pending', text: 'Validando acesso ao Firestore...' }
+    ]);
+
+    const config = this.firebaseConfig || this.loadFirebaseConfig() || DEFAULT_FIREBASE_CONFIG;
+    const hasCoreConfig = Boolean(config && config.apiKey && config.authDomain && config.projectId && config.appId);
+    const hasFirebaseSdk = Boolean(window.firebase && window.firebase.apps && window.firebase.firestore);
+    const hasAuthSdk = Boolean(window.firebase && window.firebase.auth);
+
+    const connected = await this.initFirebase();
+    const authOk = Boolean(this.firebaseAuthUid);
+    const firestoreOk = Boolean(connected && this.firebaseConnected && this.firebaseDb);
+    const code = String(this.firebaseLastErrorCode || '').trim();
+    const msg = String(this.firebaseLastErrorMessage || '').trim();
+    const hint = this.getFirebaseDiagnosticHint();
+
+    const items = [
+      {
+        state: hasCoreConfig ? 'ok' : 'error',
+        text: hasCoreConfig ? 'Configuração Firebase válida (apiKey/authDomain/projectId/appId).' : 'Configuração incompleta ou inválida no JSON.'
+      },
+      {
+        state: hasFirebaseSdk ? 'ok' : 'error',
+        text: hasFirebaseSdk ? 'SDK Firebase carregado.' : 'SDK Firebase não carregado na página.'
+      },
+      {
+        state: hasAuthSdk ? (authOk ? 'ok' : 'error') : 'error',
+        text: hasAuthSdk
+          ? (authOk ? `Autenticação anônima OK (uid ${this.firebaseAuthUid}).` : `Autenticação anônima falhou${code ? ` (${code})` : ''}.`)
+          : 'SDK Firebase Auth não carregado.'
+      },
+      {
+        state: firestoreOk ? 'ok' : 'error',
+        text: firestoreOk
+          ? 'Leitura inicial no Firestore permitida.'
+          : `Acesso ao Firestore bloqueado${code ? ` (${code})` : ''}${msg ? `: ${msg}` : ''}`
+      }
+    ];
+
+    const summary = firestoreOk
+      ? 'Validação concluída: Firebase conectado e com acesso liberado.'
+      : `Validação concluída com falha${hint ? ` - ${hint}` : '.'}`;
+
+    this.renderFirebaseValidationPanel(summary, items);
   }
 
   disconnectFirebase() {

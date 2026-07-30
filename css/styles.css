@@ -463,6 +463,56 @@ img {
   border-color: rgba(148, 163, 184, 0.24);
 }
 
+.firebase-validation-panel {
+  margin-top: 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.48);
+  padding: 0.7rem 0.8rem;
+}
+
+.firebase-validation-summary {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.firebase-validation-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.firebase-validation-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--text-main);
+}
+
+.firebase-validation-bullet {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.7);
+}
+
+.firebase-validation-item.ok .firebase-validation-bullet {
+  background: #34d399;
+}
+
+.firebase-validation-item.error .firebase-validation-bullet {
+  background: #fb7185;
+}
+
+.firebase-validation-item.pending .firebase-validation-bullet {
+  background: #fbbf24;
+}
+
 .top-date-picker {
   display: flex;
   align-items: center;

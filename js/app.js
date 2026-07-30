@@ -3627,6 +3627,8 @@ class ConsultorioApp {
         set('client-emergency-name', c.emergencyName);
         set('client-emergency-phone', c.emergencyPhone);
         set('client-emergency-relation', c.emergencyRelation);
+        set('client-referral-source', c.referralSource);
+        set('client-referral-notes', c.referralNotes);
         this.populateClientGroupOptions(c.group);
         if (title) title.textContent = 'Editar Dados do Paciente';
       }
@@ -3863,6 +3865,8 @@ class ConsultorioApp {
       emergencyName: String((document.getElementById('client-emergency-name') || {}).value || '').trim(),
       emergencyPhone: String((document.getElementById('client-emergency-phone') || {}).value || '').trim(),
       emergencyRelation: String((document.getElementById('client-emergency-relation') || {}).value || '').trim(),
+      referralSource: String((document.getElementById('client-referral-source') || {}).value || '').trim(),
+      referralNotes: String((document.getElementById('client-referral-notes') || {}).value || '').trim(),
       anamnese: this.getAnamneseData()
     };
 
@@ -4334,6 +4338,7 @@ class ConsultorioApp {
       `RG: ${patient.rg || '-'}`,
       `Nascimento: ${patient.dob ? formatDateBR(patient.dob) : '-'}`,
       `Grupo: ${patient.group || '-'}`,
+      `Como chegou: ${patient.referralSource || '-'}${patient.referralNotes ? ` | ${patient.referralNotes}` : ''}`,
       `Endereço: ${fullAddress || '-'}`,
       `Contato de emergência: ${patient.emergencyName || '-'} | ${patient.emergencyPhone || '-'} | ${patient.emergencyRelation || '-'}`,
       `Observações: ${patient.notes || '-'}`,

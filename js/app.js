@@ -51,14 +51,30 @@ const normalizeFirebaseConfig = (rawConfig) => {
   if (!rawConfig || typeof rawConfig !== 'object') return null;
 
   const normalized = { ...rawConfig };
-  if (String(normalized.projectId || '').trim() === 'consultorio-a07c8') {
-    normalized.projectId = 'consultorio-patricia';
-  }
-  if (String(normalized.authDomain || '').trim() === 'consultorio-a07c8.firebaseapp.com') {
-    normalized.authDomain = 'consultorio-patricia.firebaseapp.com';
-  }
-  if (String(normalized.storageBucket || '').trim() === 'consultorio-a07c8.firebasestorage.app') {
-    normalized.storageBucket = 'consultorio-patricia.firebasestorage.app';
+  const projectId = String(normalized.projectId || '').trim();
+  const authDomain = String(normalized.authDomain || '').trim();
+  const storageBucket = String(normalized.storageBucket || '').trim();
+  const apiKey = String(normalized.apiKey || '').trim();
+
+  const shouldUseCanonicalConfig = [
+    'consultorio-a07c8',
+    'consultorio-patricia'
+  ].includes(projectId) || [
+    'consultorio-a07c8.firebaseapp.com',
+    'consultorio-patricia.firebaseapp.com'
+  ].includes(authDomain) || [
+    'consultorio-a07c8.firebasestorage.app',
+    'consultorio-patricia.firebasestorage.app'
+  ].includes(storageBucket) || [
+    'AIzaSyCKFg8ypyYLRbD8PoeP9NqO2KHBrmN70uk',
+    'AIzaSyAp-6HFGCVfMr_W8Anw82V70qiUh9sh8WQ'
+  ].includes(apiKey);
+
+  if (shouldUseCanonicalConfig) {
+    return {
+      ...normalized,
+      ...DEFAULT_FIREBASE_CONFIG
+    };
   }
 
   return normalized;
@@ -2286,7 +2302,7 @@ class ConsultorioApp {
 
     let code = rawCode;
     if (!code && message) {
-      const match = message.match(/\((auth\/[\w-]+|firestore\/[\w-]+|[a-z-]+(?:\/[\w-]+)?)\)/i);
+      const match = message.match(/(auth\/[\w-]+|firestore\/[\w-]+|[a-z-]+(?:\/[\w-]+)?)/i);
       if (match && match[1]) code = match[1];
     }
 
@@ -2305,6 +2321,9 @@ class ConsultorioApp {
 
     if (code === 'auth/configuration-not-found') {
       return 'Configuração Auth não encontrada. Verifique se apiKey/authDomain pertencem ao projeto consultorio-patricia e habilite Authentication no Console.';
+    }
+    if (code === 'auth/api-key-not-valid') {
+      return 'A apiKey usada no app não é válida para o projeto consultorio-patricia. Recarregue a página para limpar cache/config salva e confirme no Firebase Console se essa Web API Key está ativa.';
     }
     if (code === 'auth/operation-not-allowed') {
       return 'Ative Anonymous em Firebase Authentication > Sign-in method.';

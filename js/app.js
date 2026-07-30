@@ -197,6 +197,9 @@ class ConsultorioApp {
     this.firebaseApp = null;
     this.firebaseDb = null;
     this.firebaseConnected = false;
+    this.firebaseAuthUid = '';
+    this.firebaseLastErrorCode = '';
+    this.firebaseLastErrorMessage = '';
     this.clientGroups = [];
     this.dashboardLastActiveCardId = 'dash-card-consultas';
     this.dashboardCardByTab = {
@@ -1383,6 +1386,17 @@ class ConsultorioApp {
       });
     }
 
+    const firebaseAuthStatus = document.getElementById('firebase-auth-status');
+    if (firebaseAuthStatus) {
+      const openDiag = () => this.showFirebaseAuthDiagnostic();
+      firebaseAuthStatus.addEventListener('click', openDiag);
+      firebaseAuthStatus.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        openDiag();
+      });
+    }
+
     const resolveDashboardTarget = (cardId) => {
       if (!cardId) return null;
       const map = {
@@ -2210,6 +2224,8 @@ class ConsultorioApp {
     if (!el) return;
 
     el.classList.remove('auth-ok', 'auth-pending', 'auth-error', 'auth-offline');
+    const detail = this.getFirebaseDiagnosticHint();
+    el.title = detail || 'Clique para ver diagnóstico de autenticação Firebase';
 
     if (state === 'ok') {
       el.classList.add('auth-ok');
@@ -2233,10 +2249,77 @@ class ConsultorioApp {
     el.textContent = label || 'Auth Firebase: Desconectado';
   }
 
+  setFirebaseLastError(err, fallbackMessage = '') {
+    const rawCode = String((err && err.code) || '').trim();
+    const message = String((err && err.message) || fallbackMessage || '').trim();
+
+    let code = rawCode;
+    if (!code && message) {
+      const match = message.match(/\((auth\/[\w-]+|firestore\/[\w-]+|[a-z-]+(?:\/[\w-]+)?)\)/i);
+      if (match && match[1]) code = match[1];
+    }
+
+    this.firebaseLastErrorCode = code;
+    this.firebaseLastErrorMessage = message;
+  }
+
+  clearFirebaseLastError() {
+    this.firebaseLastErrorCode = '';
+    this.firebaseLastErrorMessage = '';
+  }
+
+  getFirebaseDiagnosticHint() {
+    const code = String(this.firebaseLastErrorCode || '').trim();
+    if (!code) return String(this.firebaseLastErrorMessage || '').trim();
+
+    if (code === 'auth/configuration-not-found') {
+      return 'Configuração Auth não encontrada. Verifique se apiKey/authDomain pertencem ao projeto consultorio-a07c8 e habilite Authentication no Console.';
+    }
+    if (code === 'auth/operation-not-allowed') {
+      return 'Ative Anonymous em Firebase Authentication > Sign-in method.';
+    }
+    if (code === 'auth/unauthorized-domain') {
+      return 'Adicione o domínio atual em Authentication > Settings > Authorized domains.';
+    }
+    if (code === 'permission-denied' || code === 'firestore/permission-denied') {
+      return 'Publique regras do Firestore com request.auth != null e valide a autenticação anônima.';
+    }
+    if (code === 'unauthenticated') {
+      return 'Usuário não autenticado no momento da leitura. Verifique o login anônimo.';
+    }
+    if (code === 'failed-precondition') {
+      return 'Crie/ative o Firestore no projeto e tente novamente.';
+    }
+
+    return this.firebaseLastErrorMessage || `Erro Firebase: ${code}`;
+  }
+
+  showFirebaseAuthDiagnostic() {
+    const stateLine = this.firebaseConnected
+      ? `Status atual: conectado${this.firebaseAuthUid ? ` (uid ${this.firebaseAuthUid})` : ''}`
+      : 'Status atual: sem conexão com Firebase';
+
+    const code = this.firebaseLastErrorCode ? `Código: ${this.firebaseLastErrorCode}` : 'Código: sem erro registrado';
+    const msg = this.firebaseLastErrorMessage ? `Mensagem: ${this.firebaseLastErrorMessage}` : 'Mensagem: sem detalhe adicional';
+    const hint = this.getFirebaseDiagnosticHint();
+    const action = hint ? `Ação sugerida: ${hint}` : 'Ação sugerida: clique em Conectar e aguarde o retorno.';
+
+    window.alert([
+      'Diagnóstico Firebase',
+      '',
+      stateLine,
+      code,
+      msg,
+      '',
+      action
+    ].join('\n'));
+  }
+
   disconnectFirebase() {
     this.firebaseConnected = false;
     this.firebaseApp = null;
     this.firebaseDb = null;
+    this.firebaseAuthUid = '';
     this.setFirebaseStatus(false, 'Desconectado do Firebase', 'local');
     this.updateFirebaseAuthStatus('offline', 'Auth Firebase: Desconectado');
     this.showToast('Firebase desconectado.', 'info');
@@ -2256,6 +2339,7 @@ class ConsultorioApp {
     if (input) input.value = JSON.stringify(config, null, 2);
     this.firebaseConfig = config;
     this.saveFirebaseConfig(config);
+    this.clearFirebaseLastError();
     this.updateFirebaseAuthStatus('pending', 'Auth Firebase: Autenticando');
 
     try {
@@ -2276,18 +2360,22 @@ class ConsultorioApp {
             await auth.signInAnonymously();
           } catch (authErr) {
             const authMessage = authErr && authErr.message ? authErr.message : 'Autenticação anônima indisponível.';
+            this.setFirebaseLastError(authErr, authMessage);
             this.updateFirebaseAuthStatus('error', 'Auth Firebase: anônimo bloqueado');
             throw new Error(`Falha ao autenticar no Firebase: ${authMessage}`);
           }
         }
 
         if (!auth.currentUser) {
+          this.setFirebaseLastError({ code: 'unauthenticated', message: 'Sem usuário autenticado após tentativa de login anônimo.' });
           this.updateFirebaseAuthStatus('error', 'Auth Firebase: sem usuário');
           throw new Error('Sem usuário autenticado no Firebase. Verifique Auth anônimo no Console.');
         }
 
+        this.firebaseAuthUid = String(auth.currentUser.uid || '');
         this.updateFirebaseAuthStatus('ok', 'Auth Firebase: OK');
       } else {
+        this.setFirebaseLastError({ code: 'auth/sdk-missing', message: 'SDK de autenticação do Firebase não carregada.' });
         this.updateFirebaseAuthStatus('error', 'Auth Firebase: SDK Auth ausente');
       }
 
@@ -2300,22 +2388,31 @@ class ConsultorioApp {
         await this.syncDataWithFirebase();
       } catch (syncErr) {
         const message = syncErr && syncErr.message ? syncErr.message : 'Erro desconhecido';
+        this.setFirebaseLastError(syncErr, message);
         this.firebaseConnected = false;
         this.firebaseDb = null;
         this.setFirebaseStatus(false, 'Firebase indisponível para sincronização', 'local');
-        this.updateFirebaseAuthStatus('error', 'Auth Firebase: sem permissão');
+        const errorCode = String((syncErr && syncErr.code) || '');
+        this.updateFirebaseAuthStatus('error', errorCode ? `Auth Firebase: ${errorCode}` : 'Auth Firebase: sem permissão');
         this.showToast(`Sincronização cancelada: ${message}`, 'warning');
       }
       return true;
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
+      this.setFirebaseLastError(err, message);
       const isPermissionError = /permission|permissions/i.test(message);
       const isAuthError = /auth|autentica|signInAnonymously|anonymous/i.test(message);
       const isNetworkError = /network|Failed to fetch|ERR_ABORTED|unavailable/i.test(message);
       this.firebaseConnected = false;
       this.firebaseDb = null;
       this.setFirebaseStatus(false, (isPermissionError || isAuthError) ? 'Firebase sem permissão' : 'Falha ao conectar no Firebase', 'local');
-      this.updateFirebaseAuthStatus((isPermissionError || isAuthError) ? 'error' : 'offline', (isPermissionError || isAuthError) ? 'Auth Firebase: Bloqueado' : 'Auth Firebase: Offline');
+      const code = String((err && err.code) || '').trim();
+      this.updateFirebaseAuthStatus(
+        (isPermissionError || isAuthError) ? 'error' : 'offline',
+        (isPermissionError || isAuthError)
+          ? `Auth Firebase: ${code || 'Bloqueado'}`
+          : 'Auth Firebase: Offline'
+      );
       this.showToast(
         (isPermissionError || isAuthError)
           ? 'Sem permissão no Firebase. Confirme as regras e a autenticação anônima no Console.'
@@ -2350,7 +2447,7 @@ class ConsultorioApp {
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
       console.log('Falha ao sincronizar com Firestore:', message);
-      throw new Error(message);
+      throw err;
     }
   }
 
@@ -4159,8 +4256,7 @@ class ConsultorioApp {
     const barWidth = grouped
       ? Math.max(8, (clusterWidth - barGap * (seriesCount - 1)) / seriesCount)
       : Math.max(10, Math.min(34, clusterWidth));
-    const depthX = options.depthX || 9;
-    const depthY = options.depthY || 7;
+    const legendType = String(options.legendType || 'count');
 
     const gridLines = Array.from({ length: 5 }, (_, index) => {
       const ratio = index / 4;
@@ -4176,15 +4272,15 @@ class ConsultorioApp {
         const rawValue = Number((item.values || [])[labelIndex] || 0);
         const ratio = rawValue <= 0 ? 0 : rawValue / maxValue;
         const barHeight = Math.max(0, ratio * (plotHeight - 8));
+        if (barHeight <= 0.5) return '';
+
         const x = baseX + seriesIndex * (barWidth + barGap);
         const y = padTop + plotHeight - barHeight;
 
         const frontColor = item.front || '#60a5fa';
         const topColor = item.top || '#93c5fd';
-        const sideColor = item.side || '#3b82f6';
-
         const valueLabel = rawValue > 0
-          ? `<text class="chart-value-label" x="${(x + (barWidth / 2) + depthX * 0.4).toFixed(2)}" y="${(y - depthY - 4).toFixed(2)}">${safeText(String(rawValue.toFixed(rawValue % 1 === 0 ? 0 : 2)).replace('.', ','))}</text>`
+          ? `<text class="chart-value-label" x="${(x + (barWidth / 2)).toFixed(2)}" y="${(y - 6).toFixed(2)}">${safeText(String(rawValue.toFixed(rawValue % 1 === 0 ? 0 : 2)).replace('.', ','))}</text>`
           : '';
 
         const glossHeight = Math.max(8, barHeight * 0.28);
@@ -4209,9 +4305,18 @@ class ConsultorioApp {
       </svg>
     `;
 
+    const formatLegendTotal = (total) => {
+      if (legendType === 'currency') return formatCurrency(total);
+      if (Math.abs(total - Math.round(total)) < 0.001) return String(Math.round(total));
+      return String(total.toFixed(2)).replace('.', ',');
+    };
+
     const legend = `
       <div class="analytics-legend">
-        ${safeSeries.map((item) => `<span><i style="background:${item.front};"></i>${safeText(item.name || '-')}</span>`).join('')}
+        ${safeSeries.map((item) => {
+          const total = (item.values || []).reduce((sum, value) => sum + Number(value || 0), 0);
+          return `<span class="analytics-legend-item"><i style="background:${item.front};"></i><strong>${safeText(item.name || '-')}</strong><em>${safeText(formatLegendTotal(total))}</em></span>`;
+        }).join('')}
       </div>
     `;
 
@@ -4278,7 +4383,7 @@ class ConsultorioApp {
         top: '#bef264',
         side: '#4d7c0f'
       }
-    ], { depthX: 10, depthY: 8 });
+    ], { legendType: 'count' });
   }
 
   renderFinanceComparisonChart() {
@@ -4326,7 +4431,7 @@ class ConsultorioApp {
         top: '#fdba74',
         side: '#c2410c'
       }
-    ], { depthX: 10, depthY: 8 });
+    ], { legendType: 'currency' });
   }
 
   toggleChartFocus(cardKey) {

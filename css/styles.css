@@ -2648,7 +2648,7 @@ button.money-pill:active {
 }
 
 .analytics-grid.is-focus-active .analytics-card.is-focused .analytics-chart-panel {
-  transform: rotateX(14deg) rotateY(-2deg);
+  transform: none;
 }
 
 .analytics-chart-body {
@@ -2676,8 +2676,8 @@ button.money-pill:active {
 
 .analytics-chart-stage {
   position: relative;
-  perspective: 1900px;
-  transform-style: preserve-3d;
+  perspective: none;
+  transform-style: flat;
 }
 
 .analytics-chart-panel {
@@ -2685,8 +2685,8 @@ button.money-pill:active {
   border-radius: 20px;
   padding: 0.65rem 0.6rem 0.35rem;
   overflow: hidden;
-  transform-style: preserve-3d;
-  transform: rotateX(14deg) rotateY(-2deg);
+  transform-style: flat;
+  transform: none;
   border: 1px solid rgba(190, 242, 100, 0.26);
   background:
     linear-gradient(148deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 35%, rgba(255, 255, 255, 0) 58%),
@@ -2714,7 +2714,7 @@ button.money-pill:active {
 
 .analytics-card:hover .analytics-chart-panel,
 .analytics-card:focus-within .analytics-chart-panel {
-  transform: rotateX(14deg) rotateY(-2deg);
+  transform: none;
   border-color: rgba(190, 242, 100, 0.38);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.34),
@@ -2729,23 +2729,41 @@ button.money-pill:active {
 .analytics-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.9rem;
+  gap: 0.7rem;
   align-items: center;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
 }
 
-.analytics-legend span {
+.analytics-legend span,
+.analytics-legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.42rem;
+  padding: 0.32rem 0.58rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.54);
 }
 
 .analytics-legend i {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
   display: inline-block;
+}
+
+.analytics-legend-item strong {
+  color: var(--text-main);
+  font-size: 0.8rem;
+}
+
+.analytics-legend-item em {
+  color: #d9f99d;
+  font-style: normal;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding-left: 0.1rem;
 }
 
 .analytics-chart-svg {
@@ -2823,8 +2841,8 @@ button.money-pill:active {
 
 .chart-value-label {
   fill: var(--text-main);
-  font-size: 7px;
-  font-weight: 500;
+  font-size: 8px;
+  font-weight: 700;
   text-anchor: middle;
 }
 
@@ -3595,12 +3613,12 @@ textarea.form-control,
   }
 
   .analytics-chart-panel {
-    transform: rotateX(8deg) rotateY(-1deg);
+    transform: none;
   }
 
   .analytics-card:hover .analytics-chart-panel,
   .analytics-card:focus-within .analytics-chart-panel {
-    transform: rotateX(8deg) rotateY(-1deg);
+    transform: none;
   }
 
   .stat-value {

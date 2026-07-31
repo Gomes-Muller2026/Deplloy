@@ -16,6 +16,7 @@ const REMINDER_INTENSITY_STORAGE_KEY = 'consultorio_reminder_intensity';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
+const LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY = 'consultorio_landscape_sidebar_collapsed';
 const LOGIN_USERS_FIRESTORE_COLLECTION = 'login_users';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
 const WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_template';
@@ -475,6 +476,7 @@ class ConsultorioApp {
     this.firebaseSyncIntervalMs = 5 * 60 * 1000;
     this.versionInfo = { dateKey: getTodayStr(), seq: 0, label: 'v00.00/000000' };
     this.updateReady = false;
+    this.landscapeSidebarCollapsed = false;
     this.loadStore();
     this.loadWhatsAppTemplates();
     this.loadPaymentReceiptTemplate();
@@ -1899,7 +1901,7 @@ class ConsultorioApp {
     });
   }
 
-  async ensureNotificationPermission(showFeedback = false) {
+  async ensureNotificationPermission(showFeedback = false, allowPrompt = false) {
     if (!('Notification' in window)) {
       this.updateNotificationPermissionUI();
       if (showFeedback) this.showToast('Este navegador não suporta notificações do sistema.', 'warning');
@@ -1917,6 +1919,11 @@ class ConsultorioApp {
       return 'denied';
     }
 
+    if (!allowPrompt) {
+      this.updateNotificationPermissionUI();
+      return Notification.permission || 'prompt';
+    }
+
     try {
       const permission = await Notification.requestPermission();
       this.updateNotificationPermissionUI();
@@ -1931,6 +1938,59 @@ class ConsultorioApp {
       if (showFeedback) this.showToast('Falha ao solicitar permissão de notificação.', 'warning');
       return 'error';
     }
+  }
+
+  getNotificationDiagnostics() {
+    const notificationSupported = 'Notification' in window;
+    const permission = notificationSupported ? Notification.permission : 'unsupported';
+    const swSupported = 'serviceWorker' in navigator;
+    const hasController = swSupported && Boolean(navigator.serviceWorker.controller);
+    const standalone = Boolean(
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || window.navigator.standalone
+    );
+    const visibility = document.hidden ? 'em segundo plano/bloqueada' : 'ativa na tela';
+    const vibrationSupported = Boolean(navigator.vibrate);
+
+    return {
+      notificationSupported,
+      permission,
+      swSupported,
+      hasController,
+      standalone,
+      visibility,
+      vibrationSupported,
+      soundEnabled: Boolean(this.soundEnabled),
+      reminderIntensity: ['normal', 'strong', 'ultra'].includes(this.reminderIntensity) ? this.reminderIntensity : 'strong'
+    };
+  }
+
+  showNotificationSoundDiagnostics() {
+    const d = this.getNotificationDiagnostics();
+
+    const permissionText = d.permission === 'granted'
+      ? 'Permitida'
+      : (d.permission === 'denied' ? 'Bloqueada' : (d.permission === 'prompt' ? 'Pendente' : 'Indisponível'));
+
+    const checklist = [
+      `Notificação do navegador: ${permissionText}`,
+      `Service Worker: ${d.swSupported ? 'Suportado' : 'Não suportado'}`,
+      `Service Worker ativo nesta aba: ${d.hasController ? 'Sim' : 'Não'}`,
+      `Instalado como app (PWA): ${d.standalone ? 'Sim' : 'Não'}`,
+      `Som de lembrete no app: ${d.soundEnabled ? 'Ligado' : 'Desligado'}`,
+      `Intensidade do aviso: ${d.reminderIntensity}`,
+      `Vibração suportada: ${d.vibrationSupported ? 'Sim' : 'Não'}`,
+      `Estado atual da página: ${d.visibility}`,
+      '',
+      'Para tela bloqueada no celular:',
+      '1. Permitir notificações deste site/app no navegador.',
+      '2. Manter volume de notificações do sistema ligado (não apenas mídia).',
+      '3. Desativar Não Perturbe / modo silencioso para este app.',
+      '4. Remover restrição de bateria para o navegador/PWA.',
+      '5. Instalar o app na tela inicial melhora entrega em segundo plano.'
+    ];
+
+    window.alert(['Diagnóstico de Notificação e Som', '', ...checklist].join('\n'));
   }
 
   async sendSystemNotification(title, body, options = {}) {
@@ -2325,6 +2385,7 @@ class ConsultorioApp {
   initDOM() {
     ensureLoginCredentials();
     this.renderVersionBadge();
+    this.loadLandscapeSidebarPreference();
 
     const userInput = document.getElementById('login-username');
     const creds = getLoginCredentials();
@@ -2346,6 +2407,92 @@ class ConsultorioApp {
     this.updateCloudSyncMeta('Modo local', 'local');
     this.captureReminderRouteFromCurrentUrl();
     this.startReminderWatcher();
+    this.applyLandscapeSidebarState();
+  }
+
+  isLandscapeCompactMode() {
+    if (!window.matchMedia) return false;
+    return window.matchMedia('(max-width: 900px) and (orientation: landscape) and (max-height: 520px)').matches;
+  }
+
+  loadLandscapeSidebarPreference() {
+    try {
+      this.landscapeSidebarCollapsed = localStorage.getItem(LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY) === '1';
+    } catch (err) {
+      this.landscapeSidebarCollapsed = false;
+    }
+  }
+
+  saveLandscapeSidebarPreference() {
+    try {
+      localStorage.setItem(
+        LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY,
+        this.landscapeSidebarCollapsed ? '1' : '0'
+      );
+    } catch (err) {
+      console.log('Falha ao salvar preferência do menu landscape:', err);
+    }
+  }
+
+  updateLandscapeSidebarToggleUI() {
+    const btn = document.getElementById('btn-toggle-landscape-sidebar');
+    if (!btn) return;
+
+    const compactMode = this.isLandscapeCompactMode();
+    const collapsed = compactMode && this.landscapeSidebarCollapsed;
+    btn.style.display = compactMode ? 'inline-flex' : 'none';
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    btn.setAttribute('title', collapsed ? 'Expandir menu lateral' : 'Recolher menu lateral');
+
+    const text = btn.querySelector('span');
+    if (text) text.textContent = collapsed ? 'Expandir Menu' : 'Recolher Menu';
+  }
+
+  applyLandscapeSidebarState() {
+    const appShell = document.getElementById('app-shell');
+    if (!appShell) return;
+
+    const compactMode = this.isLandscapeCompactMode();
+    if (!compactMode) {
+      appShell.classList.remove('landscape-sidebar-collapsed');
+      this.updateLandscapeSidebarToggleUI();
+      return;
+    }
+
+    appShell.classList.toggle('landscape-sidebar-collapsed', this.landscapeSidebarCollapsed);
+    this.updateLandscapeSidebarToggleUI();
+  }
+
+  toggleLandscapeSidebar() {
+    if (!this.isLandscapeCompactMode()) return;
+    this.landscapeSidebarCollapsed = !this.landscapeSidebarCollapsed;
+    this.saveLandscapeSidebarPreference();
+    this.applyLandscapeSidebarState();
+  }
+
+  bindLandscapeSidebarToggle() {
+    const btn = document.getElementById('btn-toggle-landscape-sidebar');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        this.toggleLandscapeSidebar();
+      });
+    }
+
+    const onViewportChange = () => {
+      this.applyLandscapeSidebarState();
+    };
+
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('orientationchange', onViewportChange);
+
+    if (window.matchMedia) {
+      const mq = window.matchMedia('(max-width: 900px) and (orientation: landscape) and (max-height: 520px)');
+      if (mq && typeof mq.addEventListener === 'function') {
+        mq.addEventListener('change', onViewportChange);
+      }
+    }
+
+    this.applyLandscapeSidebarState();
   }
 
   loadSoundSettings() {
@@ -2460,16 +2607,23 @@ class ConsultorioApp {
       if (permission === 'granted') {
         pill.classList.add('is-granted');
         pill.textContent = 'Notificação: Permitida';
+        pill.title = 'Notificação permitida. Toque para ver diagnóstico de tela bloqueada e som.';
       } else if (permission === 'denied') {
         pill.classList.add('is-denied');
         pill.textContent = 'Notificação: Bloqueada';
+        pill.title = 'Notificação bloqueada no navegador. Libere nas permissões do site.';
       } else if (permission === 'prompt') {
         pill.classList.add('is-prompt');
         pill.textContent = 'Notificação: Pendente';
+        pill.title = 'Toque em Ativar Notificação para conceder permissão.';
       } else {
         pill.classList.add('is-unsupported');
         pill.textContent = 'Notificação: Indisponível';
+        pill.title = 'Este navegador não suporta notificações do sistema.';
       }
+
+      pill.setAttribute('role', 'button');
+      pill.setAttribute('tabindex', '0');
     }
 
     if (enableBtn) {
@@ -2771,6 +2925,8 @@ class ConsultorioApp {
         openDiag();
       });
     }
+
+    this.bindLandscapeSidebarToggle();
 
     const resolveDashboardTarget = (cardId) => {
       if (!cardId) return null;
@@ -3443,9 +3599,10 @@ class ConsultorioApp {
 
     const btnTestSound = document.getElementById('btn-test-sound');
     const btnEnableNotifications = document.getElementById('btn-enable-notifications');
+    const notificationPermissionPill = document.getElementById('notification-permission-pill');
     if (btnTestSound) {
       btnTestSound.addEventListener('click', async () => {
-        await this.ensureNotificationPermission(true);
+        await this.ensureNotificationPermission(true, true);
         const simulatedAppointment = {
           id: `appt-test-${Date.now()}`,
           clientName: 'Paciente de teste',
@@ -3458,8 +3615,18 @@ class ConsultorioApp {
 
     if (btnEnableNotifications) {
       btnEnableNotifications.addEventListener('click', async () => {
-        await this.ensureNotificationPermission(true);
+        await this.ensureNotificationPermission(true, true);
         this.updateNotificationPermissionUI();
+      });
+    }
+
+    if (notificationPermissionPill) {
+      const openDiagnostics = () => this.showNotificationSoundDiagnostics();
+      notificationPermissionPill.addEventListener('click', openDiagnostics);
+      notificationPermissionPill.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        openDiagnostics();
       });
     }
 
@@ -3935,6 +4102,8 @@ class ConsultorioApp {
       errorEl.textContent = '';
       errorEl.style.display = 'none';
     }
+
+    this.applyLandscapeSidebarState();
   }
 
   logoutSession() {
@@ -6885,7 +7054,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260730-8', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260731-1', 'app-root')
       ]);
     }
   } catch (err) {
@@ -6904,7 +7073,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260731-2')
+    navigator.serviceWorker.register('./sw.js?v=20260731-4')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

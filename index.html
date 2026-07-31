@@ -6,7 +6,7 @@
   <title>Consultório Control - Gestão de Clientes, Agenda e Finanças</title>
   <meta name="description" content="Sistema de gestão para controle de clientes, consultas e financeiro do consultório.">
   <meta name="theme-color" content="#0f172a">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json?v=20260731-3">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260731-2">
+  <link rel="stylesheet" href="css/styles.css?v=20260731-3">
 </head>
 <body>
   <div id="login-root">
@@ -86,6 +86,11 @@
             <h1 id="page-title">Consultório Control</h1>
             <p id="page-subtitle">Gestão de clientes, agenda e financeiro</p>
           </div>
+
+          <button class="btn btn-secondary btn-sm btn-landscape-sidebar-toggle" id="btn-toggle-landscape-sidebar" type="button" title="Recolher menu lateral" aria-expanded="true">
+            <i data-lucide="panel-top"></i>
+            <span>Recolher Menu</span>
+          </button>
 
           <div class="header-actions">
             <div class="sound-control-group">
@@ -1144,6 +1149,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260730-8"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260730-8"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260730-8"></script>
-  <script src="js/app.js?v=20260730-8"></script>
+  <script src="js/app.js?v=20260731-1"></script>
 </body>
 </html>

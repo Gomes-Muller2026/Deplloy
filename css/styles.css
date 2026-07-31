@@ -1033,6 +1033,7 @@ input[type="date"]:focus {
   font-weight: 700;
   letter-spacing: 0.01em;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .notification-permission-pill.is-granted {
@@ -1104,6 +1105,10 @@ input[type="date"]:focus {
 
 .btn-icon-text {
   position: relative;
+}
+
+.btn-landscape-sidebar-toggle {
+  display: none;
 }
 
 .btn-notification-badge {
@@ -4295,6 +4300,78 @@ textarea.form-control,
   .top-date-picker .top-date-input {
     flex: 1 1 100%;
     width: 100%;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 520px) {
+  #login-screen {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 0.75rem;
+  }
+
+  .login-card {
+    width: min(560px, 100%);
+    padding: 1rem;
+    border-radius: 18px;
+  }
+
+  .sidebar {
+    padding: 0.75rem;
+    gap: 0.6rem;
+  }
+
+  .sidebar-header {
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 0.55rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .logo-icon {
+    width: 54px;
+    height: 54px;
+    min-height: 54px;
+    border-radius: 14px;
+  }
+
+  .sidebar-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .sidebar-nav .nav-item {
+    min-height: 40px;
+    padding: 0.55rem 0.62rem;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+  }
+
+  .main-content {
+    padding: 0.75rem 0.8rem 0.95rem;
+  }
+
+  .top-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .btn-landscape-sidebar-toggle {
+    display: inline-flex;
+    align-self: start;
+  }
+
+  #app-shell.landscape-sidebar-collapsed .sidebar {
+    display: none;
+  }
+
+  #app-shell.landscape-sidebar-collapsed .main-content {
+    padding-top: 0.55rem;
   }
 }
 

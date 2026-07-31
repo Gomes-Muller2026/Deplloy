@@ -3482,6 +3482,26 @@ body.analytics-focus-mode .analytics-grid {
   background: inherit;
 }
 
+.payment-receipt-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 0.65rem;
+}
+
+.payment-receipt-edit-grid .form-group {
+  margin: 0;
+}
+
+.payment-receipt-edit-full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .payment-receipt-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 #pay-receipt-text {
   resize: vertical;
   min-height: 150px;

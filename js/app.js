@@ -25,26 +25,61 @@ const WHATSAPP_BIRTHDAY_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_birthday_t
 const WHATSAPP_CONFIRM_SELECTED_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_selected';
 const WHATSAPP_BIRTHDAY_SELECTED_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_selected';
 const PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY = 'consultorio_payment_receipt_template';
-const DEFAULT_PAYMENT_RECEIPT_TEMPLATE = [
+const PAYMENT_RECEIPT_COUNTER_STORAGE_KEY = 'consultorio_payment_receipt_counter';
+const PAYMENT_RECEIPT_NUMBER_MAP_STORAGE_KEY = 'consultorio_payment_receipt_number_map';
+const PAYMENT_RECEIPT_PROFILE_STORAGE_KEY = 'consultorio_payment_receipt_profile';
+const DEFAULT_RECEIPT_PROFESSIONAL_NAME = 'Patricia Grando Muller';
+const DEFAULT_RECEIPT_PROFESSIONAL_CRP = '[Numero do CRP/Regiao]';
+const DEFAULT_RECEIPT_PROFESSIONAL_CPF = '001.715.930-06';
+const DEFAULT_RECEIPT_PROFESSIONAL_ADDRESS = '[Endereco do Consultorio]';
+const DEFAULT_RECEIPT_CITY_UF = '[Cidade - RS]';
+const DEFAULT_PAYMENT_RECEIPT_PROFILE = {
+  professionalName: DEFAULT_RECEIPT_PROFESSIONAL_NAME,
+  professionalCrp: DEFAULT_RECEIPT_PROFESSIONAL_CRP,
+  professionalCpf: DEFAULT_RECEIPT_PROFESSIONAL_CPF,
+  professionalAddress: DEFAULT_RECEIPT_PROFESSIONAL_ADDRESS,
+  cityUf: DEFAULT_RECEIPT_CITY_UF
+};
+const LEGACY_PAYMENT_RECEIPT_TEMPLATE = [
   'LOGO: Patricia Grando Muller',
   'RECIBO DE PAGAMENTO',
   '',
   'Profissional: Patricia Grando Muller',
-  'Responsável: {{assinatura}}',
+  'Responsavel: {{assinatura}}',
   'Paciente: {{cliente}}',
-  'Data da consulta: {{data}} às {{hora}}',
+  'Data da consulta: {{data}} as {{hora}}',
   'Procedimento: {{procedimento}}',
   'Forma de pagamento: {{forma_pagamento}}',
   '',
   'Valor total: {{valor_total}}',
-  'Valor já pago (antes): {{valor_pago_antes}}',
+  'Valor ja pago (antes): {{valor_pago_antes}}',
   'Valor pago agora: {{valor_pago_agora}}',
-  'Total pago (após): {{total_pago}}',
+  'Total pago (apos): {{total_pago}}',
   'Saldo em aberto: {{saldo_aberto}}',
   '',
   'Emitido em: {{emitido_em}}',
   '',
   'Assinatura: ____________________________'
+].join('\n');
+const DEFAULT_PAYMENT_RECEIPT_TEMPLATE = [
+  'RECIBO DE PAGAMENTO',
+  'Nº: {{recibo_numero}}',
+  '',
+  'Valor: {{valor_pago_agora}} ({{valor_pago_agora_extenso}})',
+  '',
+  'Recebi de {{pagador_nome}}, inscrito(a) no CPF sob o nº {{pagador_cpf}}, a importancia de {{valor_pago_agora}}, referente a prestacao de servicos de psicoterapia realizada para o(a) paciente {{paciente_nome}}, inscrito(a) no CPF sob o nº {{paciente_cpf}}.',
+  '',
+  'Servico: {{servico}}',
+  'Quantidade: {{quantidade_sessoes}} sessao(oes)',
+  'Data(s) do atendimento: {{datas_atendimento}}',
+  '',
+  '{{cidade_uf}}, {{data_emissao_extenso}}.',
+  '',
+  'Assinatura do(a) Profissional',
+  'Nome: {{profissional_nome}}',
+  'CRP: {{profissional_crp}}',
+  'CPF: {{profissional_cpf}}',
+  'Endereco: {{profissional_endereco}}'
 ].join('\n');
 const DEFAULT_WHATSAPP_CONFIRM_TEMPLATE = [
   'Olá, {{cliente}}!',
@@ -393,6 +428,7 @@ class ConsultorioApp {
     this.whatsAppSelectedConfirmTemplateId = '';
     this.whatsAppSelectedBirthdayTemplateId = '';
     this.paymentReceiptTemplate = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+    this.paymentReceiptProfile = { ...DEFAULT_PAYMENT_RECEIPT_PROFILE };
     this.lastDashboardCardAction = '';
     this.lastDashboardCardActionAt = 0;
     this.lastAnamneseIndividualCepLookup = '';
@@ -414,6 +450,7 @@ class ConsultorioApp {
     this.loadStore();
     this.loadWhatsAppTemplates();
     this.loadPaymentReceiptTemplate();
+    this.loadPaymentReceiptProfile();
     this.loadVersionInfo();
   }
 
@@ -738,9 +775,44 @@ class ConsultorioApp {
     try {
       const raw = localStorage.getItem(PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY);
       const template = String(raw || DEFAULT_PAYMENT_RECEIPT_TEMPLATE).trim();
+      const normalizeForCompare = (text) => String(text || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!raw || normalizeForCompare(template) === normalizeForCompare(LEGACY_PAYMENT_RECEIPT_TEMPLATE)) {
+        this.paymentReceiptTemplate = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+        localStorage.setItem(PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY, this.paymentReceiptTemplate);
+        return;
+      }
       this.paymentReceiptTemplate = template || DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
     } catch (err) {
       this.paymentReceiptTemplate = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+    }
+  }
+
+  loadPaymentReceiptProfile() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(PAYMENT_RECEIPT_PROFILE_STORAGE_KEY) || '{}');
+      this.paymentReceiptProfile = {
+        ...DEFAULT_PAYMENT_RECEIPT_PROFILE,
+        ...(raw && typeof raw === 'object' ? raw : {})
+      };
+    } catch (err) {
+      this.paymentReceiptProfile = { ...DEFAULT_PAYMENT_RECEIPT_PROFILE };
+    }
+  }
+
+  savePaymentReceiptProfile(profile = {}) {
+    this.paymentReceiptProfile = {
+      ...DEFAULT_PAYMENT_RECEIPT_PROFILE,
+      ...(this.paymentReceiptProfile || {}),
+      ...(profile || {})
+    };
+    try {
+      localStorage.setItem(PAYMENT_RECEIPT_PROFILE_STORAGE_KEY, JSON.stringify(this.paymentReceiptProfile));
+    } catch (err) {
+      console.log('Falha ao salvar perfil do recibo:', err);
     }
   }
 
@@ -771,7 +843,216 @@ class ConsultorioApp {
     return String(this.paymentReceiptTemplate || DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
   }
 
+  getClientByAppointment(appointment) {
+    const byId = this.clients.find((client) => String(client && client.id || '') === String(appointment && appointment.clientId || ''));
+    if (byId) return byId;
+
+    const apptName = String((appointment && appointment.clientName) || '').trim().toLowerCase();
+    if (!apptName) return null;
+    return this.clients.find((client) => String((client && client.name) || '').trim().toLowerCase() === apptName) || null;
+  }
+
+  formatCpfDisplay(rawCpf, fallback = '[000.000.000-00]') {
+    const digits = String(rawCpf || '').replace(/\D/g, '');
+    if (digits.length !== 11) return fallback;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  }
+
+  formatCpfInput(rawCpf) {
+    const digits = String(rawCpf || '').replace(/\D/g, '').slice(0, 11);
+    if (!digits) return '';
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  }
+
+  formatPhoneInput(rawPhone) {
+    const digits = String(rawPhone || '').replace(/\D/g, '').slice(0, 11);
+    if (!digits) return '';
+    if (digits.length <= 2) return `(${digits}`;
+
+    const ddd = digits.slice(0, 2);
+    const body = digits.slice(2);
+
+    if (body.length <= 4) return `(${ddd}) ${body}`;
+    if (body.length <= 8) return `(${ddd}) ${body.slice(0, 4)}-${body.slice(4)}`;
+    return `(${ddd}) ${body.slice(0, 5)}-${body.slice(5)}`;
+  }
+
+  numberToWordsPtBR(value) {
+    const units = ['', 'um', 'dois', 'tres', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+    const teens = ['dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+    const tens = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+    const hundreds = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+    const integer = Math.max(0, Math.trunc(Number(value) || 0));
+    if (integer === 0) return 'zero';
+
+    const convertUnderThousand = (num) => {
+      if (num === 0) return '';
+      if (num === 100) return 'cem';
+
+      const c = Math.trunc(num / 100);
+      const d = Math.trunc((num % 100) / 10);
+      const u = num % 10;
+      const parts = [];
+
+      if (c > 0) parts.push(hundreds[c]);
+      if (d === 1) parts.push(teens[u]);
+      else {
+        if (d > 1) parts.push(tens[d]);
+        if (u > 0) parts.push(units[u]);
+      }
+
+      return parts.join(' e ');
+    };
+
+    const thousands = Math.trunc(integer / 1000);
+    const remainder = integer % 1000;
+    const parts = [];
+
+    if (thousands > 0) {
+      if (thousands === 1) parts.push('mil');
+      else parts.push(`${convertUnderThousand(thousands)} mil`);
+    }
+
+    if (remainder > 0) {
+      if (thousands > 0 && remainder < 100) parts.push(`e ${convertUnderThousand(remainder)}`);
+      else parts.push(convertUnderThousand(remainder));
+    }
+
+    return parts.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  formatCurrencyExtenso(value) {
+    const safe = Math.max(0, Number(value) || 0);
+    const inteiro = Math.trunc(safe);
+    const centavos = Math.round((safe - inteiro) * 100);
+    const partes = [];
+
+    const inteiroTexto = this.numberToWordsPtBR(inteiro);
+    const centavosTexto = this.numberToWordsPtBR(centavos);
+
+    if (inteiro > 0) {
+      partes.push(`${inteiroTexto} ${inteiro === 1 ? 'real' : 'reais'}`);
+    }
+    if (centavos > 0) {
+      partes.push(`${centavosTexto} ${centavos === 1 ? 'centavo' : 'centavos'}`);
+    }
+
+    if (!partes.length) return 'zero real';
+    return partes.join(' e ');
+  }
+
+  formatLongDatePtBR(sourceDate) {
+    const date = sourceDate instanceof Date ? sourceDate : new Date(sourceDate);
+    if (Number.isNaN(date.getTime())) return '[Dia] de [Mes] de [Ano]';
+    const months = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    return `${date.getDate()} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
+  }
+
+  getPaymentReceiptNumberMap() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PAYMENT_RECEIPT_NUMBER_MAP_STORAGE_KEY) || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  savePaymentReceiptNumberMap(map) {
+    try {
+      localStorage.setItem(PAYMENT_RECEIPT_NUMBER_MAP_STORAGE_KEY, JSON.stringify(map || {}));
+    } catch (err) {
+      console.log('Falha ao salvar mapa de numeracao dos recibos:', err);
+    }
+  }
+
+  getNextPaymentReceiptNumber() {
+    let current = 0;
+    try {
+      current = Number(localStorage.getItem(PAYMENT_RECEIPT_COUNTER_STORAGE_KEY) || 0);
+    } catch (err) {
+      current = 0;
+    }
+    const next = Math.max(0, Number.isFinite(current) ? Math.trunc(current) : 0) + 1;
+    try {
+      localStorage.setItem(PAYMENT_RECEIPT_COUNTER_STORAGE_KEY, String(next));
+    } catch (err) {
+      console.log('Falha ao salvar contador de recibos:', err);
+    }
+    return String(next).padStart(3, '0');
+  }
+
+  ensurePaymentReceiptNumber(appointment, paidAfter = 0) {
+    const id = String((appointment && appointment.id) || '').trim();
+    const amountKey = Math.max(0, Math.round(Number(paidAfter || 0) * 100));
+    const entryKey = id ? `${id}|${amountKey}` : '';
+    if (!entryKey) return this.getNextPaymentReceiptNumber();
+
+    const map = this.getPaymentReceiptNumberMap();
+    const existing = String(map[entryKey] || '').trim();
+    if (existing) return existing;
+
+    const next = this.getNextPaymentReceiptNumber();
+    map[entryKey] = next;
+    this.savePaymentReceiptNumberMap(map);
+    return next;
+  }
+
+  getReceiptInputValue(id, fallback = '') {
+    const field = document.getElementById(id);
+    const value = String((field && field.value) || '').trim();
+    return value || fallback;
+  }
+
+  setReceiptInputValue(id, value = '') {
+    const field = document.getElementById(id);
+    if (!field) return;
+    field.value = String(value == null ? '' : value);
+  }
+
+  populatePaymentReceiptEditableFields(appointment, amountNow = 0) {
+    const client = this.getClientByAppointment(appointment) || {};
+    const clientName = String((appointment && appointment.clientName) || 'Cliente').trim() || 'Cliente';
+    const procedure = String((appointment && appointment.procedure) || 'Consulta').trim() || 'Consulta';
+    const date = formatDateBR((appointment && appointment.date) || '');
+    const total = toNumber((appointment && appointment.price) || 0);
+    const paidBefore = toNumber((appointment && appointment.amountPaid) || 0);
+    const paidNow = Math.max(0, toNumber(amountNow || 0));
+    const paidAfter = Math.min(total, paidBefore + paidNow);
+
+    const payerName = String((client && client.emergencyName) || (client && client.name) || clientName || '[Nome completo do Pagador / Responsavel]').trim();
+    const payerCpf = this.formatCpfDisplay((client && client.emergencyCpf) || (client && client.cpf) || '', '[000.000.000-00]');
+    const patientName = String((client && client.name) || clientName || '[Nome completo do Paciente]').trim();
+    const patientCpf = this.formatCpfDisplay((client && client.cpf) || '', '[000.000.000-00]');
+    const city = String((client && client.city) || '').trim();
+    const state = String((client && client.state) || '').trim().toUpperCase();
+    const cityUf = city && state
+      ? `${city} - ${state}`
+      : String((this.paymentReceiptProfile && this.paymentReceiptProfile.cityUf) || DEFAULT_RECEIPT_CITY_UF);
+
+    const quantity = Math.max(1, Number((appointment && (appointment.sessionCount || appointment.sessionsCount || appointment.quantity)) || 1));
+    const receiptNumber = this.ensurePaymentReceiptNumber(appointment, paidAfter);
+
+    this.setReceiptInputValue('pay-receipt-number', receiptNumber);
+    this.setReceiptInputValue('pay-receipt-payer-name', payerName);
+    this.setReceiptInputValue('pay-receipt-payer-cpf', payerCpf);
+    this.setReceiptInputValue('pay-receipt-patient-name', patientName);
+    this.setReceiptInputValue('pay-receipt-patient-cpf', patientCpf);
+    this.setReceiptInputValue('pay-receipt-service', procedure);
+    this.setReceiptInputValue('pay-receipt-sessions', String(quantity));
+    this.setReceiptInputValue('pay-receipt-dates', date);
+    this.setReceiptInputValue('pay-receipt-city-uf', cityUf);
+    this.setReceiptInputValue('pay-receipt-professional-name', (this.paymentReceiptProfile && this.paymentReceiptProfile.professionalName) || DEFAULT_RECEIPT_PROFESSIONAL_NAME);
+    this.setReceiptInputValue('pay-receipt-professional-crp', (this.paymentReceiptProfile && this.paymentReceiptProfile.professionalCrp) || DEFAULT_RECEIPT_PROFESSIONAL_CRP);
+    this.setReceiptInputValue('pay-receipt-professional-cpf', (this.paymentReceiptProfile && this.paymentReceiptProfile.professionalCpf) || DEFAULT_RECEIPT_PROFESSIONAL_CPF);
+    this.setReceiptInputValue('pay-receipt-professional-address', (this.paymentReceiptProfile && this.paymentReceiptProfile.professionalAddress) || DEFAULT_RECEIPT_PROFESSIONAL_ADDRESS);
+  }
+
   buildPaymentReceiptVars(appointment, amountNow = 0) {
+    const client = this.getClientByAppointment(appointment) || {};
     const clientName = String((appointment && appointment.clientName) || 'Cliente').trim() || 'Cliente';
     const procedure = String((appointment && appointment.procedure) || 'Consulta').trim() || 'Consulta';
     const date = formatDateBR((appointment && appointment.date) || '');
@@ -782,20 +1063,65 @@ class ConsultorioApp {
     const paidNow = Math.max(0, toNumber(amountNow || 0));
     const paidAfter = Math.min(total, paidBefore + paidNow);
     const openAfter = Math.max(0, total - paidAfter);
+    const payerName = String((client && client.emergencyName) || (client && client.name) || clientName || '[Nome completo do Pagador / Responsavel]').trim();
+    const payerCpf = this.formatCpfDisplay((client && client.emergencyCpf) || (client && client.cpf) || '', '[000.000.000-00]');
+    const patientName = String((client && client.name) || clientName || '[Nome completo do Paciente]').trim();
+    const patientCpf = this.formatCpfDisplay((client && client.cpf) || '', '[000.000.000-00]');
+    const city = String((client && client.city) || '').trim();
+    const state = String((client && client.state) || '').trim().toUpperCase();
+    const cityUfDefault = city && state
+      ? `${city} - ${state}`
+      : String((this.paymentReceiptProfile && this.paymentReceiptProfile.cityUf) || DEFAULT_RECEIPT_CITY_UF);
+    const quantity = Math.max(1, Number((appointment && (appointment.sessionCount || appointment.sessionsCount || appointment.quantity)) || 1));
+    const autoReceiptNumber = this.ensurePaymentReceiptNumber(appointment, paidAfter);
+    const issuedAt = new Date();
+    const receiptNumber = this.getReceiptInputValue('pay-receipt-number', autoReceiptNumber);
+
+    const profileDraft = {
+      professionalName: this.getReceiptInputValue('pay-receipt-professional-name', (this.paymentReceiptProfile && this.paymentReceiptProfile.professionalName) || DEFAULT_RECEIPT_PROFESSIONAL_NAME),
+      professionalCrp: this.getReceiptInputValue('pay-receipt-professional-crp', (this.paymentReceiptProfile && this.paymentReceiptProfile.professionalCrp) || DEFAULT_RECEIPT_PROFESSIONAL_CRP),
+      professionalCpf: this.getReceiptInputValue('pay-receipt-professional-cpf', (this.paymentReceiptProfile && this.paymentReceiptProfile.professionalCpf) || DEFAULT_RECEIPT_PROFESSIONAL_CPF),
+      professionalAddress: this.getReceiptInputValue('pay-receipt-professional-address', (this.paymentReceiptProfile && this.paymentReceiptProfile.professionalAddress) || DEFAULT_RECEIPT_PROFESSIONAL_ADDRESS),
+      cityUf: this.getReceiptInputValue('pay-receipt-city-uf', cityUfDefault)
+    };
+    this.savePaymentReceiptProfile(profileDraft);
+
+    const payerNameFinal = this.getReceiptInputValue('pay-receipt-payer-name', payerName);
+    const payerCpfFinal = this.formatCpfDisplay(this.getReceiptInputValue('pay-receipt-payer-cpf', payerCpf), '[000.000.000-00]');
+    const patientNameFinal = this.getReceiptInputValue('pay-receipt-patient-name', patientName);
+    const patientCpfFinal = this.formatCpfDisplay(this.getReceiptInputValue('pay-receipt-patient-cpf', patientCpf), '[000.000.000-00]');
+    const serviceFinal = this.getReceiptInputValue('pay-receipt-service', procedure);
+    const quantityFinal = Math.max(1, Number(this.getReceiptInputValue('pay-receipt-sessions', String(quantity))) || 1);
+    const datesFinal = this.getReceiptInputValue('pay-receipt-dates', date);
 
     return {
       assinatura: this.getSignatureName(),
       cliente: clientName,
+      paciente_nome: patientNameFinal,
+      paciente_cpf: patientCpfFinal,
+      pagador_nome: payerNameFinal,
+      pagador_cpf: payerCpfFinal,
       data: date,
       hora: time,
+      datas_atendimento: datesFinal,
       procedimento: procedure,
+      servico: serviceFinal,
+      quantidade_sessoes: String(quantityFinal),
       forma_pagamento: paymentMethod,
       valor_total: formatCurrency(total),
       valor_pago_antes: formatCurrency(paidBefore),
       valor_pago_agora: formatCurrency(paidNow),
+      valor_pago_agora_extenso: this.formatCurrencyExtenso(paidNow),
       total_pago: formatCurrency(paidAfter),
       saldo_aberto: formatCurrency(openAfter),
-      emitido_em: new Date().toLocaleString('pt-BR')
+      emitido_em: issuedAt.toLocaleString('pt-BR'),
+      data_emissao_extenso: this.formatLongDatePtBR(issuedAt),
+      cidade_uf: profileDraft.cityUf,
+      recibo_numero: receiptNumber,
+      profissional_nome: profileDraft.professionalName,
+      profissional_crp: profileDraft.professionalCrp,
+      profissional_cpf: profileDraft.professionalCpf,
+      profissional_endereco: profileDraft.professionalAddress
     };
   }
 
@@ -2135,18 +2461,30 @@ class ConsultorioApp {
         event.preventDefault();
         const enteredUser = String((loginUserInput && loginUserInput.value) || '').trim();
         const enteredPass = String((loginPassInput && loginPassInput.value) || '');
-        const creds = getLoginCredentials(enteredUser);
-
-        if (enteredUser.toLowerCase() === String(creds.username || '').toLowerCase() && enteredPass === creds.password) {
-          setActiveLoginUser(creds.username);
-          this.localLoginUnlocked = true;
-          this.showAppShell();
-          this.render();
-          this.applyPendingReminderRoute();
-          this.showToast('Login realizado com sucesso!', 'success');
-        } else {
-          this.showLoginScreen('Usuário ou senha incorretos.');
+        if (!enteredUser || !enteredPass) {
+          this.showLoginScreen('Preencha usuário e senha para entrar.');
+          return;
         }
+
+        const users = getLoginUsers();
+        const matchedUser = users.find((user) => String(user.username || '').trim().toLowerCase() === enteredUser.toLowerCase());
+
+        if (!matchedUser) {
+          this.showLoginScreen('Usuário não encontrado.');
+          return;
+        }
+
+        if (enteredPass !== String(matchedUser.password || '')) {
+          this.showLoginScreen('Senha incorreta.');
+          return;
+        }
+
+        setActiveLoginUser(matchedUser.username);
+        this.localLoginUnlocked = true;
+        this.showAppShell();
+        this.render();
+        this.applyPendingReminderRoute();
+        this.showToast('Login realizado com sucesso!', 'success');
       });
     }
 
@@ -2595,6 +2933,36 @@ class ConsultorioApp {
       });
     }
 
+    const clientCpfInput = document.getElementById('client-cpf');
+    if (clientCpfInput) {
+      clientCpfInput.addEventListener('input', () => {
+        clientCpfInput.value = this.formatCpfInput(clientCpfInput.value);
+      });
+      clientCpfInput.addEventListener('blur', () => {
+        clientCpfInput.value = this.formatCpfInput(clientCpfInput.value);
+      });
+    }
+
+    const clientPhoneInput = document.getElementById('client-phone');
+    if (clientPhoneInput) {
+      clientPhoneInput.addEventListener('input', () => {
+        clientPhoneInput.value = this.formatPhoneInput(clientPhoneInput.value);
+      });
+      clientPhoneInput.addEventListener('blur', () => {
+        clientPhoneInput.value = this.formatPhoneInput(clientPhoneInput.value);
+      });
+    }
+
+    const emergencyPhoneInput = document.getElementById('client-emergency-phone');
+    if (emergencyPhoneInput) {
+      emergencyPhoneInput.addEventListener('input', () => {
+        emergencyPhoneInput.value = this.formatPhoneInput(emergencyPhoneInput.value);
+      });
+      emergencyPhoneInput.addEventListener('blur', () => {
+        emergencyPhoneInput.value = this.formatPhoneInput(emergencyPhoneInput.value);
+      });
+    }
+
     const clientCepInput = document.getElementById('client-cep');
     if (clientCepInput) {
       clientCepInput.addEventListener('input', () => {
@@ -2697,6 +3065,34 @@ class ConsultorioApp {
     if (btnGeneratePaymentReceipt) {
       btnGeneratePaymentReceipt.addEventListener('click', () => this.generatePaymentReceipt());
     }
+
+    const receiptEditableFieldIds = [
+      'pay-receipt-number',
+      'pay-receipt-city-uf',
+      'pay-receipt-payer-name',
+      'pay-receipt-payer-cpf',
+      'pay-receipt-patient-name',
+      'pay-receipt-patient-cpf',
+      'pay-receipt-service',
+      'pay-receipt-sessions',
+      'pay-receipt-dates',
+      'pay-receipt-professional-name',
+      'pay-receipt-professional-crp',
+      'pay-receipt-professional-cpf',
+      'pay-receipt-professional-address'
+    ];
+    receiptEditableFieldIds.forEach((id) => {
+      const field = document.getElementById(id);
+      if (!field) return;
+      const handler = () => {
+        if (id.includes('cpf')) {
+          field.value = this.formatCpfInput(field.value);
+        }
+        this.generatePaymentReceipt();
+      };
+      field.addEventListener('change', handler);
+      field.addEventListener('input', handler);
+    });
 
     const btnTogglePaymentReceiptTemplate = document.getElementById('btn-toggle-payment-receipt-template');
     if (btnTogglePaymentReceiptTemplate) {
@@ -4982,9 +5378,9 @@ class ConsultorioApp {
           if (el) el.value = val || '';
         };
         set('client-name', c.name);
-        set('client-phone', c.phone);
+        set('client-phone', this.formatPhoneInput(c.phone));
         set('client-email', c.email);
-        set('client-cpf', c.cpf);
+        set('client-cpf', this.formatCpfInput(c.cpf));
         set('client-rg', c.rg);
         set('client-dob', this.formatDobForInput(c.dob));
         set('client-group', c.group);
@@ -4997,7 +5393,7 @@ class ConsultorioApp {
         set('client-state', c.state);
         set('client-notes', c.notes);
         set('client-emergency-name', c.emergencyName);
-        set('client-emergency-phone', c.emergencyPhone);
+        set('client-emergency-phone', this.formatPhoneInput(c.emergencyPhone));
         set('client-emergency-relation', c.emergencyRelation);
         set('client-referral-source', c.referralSource);
         set('client-referral-notes', c.referralNotes);
@@ -5205,7 +5601,7 @@ class ConsultorioApp {
   saveClientForm() {
     const id = (document.getElementById('client-id') || {}).value || '';
     const name = String((document.getElementById('client-name') || {}).value || '').trim();
-    const phone = String((document.getElementById('client-phone') || {}).value || '').trim();
+    const phone = this.formatPhoneInput((document.getElementById('client-phone') || {}).value || '');
     const email = String((document.getElementById('client-email') || {}).value || '').trim();
 
     const group = this.normalizeClientGroupName((document.getElementById('client-group') || {}).value || '');
@@ -5235,7 +5631,7 @@ class ConsultorioApp {
       state: String((document.getElementById('client-state') || {}).value || '').trim().toUpperCase().slice(0, 2),
       notes: String((document.getElementById('client-notes') || {}).value || '').trim(),
       emergencyName: String((document.getElementById('client-emergency-name') || {}).value || '').trim(),
-      emergencyPhone: String((document.getElementById('client-emergency-phone') || {}).value || '').trim(),
+      emergencyPhone: this.formatPhoneInput((document.getElementById('client-emergency-phone') || {}).value || ''),
       emergencyRelation: String((document.getElementById('client-emergency-relation') || {}).value || '').trim(),
       referralSource: String((document.getElementById('client-referral-source') || {}).value || '').trim(),
       referralNotes: String((document.getElementById('client-referral-notes') || {}).value || '').trim(),
@@ -5351,11 +5747,9 @@ class ConsultorioApp {
       statusSelect.value = balance <= 0 ? 'Pago' : (paid > 0 ? 'Parcial' : 'Pendente');
     }
 
-    const receiptEl = document.getElementById('pay-receipt-text');
-    if (receiptEl) {
-      const previewAmount = balance > 0 ? balance : 0;
-      receiptEl.value = this.buildPaymentReceiptText(appt, previewAmount);
-    }
+    const previewAmount = balance > 0 ? balance : 0;
+    this.populatePaymentReceiptEditableFields(appt, previewAmount);
+    this.generatePaymentReceipt();
 
     const templateEl = document.getElementById('pay-receipt-template');
     if (templateEl) {

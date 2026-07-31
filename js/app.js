@@ -844,6 +844,20 @@ class ConsultorioApp {
     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
+  formatTopDateDisplay(value) {
+    return this.formatDobDisplay(value);
+  }
+
+  normalizeTopDateToIso(value) {
+    return this.normalizeDobToIso(value);
+  }
+
+  formatTopDateForInput(value) {
+    const iso = this.normalizeTopDateToIso(value);
+    if (!iso) return this.formatTopDateDisplay(value);
+    return this.formatDobForInput(iso);
+  }
+
   async fetchCepData(rawCep) {
     const cep = this.normalizeCep(rawCep);
     if (cep.length !== 8) return { cep, data: null, notFound: false };
@@ -1332,7 +1346,7 @@ class ConsultorioApp {
               <input type="password" class="form-control" data-user-field="password" value="${safeText(user.password || '')}">
             </div>
           </div>
-          <label class="login-show-password user-manage-toggle"><input type="checkbox" data-user-action="toggle-pass" data-user-index="${index}"> Mostrar senha</label>
+          <label class="login-show-password user-manage-toggle"><input type="checkbox" data-user-action="toggle-pass" data-user-index="${index}" onchange="app.toggleRegisteredUserPassword(this)"> Mostrar senha</label>
           <div class="user-manage-actions">
             <button type="button" class="btn btn-secondary btn-sm" data-user-action="activate" data-user-index="${index}"><i data-lucide="user-round-check"></i> Usar neste login</button>
             <button type="button" class="btn btn-primary btn-sm" data-user-action="save" data-user-index="${index}"><i data-lucide="save"></i> Salvar</button>
@@ -1343,12 +1357,7 @@ class ConsultorioApp {
     }).join('');
 
     container.querySelectorAll('[data-user-action="toggle-pass"]').forEach((checkbox) => {
-      checkbox.addEventListener('change', () => {
-        const card = checkbox.closest('[data-user-index]');
-        if (!card) return;
-        const passInput = card.querySelector('[data-user-field="password"]');
-        if (passInput) passInput.type = checkbox.checked ? 'text' : 'password';
-      });
+      checkbox.addEventListener('change', () => this.toggleRegisteredUserPassword(checkbox));
     });
 
     container.querySelectorAll('[data-user-action="activate"]').forEach((btn) => {
@@ -1460,6 +1469,14 @@ class ConsultorioApp {
     }
   }
 
+  toggleRegisteredUserPassword(checkbox) {
+    const card = checkbox && checkbox.closest ? checkbox.closest('[data-user-index]') : null;
+    if (!card) return;
+
+    const passInput = card.querySelector('[data-user-field="password"]');
+    if (passInput) passInput.type = checkbox.checked ? 'text' : 'password';
+  }
+
   initDOM() {
     ensureLoginCredentials();
 
@@ -1470,8 +1487,8 @@ class ConsultorioApp {
     const startDateInput = document.getElementById('top-date-start');
     const endDateInput = document.getElementById('top-date-end');
     const today = getTodayStr();
-    if (startDateInput && !startDateInput.value) startDateInput.value = today;
-    if (endDateInput && !endDateInput.value) endDateInput.value = today;
+    if (startDateInput && !startDateInput.value) startDateInput.value = this.formatTopDateForInput(today);
+    if (endDateInput && !endDateInput.value) endDateInput.value = this.formatTopDateForInput(today);
 
     this.syncTopDatesToAgendaFilters();
     this.ensureAppointmentProcedureOptions();
@@ -2005,8 +2022,8 @@ class ConsultorioApp {
         const today = getTodayStr();
         const startDateInput = document.getElementById('top-date-start');
         const endDateInput = document.getElementById('top-date-end');
-        if (startDateInput) startDateInput.value = today;
-        if (endDateInput) endDateInput.value = today;
+        if (startDateInput) startDateInput.value = this.formatTopDateForInput(today);
+        if (endDateInput) endDateInput.value = this.formatTopDateForInput(today);
         this.syncTopDatesToAgendaFilters();
         this.render();
       });
@@ -2014,8 +2031,36 @@ class ConsultorioApp {
 
     const topStart = document.getElementById('top-date-start');
     const topEnd = document.getElementById('top-date-end');
-    if (topStart) topStart.addEventListener('change', () => { this.syncTopDatesToAgendaFilters(); this.render(); });
-    if (topEnd) topEnd.addEventListener('change', () => { this.syncTopDatesToAgendaFilters(); this.render(); });
+    if (topStart) {
+      topStart.addEventListener('input', () => {
+        topStart.value = this.formatTopDateDisplay(topStart.value);
+      });
+      topStart.addEventListener('blur', () => {
+        topStart.value = this.formatTopDateForInput(topStart.value);
+        this.syncTopDatesToAgendaFilters();
+        this.render();
+      });
+      topStart.addEventListener('change', () => {
+        topStart.value = this.formatTopDateForInput(topStart.value);
+        this.syncTopDatesToAgendaFilters();
+        this.render();
+      });
+    }
+    if (topEnd) {
+      topEnd.addEventListener('input', () => {
+        topEnd.value = this.formatTopDateDisplay(topEnd.value);
+      });
+      topEnd.addEventListener('blur', () => {
+        topEnd.value = this.formatTopDateForInput(topEnd.value);
+        this.syncTopDatesToAgendaFilters();
+        this.render();
+      });
+      topEnd.addEventListener('change', () => {
+        topEnd.value = this.formatTopDateForInput(topEnd.value);
+        this.syncTopDatesToAgendaFilters();
+        this.render();
+      });
+    }
 
     const btnHeaderNewClient = document.getElementById('btn-header-new-client');
     const btnNewClient = document.getElementById('btn-new-client');
@@ -3040,8 +3085,10 @@ class ConsultorioApp {
     const topEnd = document.getElementById('top-date-end');
     const agendaStart = document.getElementById('agenda-filter-start');
     const agendaEnd = document.getElementById('agenda-filter-end');
-    if (agendaStart && topStart && !agendaStart.value) agendaStart.value = topStart.value;
-    if (agendaEnd && topEnd && !agendaEnd.value) agendaEnd.value = topEnd.value;
+    const topStartIso = this.normalizeTopDateToIso((topStart || {}).value || '');
+    const topEndIso = this.normalizeTopDateToIso((topEnd || {}).value || '');
+    if (agendaStart) agendaStart.value = topStartIso || '';
+    if (agendaEnd) agendaEnd.value = topEndIso || '';
   }
 
   getNextClientRegistrationNumber() {
@@ -4417,8 +4464,8 @@ class ConsultorioApp {
   }
 
   getTopRange() {
-    const start = String((document.getElementById('top-date-start') || {}).value || '').trim();
-    const end = String((document.getElementById('top-date-end') || {}).value || '').trim();
+    const start = this.normalizeTopDateToIso((document.getElementById('top-date-start') || {}).value || '');
+    const end = this.normalizeTopDateToIso((document.getElementById('top-date-end') || {}).value || '');
     return { start, end };
   }
 

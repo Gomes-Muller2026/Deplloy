@@ -827,8 +827,9 @@ class ConsultorioApp {
     const pageHeight = 841.89;
     const marginLeft = 42;
     const marginTop = 54;
-    const lineHeight = 14;
-    const maxCharsPerLine = 84;
+    const fontSize = 11;
+    const lineHeight = 15;
+    const maxCharsPerLine = 82;
     const lines = [];
 
     String(content || '').replace(/\r/g, '').split('\n').forEach((line) => {
@@ -863,13 +864,13 @@ class ConsultorioApp {
 
     const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
     const contentIds = pages.map((pageLines) => {
-      const streamLines = ['BT', '/F1 12 Tf', `${marginLeft} ${pageHeight - marginTop} Td`];
+      const streamLines = ['BT', `/F1 ${fontSize} Tf`, `${lineHeight} TL`, `${marginLeft} ${pageHeight - marginTop} Td`];
       pageLines.forEach((line, lineIndex) => {
         const escaped = this.escapePdfText(line);
         if (lineIndex === 0) {
           streamLines.push(`(${escaped}) Tj`);
         } else {
-          streamLines.push('T*');
+          streamLines.push(`0 -${lineHeight} Td`);
           streamLines.push(`(${escaped}) Tj`);
         }
       });
@@ -3925,18 +3926,21 @@ class ConsultorioApp {
       return;
     }
 
-    const client = this.clients.find((c) => String(c.id || '') === String(appt.clientId || '')) || null;
-    const phone = this.normalizeWhatsAppPhone((client && client.phone) || '');
-    if (!phone) {
-      this.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
-      return;
-    }
+    const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
 
-    const receiptEl = document.getElementById('pay-receipt-text');
-    const text = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener');
-    this.showToast('Recibo aberto no WhatsApp para envio.', 'success');
+    this.sharePaymentReceiptPdf(appt, content)
+      .then((shared) => {
+        if (shared) {
+          this.showToast('PDF do recibo preparado para compartilhamento.', 'success');
+          return;
+        }
+
+        this.showToast('PDF do recibo baixado para envio no WhatsApp.', 'info');
+      })
+      .catch((err) => {
+        console.log('Falha ao compartilhar PDF do recibo:', err);
+        this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
+      });
   }
 
   async sendPaymentReceiptPdfWhatsApp() {

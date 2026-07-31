@@ -128,12 +128,12 @@
 
             <div class="top-date-picker">
               <i data-lucide="calendar-range"></i>
-              <input type="text" id="top-date-start" class="top-date-input date-input" title="Data inicial" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa">
+              <input type="date" id="top-date-start" class="top-date-input date-input" title="Data inicial">
               <button type="button" class="btn-date-picker" id="btn-top-date-start-picker" title="Selecionar data inicial no calendário">
                 <i data-lucide="calendar"></i>
               </button>
               <span class="top-date-sep">até</span>
-              <input type="text" id="top-date-end" class="top-date-input date-input" title="Data final" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa">
+              <input type="date" id="top-date-end" class="top-date-input date-input" title="Data final">
               <button type="button" class="btn-date-picker" id="btn-top-date-end-picker" title="Selecionar data final no calendário">
                 <i data-lucide="calendar"></i>
               </button>
@@ -252,8 +252,8 @@
                 <i data-lucide="search"></i>
                 <input type="text" id="agenda-search" placeholder="Buscar por cliente ou procedimento...">
               </div>
-              <input type="text" id="agenda-filter-start" class="form-control date-input agenda-filter-date" title="Data inicial" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa">
-              <input type="text" id="agenda-filter-end" class="form-control date-input agenda-filter-date agenda-filter-end-hidden" title="Data final" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa">
+              <input type="date" id="agenda-filter-start" class="form-control date-input agenda-filter-date" title="Data inicial">
+              <input type="date" id="agenda-filter-end" class="form-control date-input agenda-filter-date agenda-filter-end-hidden" title="Data final">
               <select id="agenda-filter-status" class="form-control">
                 <option value="todos">Todos os Status</option>
                 <option value="Agendado">Agendado</option>
@@ -360,8 +360,42 @@
               <button class="btn btn-secondary btn-sm" type="button" data-finance-view="paid" onclick="app.financeViewFilter='paid';app.renderFinanceiroTable()">Recebidos</button>
             </div>
             <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+              <button class="btn btn-secondary" id="btn-finance-receipt-professional" type="button">Editar Profissional Recibo</button>
               <button class="btn btn-secondary" id="btn-print-selected-finance" type="button" onclick="app.printSelectedFinanceiroReports()" ontouchstart="app.printSelectedFinanceiroReports()" disabled><i data-lucide="printer"></i> Imprimir Selecionados (0)</button>
               <button class="btn btn-primary" id="btn-print-total-finance" type="button" onclick="app.printFinanceiroTotalReport()" ontouchstart="app.printFinanceiroTotalReport()"><i data-lucide="file-text"></i> Imprimir Total</button>
+            </div>
+          </div>
+          <div class="card finance-receipt-professional-card" id="finance-receipt-professional-card">
+            <div class="card-body">
+              <div class="payment-receipt-head">
+                <h3 style="margin:0;">Dados do Profissional no Recibo</h3>
+                <div style="display:flex;gap:0.45rem;flex-wrap:wrap;">
+                  <button class="btn btn-secondary btn-sm" type="button" id="btn-finance-receipt-professional-save">Salvar</button>
+                  <button class="btn btn-secondary btn-sm" type="button" id="btn-finance-receipt-professional-close">Fechar</button>
+                </div>
+              </div>
+              <div class="payment-receipt-edit-grid" style="margin-top:0.65rem;">
+                <div class="form-group">
+                  <label for="finance-receipt-professional-name">Profissional</label>
+                  <input type="text" id="finance-receipt-professional-name" class="form-control" placeholder="Nome do psicólogo(a)">
+                </div>
+                <div class="form-group">
+                  <label for="finance-receipt-professional-crp">CRP</label>
+                  <input type="text" id="finance-receipt-professional-crp" class="form-control" placeholder="Número do CRP/Região">
+                </div>
+                <div class="form-group">
+                  <label for="finance-receipt-professional-cpf">CPF profissional</label>
+                  <input type="text" id="finance-receipt-professional-cpf" class="form-control" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
+                </div>
+                <div class="form-group payment-receipt-edit-full">
+                  <label for="finance-receipt-professional-address">Endereço do consultório</label>
+                  <input type="text" id="finance-receipt-professional-address" class="form-control" placeholder="Endereço do consultório">
+                </div>
+                <div class="form-group payment-receipt-edit-full">
+                  <label for="finance-receipt-city-uf">Cidade / UF</label>
+                  <input type="text" id="finance-receipt-city-uf" class="form-control" placeholder="Cidade - UF">
+                </div>
+              </div>
             </div>
           </div>
           <div class="card">
@@ -619,7 +653,7 @@
             <div class="form-group"><label for="client-email">E-mail</label><input type="email" id="client-email" class="form-control"></div>
             <div class="form-group"><label for="client-cpf">CPF</label><input type="text" id="client-cpf" class="form-control" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
             <div class="form-group"><label for="client-rg">RG</label><input type="text" id="client-rg" class="form-control"></div>
-            <div class="form-group"><label for="client-dob">Data de Nascimento</label><input type="text" id="client-dob" class="form-control" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa"></div>
+            <div class="form-group"><label for="client-dob">Data de Nascimento</label><input type="date" id="client-dob" class="form-control date-input"></div>
             <div class="form-group"><label for="client-group">Grupo</label><input type="text" id="client-group" class="form-control" list="client-group-options" placeholder="Digite ou selecione um grupo"><datalist id="client-group-options"></datalist><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-groups">Gerenciar grupos</button></div></div>
             <div class="form-group"><label for="client-cep">CEP</label><input type="text" id="client-cep" class="form-control" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
             <div class="form-group"><label for="client-street">Rua / Logradouro</label><input type="text" id="client-street" class="form-control"></div>
@@ -870,7 +904,7 @@
           <input type="hidden" id="appointment-id">
           <div class="modal-body grid-2">
             <div class="form-group"><label for="appt-client-id">Paciente *</label><select id="appt-client-id" class="form-control" required></select></div>
-            <div class="form-group"><label for="appt-date">Data *</label><input type="text" id="appt-date" class="form-control date-input" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa" required></div>
+            <div class="form-group"><label for="appt-date">Data *</label><input type="date" id="appt-date" class="form-control date-input" required></div>
             <div class="form-group"><label for="appt-time">Horário *</label><input type="time" id="appt-time" class="form-control" required></div>
             <div class="form-group"><label for="appt-procedure">Procedimento *</label><select id="appt-procedure" class="form-control" required></select></div>
             <div class="form-group"><label for="appt-price">Valor (R$) *</label><input type="number" step="0.01" min="0" id="appt-price" class="form-control" required></div>
@@ -1031,7 +1065,12 @@
               </div>
               <div class="form-group payment-receipt-edit-full">
                 <label for="pay-receipt-dates">Data(s) do atendimento</label>
-                <input type="text" id="pay-receipt-dates" class="form-control" placeholder="DD/MM/AAAA">
+                <textarea id="pay-receipt-dates" class="form-control" rows="3" placeholder="Uma data por linha"></textarea>
+                <div class="pay-input-row" style="margin-top:0.45rem;">
+                  <input type="date" id="pay-receipt-date-picker" class="form-control" aria-label="Selecionar data para adicionar ao recibo">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-add-receipt-date">Adicionar data</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-receipt-dates">Limpar datas</button>
+                </div>
               </div>
             </div>
             <div class="payment-receipt-professional-panel" id="payment-receipt-professional-panel">

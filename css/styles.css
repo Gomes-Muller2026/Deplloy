@@ -3373,7 +3373,7 @@ body.analytics-focus-mode .analytics-grid {
 
 /* ── Payment modal ───────────────────────────── */
 .modal-card-sm {
-  width: min(460px, calc(100vw - 40px));
+  width: min(880px, calc(100vw - 40px));
 }
 
 .payment-info-card {
@@ -3481,6 +3481,15 @@ body.analytics-focus-mode .analytics-grid {
   display: block;
 }
 
+.finance-receipt-professional-card {
+  display: none;
+  margin-top: 0.7rem;
+}
+
+.finance-receipt-professional-card.is-open {
+  display: block;
+}
+
 .payment-receipt-template-panel.is-open {
   display: block;
 }
@@ -3499,7 +3508,7 @@ body.analytics-focus-mode .analytics-grid {
 
 .payment-receipt-edit-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.55rem 0.65rem;
 }
 
@@ -3514,6 +3523,16 @@ body.analytics-focus-mode .analytics-grid {
 @media (max-width: 760px) {
   .payment-receipt-edit-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1120px) {
+  .modal-card-sm {
+    width: min(760px, calc(100vw - 32px));
+  }
+
+  .payment-receipt-edit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

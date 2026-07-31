@@ -882,6 +882,53 @@ class ConsultorioApp {
     return nextOpen;
   }
 
+  toggleFinanceReceiptProfessionalCard(forceOpen = null) {
+    const card = document.getElementById('finance-receipt-professional-card');
+    const button = document.getElementById('btn-finance-receipt-professional');
+    const nextOpen = forceOpen == null ? !(card && card.classList.contains('is-open')) : Boolean(forceOpen);
+
+    if (nextOpen) {
+      const profile = this.paymentReceiptProfile || DEFAULT_PAYMENT_RECEIPT_PROFILE;
+      const set = (id, value) => {
+        const field = document.getElementById(id);
+        if (field) field.value = String(value == null ? '' : value);
+      };
+
+      set('finance-receipt-professional-name', profile.professionalName || DEFAULT_RECEIPT_PROFESSIONAL_NAME);
+      set('finance-receipt-professional-crp', profile.professionalCrp || DEFAULT_RECEIPT_PROFESSIONAL_CRP);
+      set('finance-receipt-professional-cpf', this.formatCpfInput(profile.professionalCpf || DEFAULT_RECEIPT_PROFESSIONAL_CPF));
+      set('finance-receipt-professional-address', profile.professionalAddress || DEFAULT_RECEIPT_PROFESSIONAL_ADDRESS);
+      set('finance-receipt-city-uf', profile.cityUf || DEFAULT_RECEIPT_CITY_UF);
+    }
+
+    if (card) card.classList.toggle('is-open', nextOpen);
+    if (button) button.textContent = nextOpen ? 'Fechar Profissional Recibo' : 'Editar Profissional Recibo';
+    return nextOpen;
+  }
+
+  saveFinanceReceiptProfessionalCard() {
+    const profile = {
+      professionalName: String((document.getElementById('finance-receipt-professional-name') || {}).value || '').trim(),
+      professionalCrp: String((document.getElementById('finance-receipt-professional-crp') || {}).value || '').trim(),
+      professionalCpf: this.formatCpfInput((document.getElementById('finance-receipt-professional-cpf') || {}).value || ''),
+      professionalAddress: String((document.getElementById('finance-receipt-professional-address') || {}).value || '').trim(),
+      cityUf: String((document.getElementById('finance-receipt-city-uf') || {}).value || '').trim()
+    };
+
+    this.savePaymentReceiptProfile(profile);
+
+    this.setReceiptInputValue('pay-receipt-professional-name', this.paymentReceiptProfile.professionalName || DEFAULT_RECEIPT_PROFESSIONAL_NAME);
+    this.setReceiptInputValue('pay-receipt-professional-crp', this.paymentReceiptProfile.professionalCrp || DEFAULT_RECEIPT_PROFESSIONAL_CRP);
+    this.setReceiptInputValue('pay-receipt-professional-cpf', this.formatCpfInput(this.paymentReceiptProfile.professionalCpf || DEFAULT_RECEIPT_PROFESSIONAL_CPF));
+    this.setReceiptInputValue('pay-receipt-professional-address', this.paymentReceiptProfile.professionalAddress || DEFAULT_RECEIPT_PROFESSIONAL_ADDRESS);
+    this.setReceiptInputValue('pay-receipt-city-uf', this.paymentReceiptProfile.cityUf || DEFAULT_RECEIPT_CITY_UF);
+
+    const apptId = String((document.getElementById('pay-appointment-id') || {}).value || '').trim();
+    if (apptId) this.generatePaymentReceipt();
+    this.showToast('Dados do profissional do recibo salvos.', 'success');
+    this.toggleFinanceReceiptProfessionalCard(false);
+  }
+
   getPaymentReceiptTemplate() {
     return String(this.paymentReceiptTemplate || DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
   }
@@ -1056,9 +1103,72 @@ class ConsultorioApp {
     field.value = String(value == null ? '' : value);
   }
 
+  getReceiptDatesList() {
+    const raw = String((document.getElementById('pay-receipt-dates') || {}).value || '').trim();
+    if (!raw) return [];
+    return raw
+      .split(/[\n,;]+/)
+      .map((item) => String(item || '').trim())
+      .filter(Boolean);
+  }
+
+  setReceiptDatesList(items = []) {
+    const clean = Array.from(new Set((Array.isArray(items) ? items : [])
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)));
+    this.setReceiptInputValue('pay-receipt-dates', clean.join('\n'));
+  }
+
+  addReceiptDateFromPicker() {
+    const picker = document.getElementById('pay-receipt-date-picker');
+    if (!picker) return;
+
+    const iso = String(picker.value || '').trim();
+    if (!iso) {
+      this.showToast('Selecione uma data para adicionar.', 'warning');
+      return;
+    }
+
+    const dateLabel = formatDateBR(iso);
+    const items = this.getReceiptDatesList();
+    if (!items.includes(dateLabel)) items.push(dateLabel);
+
+    items.sort((a, b) => {
+      const aIso = this.normalizeDobToIso(a);
+      const bIso = this.normalizeDobToIso(b);
+      return String(aIso || '').localeCompare(String(bIso || ''));
+    });
+
+    this.setReceiptDatesList(items);
+    this.generatePaymentReceipt();
+  }
+
+  clearReceiptDatesList() {
+    this.setReceiptInputValue('pay-receipt-dates', '');
+    this.generatePaymentReceipt();
+  }
+
+  formatReceiptDatesForDocument(rawDates, fallbackDate = '') {
+    const source = String(rawDates || '').trim() || String(fallbackDate || '').trim();
+    if (!source) return '';
+
+    const items = source
+      .split(/[\n,;]+/)
+      .map((item) => String(item || '').trim())
+      .filter(Boolean);
+
+    if (!items.length) return '';
+    if (items.length === 1) return items[0];
+    return items.map((item, index) => `${index + 1}. ${item}`).join('\n');
+  }
+
   populatePaymentReceiptEditableFields(appointment, amountNow = 0) {
     const client = this.getClientByAppointment(appointment) || {};
     const clientName = String((appointment && appointment.clientName) || 'Cliente').trim() || 'Cliente';
+    const resolvedClientName = String((client && client.name) || '').trim();
+    const samePatient = !clientName || !resolvedClientName
+      ? true
+      : clientName.toLowerCase() === resolvedClientName.toLowerCase();
     const procedure = String((appointment && appointment.procedure) || 'Consulta').trim() || 'Consulta';
     const date = formatDateBR((appointment && appointment.date) || '');
     const total = toNumber((appointment && appointment.price) || 0);
@@ -1066,10 +1176,10 @@ class ConsultorioApp {
     const paidNow = Math.max(0, toNumber(amountNow || 0));
     const paidAfter = Math.min(total, paidBefore + paidNow);
 
-    const payerName = String((client && client.emergencyName) || (client && client.name) || clientName || '[Nome completo do Pagador / Responsavel]').trim();
-    const payerCpf = this.formatCpfDisplay((client && client.emergencyCpf) || (client && client.cpf) || '', '[000.000.000-00]');
-    const patientName = String((client && client.name) || clientName || '[Nome completo do Paciente]').trim();
-    const patientCpf = this.formatCpfDisplay((client && client.cpf) || '', '[000.000.000-00]');
+    const payerName = String((client && client.emergencyName) || (samePatient ? (client && client.name) : '') || clientName || '[Nome completo do Pagador / Responsavel]').trim();
+    const payerCpf = this.formatCpfDisplay((client && client.emergencyCpf) || (samePatient ? (client && client.cpf) : '') || '', '[000.000.000-00]');
+    const patientName = String(clientName || resolvedClientName || '[Nome completo do Paciente]').trim();
+    const patientCpf = this.formatCpfDisplay((appointment && appointment.clientCpf) || (samePatient ? (client && client.cpf) : '') || '', '[000.000.000-00]');
     const city = String((client && client.city) || '').trim();
     const state = String((client && client.state) || '').trim().toUpperCase();
     const cityUf = city && state
@@ -1097,6 +1207,10 @@ class ConsultorioApp {
   buildPaymentReceiptVars(appointment, amountNow = 0) {
     const client = this.getClientByAppointment(appointment) || {};
     const clientName = String((appointment && appointment.clientName) || 'Cliente').trim() || 'Cliente';
+    const resolvedClientName = String((client && client.name) || '').trim();
+    const samePatient = !clientName || !resolvedClientName
+      ? true
+      : clientName.toLowerCase() === resolvedClientName.toLowerCase();
     const procedure = String((appointment && appointment.procedure) || 'Consulta').trim() || 'Consulta';
     const date = formatDateBR((appointment && appointment.date) || '');
     const time = String((appointment && appointment.time) || '--:--').trim() || '--:--';
@@ -1106,10 +1220,10 @@ class ConsultorioApp {
     const paidNow = Math.max(0, toNumber(amountNow || 0));
     const paidAfter = Math.min(total, paidBefore + paidNow);
     const openAfter = Math.max(0, total - paidAfter);
-    const payerName = String((client && client.emergencyName) || (client && client.name) || clientName || '[Nome completo do Pagador / Responsavel]').trim();
-    const payerCpf = this.formatCpfDisplay((client && client.emergencyCpf) || (client && client.cpf) || '', '[000.000.000-00]');
-    const patientName = String((client && client.name) || clientName || '[Nome completo do Paciente]').trim();
-    const patientCpf = this.formatCpfDisplay((client && client.cpf) || '', '[000.000.000-00]');
+    const payerName = String((client && client.emergencyName) || (samePatient ? (client && client.name) : '') || clientName || '[Nome completo do Pagador / Responsavel]').trim();
+    const payerCpf = this.formatCpfDisplay((client && client.emergencyCpf) || (samePatient ? (client && client.cpf) : '') || '', '[000.000.000-00]');
+    const patientName = String(clientName || resolvedClientName || '[Nome completo do Paciente]').trim();
+    const patientCpf = this.formatCpfDisplay((appointment && appointment.clientCpf) || (samePatient ? (client && client.cpf) : '') || '', '[000.000.000-00]');
     const city = String((client && client.city) || '').trim();
     const state = String((client && client.state) || '').trim().toUpperCase();
     const cityUfDefault = city && state
@@ -1135,7 +1249,8 @@ class ConsultorioApp {
     const patientCpfFinal = this.formatCpfDisplay(this.getReceiptInputValue('pay-receipt-patient-cpf', patientCpf), '[000.000.000-00]');
     const serviceFinal = this.getReceiptInputValue('pay-receipt-service', procedure);
     const quantityFinal = Math.max(1, Number(this.getReceiptInputValue('pay-receipt-sessions', String(quantity))) || 1);
-    const datesFinal = this.getReceiptInputValue('pay-receipt-dates', date);
+    const datesRaw = this.getReceiptInputValue('pay-receipt-dates', date);
+    const datesFinal = this.formatReceiptDatesForDocument(datesRaw, date);
 
     return {
       assinatura: this.getSignatureName(),
@@ -1503,8 +1618,7 @@ class ConsultorioApp {
     if (!raw) return '';
 
     if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      const [year, month, day] = raw.split('-');
-      return `${day}/${month}/${year}`;
+      return raw;
     }
 
     return this.formatDobDisplay(raw);
@@ -1545,8 +1659,8 @@ class ConsultorioApp {
 
   formatTopDateForInput(value) {
     const iso = this.normalizeTopDateToIso(value);
-    if (!iso) return this.formatTopDateDisplay(value);
-    return this.formatDobForInput(iso);
+    if (!iso) return '';
+    return iso;
   }
 
   formatAgendaDateDisplay(value) {
@@ -1559,8 +1673,8 @@ class ConsultorioApp {
 
   formatAgendaDateForInput(value) {
     const iso = this.normalizeAgendaDateToIso(value);
-    if (!iso) return this.formatAgendaDateDisplay(value);
-    return this.formatDobForInput(iso);
+    if (!iso) return '';
+    return iso;
   }
 
   async fetchCepData(rawCep) {
@@ -2703,6 +2817,22 @@ class ConsultorioApp {
         return;
       }
 
+      const receiptTemplateTrigger = target.closest('#btn-toggle-payment-receipt-template');
+      if (receiptTemplateTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.togglePaymentReceiptTemplateEditor();
+        return;
+      }
+
+      const receiptGenerateTrigger = target.closest('#btn-generate-payment-receipt');
+      if (receiptGenerateTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.generatePaymentReceipt();
+        return;
+      }
+
       const clientCloseTrigger = target.closest('#btn-cancel-client, #btn-close-client');
       if (clientCloseTrigger) {
         event.preventDefault();
@@ -2919,39 +3049,53 @@ class ConsultorioApp {
     const topStart = document.getElementById('top-date-start');
     const topEnd = document.getElementById('top-date-end');
     if (topStart) {
-      topStart.addEventListener('click', () => topStart.focus());
+      topStart.addEventListener('click', () => {
+        topStart.focus();
+        if (typeof topStart.showPicker === 'function') topStart.showPicker();
+      });
       topStart.addEventListener('input', () => {
-        topStart.value = this.formatTopDateDisplay(topStart.value);
-        // Keep manual typing uninterrupted (do not rerender on each keystroke).
         this.syncTopDatesToAgendaFilters();
       });
       topStart.addEventListener('blur', () => {
-        topStart.value = this.formatTopDateForInput(topStart.value);
         this.syncTopDatesToAgendaFilters();
         this.render();
       });
       topStart.addEventListener('change', () => {
-        topStart.value = this.formatTopDateForInput(topStart.value);
         this.syncTopDatesToAgendaFilters();
         this.render();
       });
     }
     if (topEnd) {
-      topEnd.addEventListener('click', () => topEnd.focus());
+      topEnd.addEventListener('click', () => {
+        topEnd.focus();
+        if (typeof topEnd.showPicker === 'function') topEnd.showPicker();
+      });
       topEnd.addEventListener('input', () => {
-        topEnd.value = this.formatTopDateDisplay(topEnd.value);
-        // Keep manual typing uninterrupted (do not rerender on each keystroke).
         this.syncTopDatesToAgendaFilters();
       });
       topEnd.addEventListener('blur', () => {
-        topEnd.value = this.formatTopDateForInput(topEnd.value);
         this.syncTopDatesToAgendaFilters();
         this.render();
       });
       topEnd.addEventListener('change', () => {
-        topEnd.value = this.formatTopDateForInput(topEnd.value);
         this.syncTopDatesToAgendaFilters();
         this.render();
+      });
+    }
+
+    const topStartPickerBtn = document.getElementById('btn-top-date-start-picker');
+    if (topStartPickerBtn && topStart) {
+      topStartPickerBtn.addEventListener('click', () => {
+        topStart.focus();
+        if (typeof topStart.showPicker === 'function') topStart.showPicker();
+      });
+    }
+
+    const topEndPickerBtn = document.getElementById('btn-top-date-end-picker');
+    if (topEndPickerBtn && topEnd) {
+      topEndPickerBtn.addEventListener('click', () => {
+        topEnd.focus();
+        if (typeof topEnd.showPicker === 'function') topEnd.showPicker();
       });
     }
 
@@ -2968,11 +3112,12 @@ class ConsultorioApp {
 
     const clientDobInput = document.getElementById('client-dob');
     if (clientDobInput) {
-      clientDobInput.addEventListener('input', () => {
-        clientDobInput.value = this.formatDobDisplay(clientDobInput.value);
+      clientDobInput.addEventListener('click', () => {
+        if (typeof clientDobInput.showPicker === 'function') clientDobInput.showPicker();
       });
       clientDobInput.addEventListener('blur', () => {
-        clientDobInput.value = this.formatDobForInput(clientDobInput.value);
+        const iso = this.normalizeDobToIso(clientDobInput.value);
+        if (iso) clientDobInput.value = iso;
       });
     }
 
@@ -3046,11 +3191,12 @@ class ConsultorioApp {
 
     const apptDateInput = document.getElementById('appt-date');
     if (apptDateInput) {
-      apptDateInput.addEventListener('input', () => {
-        apptDateInput.value = this.formatDobDisplay(apptDateInput.value);
+      apptDateInput.addEventListener('click', () => {
+        if (typeof apptDateInput.showPicker === 'function') apptDateInput.showPicker();
       });
       apptDateInput.addEventListener('blur', () => {
-        apptDateInput.value = this.formatDobForInput(apptDateInput.value);
+        const iso = this.normalizeDobToIso(apptDateInput.value);
+        if (iso) apptDateInput.value = iso;
       });
     }
 
@@ -3107,6 +3253,24 @@ class ConsultorioApp {
     const btnGeneratePaymentReceipt = document.getElementById('btn-generate-payment-receipt');
     if (btnGeneratePaymentReceipt) {
       btnGeneratePaymentReceipt.addEventListener('click', () => this.generatePaymentReceipt());
+    }
+
+    const receiptDatePicker = document.getElementById('pay-receipt-date-picker');
+    if (receiptDatePicker) {
+      receiptDatePicker.addEventListener('click', () => {
+        if (typeof receiptDatePicker.showPicker === 'function') receiptDatePicker.showPicker();
+      });
+      receiptDatePicker.addEventListener('change', () => this.addReceiptDateFromPicker());
+    }
+
+    const btnAddReceiptDate = document.getElementById('btn-add-receipt-date');
+    if (btnAddReceiptDate) {
+      btnAddReceiptDate.addEventListener('click', () => this.addReceiptDateFromPicker());
+    }
+
+    const btnClearReceiptDates = document.getElementById('btn-clear-receipt-dates');
+    if (btnClearReceiptDates) {
+      btnClearReceiptDates.addEventListener('click', () => this.clearReceiptDatesList());
     }
 
     const receiptEditableFieldIds = [
@@ -3181,28 +3345,32 @@ class ConsultorioApp {
     const agendaStatus = document.getElementById('agenda-filter-status');
     if (agendaSearch) agendaSearch.addEventListener('input', () => this.renderAgendaTable());
     if (agendaStart) {
-      agendaStart.addEventListener('input', () => {
-        agendaStart.value = this.formatAgendaDateDisplay(agendaStart.value);
+      agendaStart.addEventListener('click', () => {
+        if (typeof agendaStart.showPicker === 'function') agendaStart.showPicker();
       });
       agendaStart.addEventListener('blur', () => {
-        agendaStart.value = this.formatAgendaDateForInput(agendaStart.value);
+        const iso = this.normalizeAgendaDateToIso(agendaStart.value);
+        if (iso) agendaStart.value = iso;
         this.renderAgendaTable();
       });
       agendaStart.addEventListener('change', () => {
-        agendaStart.value = this.formatAgendaDateForInput(agendaStart.value);
+        const iso = this.normalizeAgendaDateToIso(agendaStart.value);
+        if (iso) agendaStart.value = iso;
         this.renderAgendaTable();
       });
     }
     if (agendaEnd) {
-      agendaEnd.addEventListener('input', () => {
-        agendaEnd.value = this.formatAgendaDateDisplay(agendaEnd.value);
+      agendaEnd.addEventListener('click', () => {
+        if (typeof agendaEnd.showPicker === 'function') agendaEnd.showPicker();
       });
       agendaEnd.addEventListener('blur', () => {
-        agendaEnd.value = this.formatAgendaDateForInput(agendaEnd.value);
+        const iso = this.normalizeAgendaDateToIso(agendaEnd.value);
+        if (iso) agendaEnd.value = iso;
         this.renderAgendaTable();
       });
       agendaEnd.addEventListener('change', () => {
-        agendaEnd.value = this.formatAgendaDateForInput(agendaEnd.value);
+        const iso = this.normalizeAgendaDateToIso(agendaEnd.value);
+        if (iso) agendaEnd.value = iso;
         this.renderAgendaTable();
       });
     }
@@ -3391,6 +3559,31 @@ class ConsultorioApp {
       const btn = document.getElementById(id);
       if (btn) btn.addEventListener('click', reportHandlers[id]);
     });
+
+    const btnFinanceReceiptProfessional = document.getElementById('btn-finance-receipt-professional');
+    if (btnFinanceReceiptProfessional) {
+      btnFinanceReceiptProfessional.addEventListener('click', () => this.toggleFinanceReceiptProfessionalCard());
+    }
+
+    const btnFinanceReceiptProfessionalSave = document.getElementById('btn-finance-receipt-professional-save');
+    if (btnFinanceReceiptProfessionalSave) {
+      btnFinanceReceiptProfessionalSave.addEventListener('click', () => this.saveFinanceReceiptProfessionalCard());
+    }
+
+    const btnFinanceReceiptProfessionalClose = document.getElementById('btn-finance-receipt-professional-close');
+    if (btnFinanceReceiptProfessionalClose) {
+      btnFinanceReceiptProfessionalClose.addEventListener('click', () => this.toggleFinanceReceiptProfessionalCard(false));
+    }
+
+    const financeReceiptProfessionalCpf = document.getElementById('finance-receipt-professional-cpf');
+    if (financeReceiptProfessionalCpf) {
+      financeReceiptProfessionalCpf.addEventListener('input', () => {
+        financeReceiptProfessionalCpf.value = this.formatCpfInput(financeReceiptProfessionalCpf.value);
+      });
+      financeReceiptProfessionalCpf.addEventListener('blur', () => {
+        financeReceiptProfessionalCpf.value = this.formatCpfInput(financeReceiptProfessionalCpf.value);
+      });
+    }
 
     const confirmSelect = document.getElementById('ws-confirm-template-select');
     if (confirmSelect) {
@@ -5797,6 +5990,8 @@ class ConsultorioApp {
 
     const previewAmount = balance > 0 ? balance : 0;
     this.populatePaymentReceiptEditableFields(appt, previewAmount);
+    const receiptDatePicker = document.getElementById('pay-receipt-date-picker');
+    if (receiptDatePicker) receiptDatePicker.value = String(appt.date || '');
     this.generatePaymentReceipt();
 
     const templateEl = document.getElementById('pay-receipt-template');
@@ -5914,6 +6109,7 @@ class ConsultorioApp {
       id,
       clientId,
       clientName: client.name,
+      clientCpf: this.formatCpfInput(client.cpf || ''),
       date,
       time,
       procedure,

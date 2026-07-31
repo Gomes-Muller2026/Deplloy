@@ -589,6 +589,12 @@ select.form-control {
   background: rgba(15, 23, 42, 0.72);
   white-space: nowrap;
   flex: 0 0 auto;
+  pointer-events: auto;
+}
+
+.top-date-picker .top-date-input {
+  pointer-events: auto;
+  cursor: text;
 }
 
 input[type="date"],
@@ -871,6 +877,30 @@ input[type="date"]:focus {
   color: var(--text-muted);
 }
 
+.btn-date-picker {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.7);
+  color: #e2e8f0;
+  border-radius: 9px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-date-picker i {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-date-picker:hover {
+  border-color: rgba(163, 230, 53, 0.6);
+  background: rgba(30, 41, 59, 0.9);
+}
+
 .btn-clear-date {
   background: transparent;
   border: none;
@@ -906,6 +936,17 @@ input[type="date"]:focus {
   color: var(--text-muted);
 }
 
+.reminder-intensity-box {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+}
+
 .reminder-mins-input {
   width: 48px;
   background: var(--bg-primary);
@@ -917,9 +958,29 @@ input[type="date"]:focus {
   padding: 0.15rem 0.2rem;
   font-family: inherit;
   font-size: 0.85rem;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.reminder-intensity-input {
+  min-width: 86px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: #fde68a;
+  font-weight: 700;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  padding: 0.15rem 0.35rem;
+  font-family: inherit;
+  font-size: 0.84rem;
 }
 
 .reminder-mins-input:focus {
+  outline: none;
+  border-color: var(--warning);
+}
+
+.reminder-intensity-input:focus {
   outline: none;
   border-color: var(--warning);
 }
@@ -3924,6 +3985,11 @@ textarea.form-control,
     gap: 0.45rem;
   }
 
+  .sound-control-group .reminder-intensity-box {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .notification-permission-pill {
     width: 100%;
     justify-content: center;
@@ -3931,6 +3997,10 @@ textarea.form-control,
 
   .sound-control-group .reminder-mins-input {
     width: 88px;
+  }
+
+  .sound-control-group .reminder-intensity-input {
+    width: 120px;
   }
 
   .header-actions .btn {

@@ -12,6 +12,7 @@ const LOGIN_USERS_STORAGE_KEY = 'consultorio_login_users';
 const LOGIN_ACTIVE_USER_STORAGE_KEY = 'consultorio_login_active_user';
 const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
 const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
+const REMINDER_INTENSITY_STORAGE_KEY = 'consultorio_reminder_intensity';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
@@ -342,6 +343,7 @@ class ConsultorioApp {
     this.financeViewFilter = 'all';
     this.soundEnabled = true;
     this.reminderMinutes = 15;
+    this.reminderIntensity = 'strong';
     this.agendaViewMode = 'calendar';
     this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
     this.firebaseConfig = null;
@@ -1200,7 +1202,9 @@ class ConsultorioApp {
       badge: './assets/icons/icon-192.png',
       tag: options.tag || `consultorio-notification-${Date.now()}`,
       renotify: true,
-      requireInteraction: false,
+      requireInteraction: options.requireInteraction === true,
+      silent: false,
+      vibrate: Array.isArray(options.vibrate) ? options.vibrate : [260, 120, 260, 120, 420],
       data: {
         appointmentId: options.appointmentId || '',
         url: './'
@@ -1235,11 +1239,29 @@ class ConsultorioApp {
     const body = `${clientName} - ${procedure} às ${time} (${whenText})`;
     this.showToast(body, 'warning');
 
-    if (this.soundEnabled) this.playReminderSound();
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+    const level = ['normal', 'strong', 'ultra'].includes(this.reminderIntensity) ? this.reminderIntensity : 'strong';
+    const vibratePattern = level === 'ultra'
+      ? [320, 110, 320, 110, 320, 110, 520]
+      : (level === 'strong' ? [260, 120, 260, 120, 420] : [160, 90, 160]);
+
+    if (this.soundEnabled) {
+      this.playReminderSound(level);
+    }
+
+    if (isMobile && navigator.vibrate) {
+      navigator.vibrate(vibratePattern);
+    }
+
+    if (isMobile && !isManualTest) {
+      window.setTimeout(() => this.showToast(body, 'warning'), 1200);
+    }
 
     const sent = await this.sendSystemNotification(title, body, {
       appointmentId: appointment && appointment.id ? appointment.id : '',
-      tag: appointment && appointment.id ? `appt-reminder-${appointment.id}` : `appt-reminder-${Date.now()}`
+      tag: appointment && appointment.id ? `appt-reminder-${appointment.id}` : `appt-reminder-${Date.now()}`,
+      requireInteraction: !isManualTest,
+      vibrate: vibratePattern
     });
 
     if (isManualTest) {
@@ -1587,12 +1609,15 @@ class ConsultorioApp {
     try {
       const rawEnabled = localStorage.getItem(SOUND_ENABLED_STORAGE_KEY);
       const rawMinutes = localStorage.getItem(REMINDER_MINS_STORAGE_KEY);
+      const rawIntensity = String(localStorage.getItem(REMINDER_INTENSITY_STORAGE_KEY) || '').toLowerCase();
       this.soundEnabled = rawEnabled == null ? true : rawEnabled === '1';
       const parsedMinutes = Number(rawMinutes);
       this.reminderMinutes = Number.isFinite(parsedMinutes) ? Math.max(1, parsedMinutes) : 15;
+      this.reminderIntensity = ['normal', 'strong', 'ultra'].includes(rawIntensity) ? rawIntensity : 'strong';
     } catch (err) {
       this.soundEnabled = true;
       this.reminderMinutes = 15;
+      this.reminderIntensity = 'strong';
     }
   }
 
@@ -1600,6 +1625,10 @@ class ConsultorioApp {
     try {
       localStorage.setItem(SOUND_ENABLED_STORAGE_KEY, this.soundEnabled ? '1' : '0');
       localStorage.setItem(REMINDER_MINS_STORAGE_KEY, String(this.reminderMinutes));
+      localStorage.setItem(
+        REMINDER_INTENSITY_STORAGE_KEY,
+        ['normal', 'strong', 'ultra'].includes(this.reminderIntensity) ? this.reminderIntensity : 'strong'
+      );
     } catch (err) {
       console.log('Falha ao salvar configuração de avisos:', err);
     }
@@ -1609,10 +1638,14 @@ class ConsultorioApp {
     const toggleBtn = document.getElementById('btn-toggle-sound');
     const statusText = document.getElementById('sound-status-text');
     const minutesInput = document.getElementById('top-reminder-mins');
+    const intensityInput = document.getElementById('top-reminder-intensity');
 
     if (toggleBtn) toggleBtn.classList.toggle('sound-off', !this.soundEnabled);
     if (statusText) statusText.textContent = this.soundEnabled ? 'Avisos: ON' : 'Avisos: OFF';
     if (minutesInput) minutesInput.value = String(this.reminderMinutes);
+    if (intensityInput) intensityInput.value = ['normal', 'strong', 'ultra'].includes(this.reminderIntensity)
+      ? this.reminderIntensity
+      : 'strong';
     this.updateNotificationPermissionUI();
   }
 
@@ -1657,29 +1690,52 @@ class ConsultorioApp {
     }
   }
 
-  playReminderSound() {
+  playReminderSound(level = 'normal') {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
 
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, now);
-      osc.frequency.exponentialRampToValueAtTime(660, now + 0.25);
+      const pattern = level === 'ultra'
+        ? [
+          { at: 0, duration: 0.22, from: 1080, to: 780, gain: 0.28, type: 'square' },
+          { at: 0.27, duration: 0.22, from: 1080, to: 780, gain: 0.27, type: 'square' },
+          { at: 0.54, duration: 0.24, from: 1160, to: 760, gain: 0.3, type: 'sawtooth' },
+          { at: 0.84, duration: 0.32, from: 1240, to: 700, gain: 0.34, type: 'sawtooth' }
+        ]
+        : (level === 'strong'
+          ? [
+            { at: 0, duration: 0.2, from: 980, to: 760, gain: 0.24, type: 'square' },
+            { at: 0.26, duration: 0.2, from: 980, to: 760, gain: 0.22, type: 'square' },
+            { at: 0.52, duration: 0.28, from: 1040, to: 690, gain: 0.28, type: 'sawtooth' }
+          ]
+          : [
+            { at: 0, duration: 0.26, from: 880, to: 660, gain: 0.14, type: 'sine' }
+          ]);
 
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.14, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+      pattern.forEach((tone) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const startAt = now + tone.at;
+        const endAt = startAt + tone.duration;
 
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.34);
+        osc.type = tone.type;
+        osc.frequency.setValueAtTime(tone.from, startAt);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(80, tone.to), endAt);
 
-      osc.onended = () => {
+        gain.gain.setValueAtTime(0.0001, startAt);
+        gain.gain.exponentialRampToValueAtTime(tone.gain, startAt + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(startAt);
+        osc.stop(endAt + 0.01);
+      });
+
+      const totalDuration = pattern.reduce((max, tone) => Math.max(max, tone.at + tone.duration), 0);
+      window.setTimeout(() => {
         if (audioCtx && typeof audioCtx.close === 'function') audioCtx.close();
-      };
+      }, Math.ceil((totalDuration + 0.08) * 1000));
     } catch (err) {
       this.showToast('Não foi possível tocar o som neste dispositivo.', 'warning');
     }
@@ -2407,6 +2463,24 @@ class ConsultorioApp {
         this.saveSoundSettings();
         this.showToast(`Aviso configurado para ${safeValue} min antes.`, 'success');
         this.checkAppointmentReminders();
+      });
+    }
+
+    const reminderIntensityInput = document.getElementById('top-reminder-intensity');
+    if (reminderIntensityInput) {
+      reminderIntensityInput.addEventListener('change', () => {
+        const level = String(reminderIntensityInput.value || '').toLowerCase();
+        this.reminderIntensity = ['normal', 'strong', 'ultra'].includes(level) ? level : 'strong';
+        reminderIntensityInput.value = this.reminderIntensity;
+        this.saveSoundSettings();
+        this.showToast(
+          this.reminderIntensity === 'ultra'
+            ? 'Intensidade do aviso: Ultra.'
+            : (this.reminderIntensity === 'strong'
+              ? 'Intensidade do aviso: Forte.'
+              : 'Intensidade do aviso: Normal.'),
+          'success'
+        );
       });
     }
 
@@ -5171,7 +5245,10 @@ class ConsultorioApp {
 
     const revenueValues = labels.map((date) => Number((revenueByDate[date] || 0).toFixed(2)));
     const expenseValues = labels.map((date) => Number((expenseByDate[date] || 0).toFixed(2)));
-    const hasData = revenueValues.some((value) => value > 0) || expenseValues.some((value) => value > 0);
+    const resultValues = labels.map((_, index) => Number((revenueValues[index] - expenseValues[index]).toFixed(2)));
+    const hasData = revenueValues.some((value) => value > 0)
+      || expenseValues.some((value) => value > 0)
+      || resultValues.some((value) => Math.abs(value) > 0);
 
     if (!hasData) {
       container.innerHTML = '<div class="empty-state analytics-empty-state"><p>Sem receita ou despesas no período selecionado.</p></div>';
@@ -5192,6 +5269,13 @@ class ConsultorioApp {
         front: '#f97316',
         top: '#fdba74',
         side: '#c2410c'
+      },
+      {
+        name: 'Resultado',
+        values: resultValues,
+        front: '#84cc16',
+        top: '#bef264',
+        side: '#4d7c0f'
       }
     ], { legendType: 'currency' });
   }

@@ -378,6 +378,7 @@ class ConsultorioApp {
     this.firebaseSyncIntervalId = null;
     this.firebaseSyncIntervalMs = 5 * 60 * 1000;
     this.versionInfo = { dateKey: getTodayStr(), seq: 0, label: 'v00.00/000000' };
+    this.updateReady = false;
     this.loadStore();
     this.loadWhatsAppTemplates();
     this.loadVersionInfo();
@@ -500,7 +501,25 @@ class ConsultorioApp {
     const el = document.getElementById('app-version-badge');
     if (!el) return;
     const label = (this.versionInfo && this.versionInfo.label) ? this.versionInfo.label : this.buildVersionLabel(getTodayStr(), 0);
-    el.textContent = `Versão: ${label}`;
+
+    if (this.updateReady) {
+      el.textContent = `Nova versão disponível - Atualizar`;
+      el.classList.add('update-ready');
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('title', 'Clique para atualizar para a versão mais recente');
+    } else {
+      el.textContent = `Versão: ${label}`;
+      el.classList.remove('update-ready');
+      el.removeAttribute('role');
+      el.removeAttribute('tabindex');
+      el.removeAttribute('title');
+    }
+  }
+
+  setUpdateReady(isReady) {
+    this.updateReady = Boolean(isReady);
+    this.renderVersionBadge();
   }
 
   saveStore() {
@@ -1804,6 +1823,7 @@ class ConsultorioApp {
     const loginForm = document.getElementById('login-form');
     const saveFirebaseBtn = document.getElementById('btn-save-firebase');
     const forceAppUpdateBtn = document.getElementById('btn-force-app-update');
+    const versionBadge = document.getElementById('app-version-badge');
     const refreshFirebaseBtns = document.querySelectorAll('[data-action="refresh-firebase"]');
     const validateFirebaseBtn = document.getElementById('btn-validate-firebase');
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
@@ -1902,6 +1922,20 @@ class ConsultorioApp {
     if (forceAppUpdateBtn) {
       forceAppUpdateBtn.addEventListener('click', () => {
         void this.forceAppUpdate();
+      });
+    }
+
+    if (versionBadge) {
+      const handleVersionBadgeUpdate = () => {
+        if (!this.updateReady) return;
+        void this.forceAppUpdate();
+      };
+
+      versionBadge.addEventListener('click', handleVersionBadgeUpdate);
+      versionBadge.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        handleVersionBadgeUpdate();
       });
     }
 
@@ -5458,6 +5492,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     navigator.serviceWorker.register('./sw.js?v=20260730-1')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
+        if (reg.waiting) window.app.setUpdateReady(true);
+
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              window.app.setUpdateReady(true);
+            }
+          });
+        });
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.app.setUpdateReady(false);
+        });
+
         if (reg && typeof reg.update === 'function') reg.update();
       })
       .catch((err) => console.log('[PWA] Falha Service Worker:', err));

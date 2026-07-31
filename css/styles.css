@@ -434,6 +434,20 @@ img {
   color: #fbbf24;
 }
 
+#app-version-badge.update-ready {
+  color: #facc15;
+  cursor: pointer;
+  border: 1px solid rgba(250, 204, 21, 0.42);
+  border-radius: 999px;
+  padding: 0.22rem 0.58rem;
+  background: rgba(250, 204, 21, 0.12);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.12);
+}
+
+#app-version-badge.update-ready:hover {
+  background: rgba(250, 204, 21, 0.2);
+}
+
 .firebase-auth-meta {
   font-size: 0.76rem;
   white-space: nowrap;

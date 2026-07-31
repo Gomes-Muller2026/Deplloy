@@ -719,7 +719,7 @@
         <label for="pay-amount-now">Valor a registrar (R$)</label>
         <div class="pay-input-row">
           <input type="number" id="pay-amount-now" class="form-control" step="0.01" min="0" placeholder="0,00">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-pay-quitar">Quitar total</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-pay-quitar" onclick="app.fillPaymentAmountFromBalance()">Quitar total</button>
         </div>
       </div>
 
@@ -729,7 +729,10 @@
             <img src="assets/icons/icon-192.png" alt="Logo da clínica" class="whatsapp-send-logo" onerror="this.style.display='none'">
             <strong>Recibo de Pagamento</strong>
           </div>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-generate-payment-receipt" onclick="app.generatePaymentReceipt()">Gerar Recibo</button>
+          <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-payment-receipt-template" onclick="app.togglePaymentReceiptTemplateEditor()">Editar Modelo</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-generate-payment-receipt" onclick="app.generatePaymentReceipt()">Gerar Recibo</button>
+          </div>
         </div>
         <div class="form-group" style="margin-top:0.6rem;">
           <label for="pay-receipt-text">Texto do recibo (editável)</label>

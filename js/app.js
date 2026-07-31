@@ -16,6 +16,7 @@ const REMINDER_INTENSITY_STORAGE_KEY = 'consultorio_reminder_intensity';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
+const LOGIN_USERS_FIRESTORE_COLLECTION = 'login_users';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
 const WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_template';
 const WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_template';
@@ -228,9 +229,12 @@ const normalizeLoginUsers = (rawUsers) => {
   return users;
 };
 
-const saveLoginUsers = (users) => {
+const saveLoginUsers = (users, options = {}) => {
   const normalized = normalizeLoginUsers(users);
   localStorage.setItem(LOGIN_USERS_STORAGE_KEY, JSON.stringify(normalized));
+  if (options.syncRemote !== false && typeof window !== 'undefined' && window.app && typeof window.app.syncLoginUsersToFirebase === 'function') {
+    void window.app.syncLoginUsersToFirebase(normalized);
+  }
   return normalized;
 };
 
@@ -255,7 +259,7 @@ const ensureLoginCredentials = () => {
       }];
     }
 
-    users = saveLoginUsers(users);
+    users = saveLoginUsers(users, { syncRemote: false });
 
     const activeStored = String(localStorage.getItem(LOGIN_ACTIVE_USER_STORAGE_KEY) || '').trim();
     const activeMatch = users.find((item) => item.username.toLowerCase() === activeStored.toLowerCase());
@@ -747,6 +751,17 @@ class ConsultorioApp {
     }
   }
 
+  togglePaymentReceiptTemplateEditor(forceOpen = null) {
+    const card = document.getElementById('payment-receipt-template-card');
+    const button = document.getElementById('btn-toggle-payment-receipt-template');
+    const nextOpen = forceOpen == null ? !(card && card.classList.contains('is-open')) : Boolean(forceOpen);
+
+    if (card) card.classList.toggle('is-open', nextOpen);
+    if (button) button.textContent = nextOpen ? 'Fechar Modelo' : 'Editar Modelo';
+
+    return nextOpen;
+  }
+
   getPaymentReceiptTemplate() {
     return String(this.paymentReceiptTemplate || DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
   }
@@ -782,6 +797,16 @@ class ConsultorioApp {
   buildPaymentReceiptDocument(appointment, amountNow = 0) {
     const vars = this.buildPaymentReceiptVars(appointment, amountNow);
     return this.applyTemplateVars(this.getPaymentReceiptTemplate(), vars).trim();
+  }
+
+  fillPaymentAmountFromBalance() {
+    const balanceEl = document.getElementById('pay-balance');
+    const input = document.getElementById('pay-amount-now');
+    if (input && balanceEl) {
+      const raw = String(balanceEl.textContent || '').replace(/[^\d,\.]/g, '').replace(',', '.');
+      input.value = parseFloat(raw) || 0;
+    }
+    this.generatePaymentReceipt();
   }
 
   normalizePaymentReceiptText(rawText) {
@@ -2607,18 +2632,17 @@ class ConsultorioApp {
     }
     const btnPayQuitar = document.getElementById('btn-pay-quitar');
     if (btnPayQuitar) btnPayQuitar.addEventListener('click', () => {
-      const balanceEl = document.getElementById('pay-balance');
-      const input = document.getElementById('pay-amount-now');
-      if (input && balanceEl) {
-        const raw = String(balanceEl.textContent || '').replace(/[^\d,\.]/g, '').replace(',', '.');
-        input.value = parseFloat(raw) || 0;
-      }
-      this.generatePaymentReceipt();
+      this.fillPaymentAmountFromBalance();
     });
 
     const btnGeneratePaymentReceipt = document.getElementById('btn-generate-payment-receipt');
     if (btnGeneratePaymentReceipt) {
       btnGeneratePaymentReceipt.addEventListener('click', () => this.generatePaymentReceipt());
+    }
+
+    const btnTogglePaymentReceiptTemplate = document.getElementById('btn-toggle-payment-receipt-template');
+    if (btnTogglePaymentReceiptTemplate) {
+      btnTogglePaymentReceiptTemplate.addEventListener('click', () => this.togglePaymentReceiptTemplateEditor());
     }
 
     const btnSavePaymentReceiptTemplate = document.getElementById('btn-save-payment-receipt-template');
@@ -3437,6 +3461,7 @@ class ConsultorioApp {
     if (!this.firebaseDb) return;
     try {
       const collections = [
+        { name: LOGIN_USERS_FIRESTORE_COLLECTION, data: getLoginUsers() },
         { name: 'clients', data: this.clients },
         { name: 'appointments', data: this.appointments },
         { name: 'expenses', data: this.expenses }
@@ -3457,6 +3482,20 @@ class ConsultorioApp {
         }
 
         const remoteData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+        if (item.name === LOGIN_USERS_FIRESTORE_COLLECTION) {
+          if (!snapshot.empty) {
+            saveLoginUsers(remoteData.map((entry) => ({
+              username: String(entry.username || '').trim(),
+              password: String(entry.password || ''),
+              createdAt: String(entry.createdAt || getTodayStr()),
+              updatedAt: String(entry.updatedAt || getTodayStr())
+            })), { syncRemote: false });
+          } else if (Array.isArray(item.data) && item.data.length) {
+            shouldSeedRemoteFromLocal = true;
+          }
+          continue;
+        }
 
         if (item.name === 'clients') this.clients = remoteData;
         if (item.name === 'appointments') this.appointments = remoteData;
@@ -3481,10 +3520,18 @@ class ConsultorioApp {
     try {
       const operations = [];
       const localIdsByCollection = {
+        [LOGIN_USERS_FIRESTORE_COLLECTION]: new Set(),
         clients: new Set(),
         appointments: new Set(),
         expenses: new Set()
       };
+
+      getLoginUsers().forEach((user) => {
+        if (!user.username) return;
+        const id = this.buildLoginUserDocId(user.username);
+        localIdsByCollection[LOGIN_USERS_FIRESTORE_COLLECTION].add(id);
+        operations.push({ type: 'set', collection: LOGIN_USERS_FIRESTORE_COLLECTION, id, data: user });
+      });
 
       this.clients.forEach((client) => {
         if (!client.id) return;
@@ -3507,7 +3554,7 @@ class ConsultorioApp {
         operations.push({ type: 'set', collection: 'expenses', id, data: expense });
       });
 
-      const collections = ['clients', 'appointments', 'expenses'];
+      const collections = [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses'];
       for (const collectionName of collections) {
         const snapshot = await this.firebaseDb.collection(collectionName).get();
         snapshot.docs.forEach((doc) => {
@@ -3536,6 +3583,49 @@ class ConsultorioApp {
     } catch (err) {
       console.log('Falha ao enviar dados para o Firestore:', err);
       throw err;
+    }
+  }
+
+  buildLoginUserDocId(username) {
+    return String(username || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || `user_${Date.now()}`;
+  }
+
+  async syncLoginUsersToFirebase(users = null) {
+    if (!this.firebaseDb || !this.firebaseConnected) return false;
+
+    const normalizedUsers = normalizeLoginUsers(Array.isArray(users) ? users : getLoginUsers());
+    try {
+      const collection = this.firebaseDb.collection(LOGIN_USERS_FIRESTORE_COLLECTION);
+      const snapshot = await collection.get();
+      const localIds = new Set();
+      const batch = this.firebaseDb.batch();
+
+      normalizedUsers.forEach((user) => {
+        if (!user.username) return;
+        const id = this.buildLoginUserDocId(user.username);
+        localIds.add(id);
+        batch.set(collection.doc(id), {
+          username: user.username,
+          password: user.password,
+          createdAt: user.createdAt || getTodayStr(),
+          updatedAt: user.updatedAt || getTodayStr()
+        });
+      });
+
+      snapshot.docs.forEach((doc) => {
+        if (localIds.has(doc.id)) return;
+        batch.delete(collection.doc(doc.id));
+      });
+
+      await batch.commit();
+      return true;
+    } catch (err) {
+      console.log('Falha ao sincronizar usuários com Firebase:', err);
+      return false;
     }
   }
 

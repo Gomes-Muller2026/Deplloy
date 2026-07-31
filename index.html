@@ -979,7 +979,7 @@
             <label for="pay-amount-now">Valor a registrar (R$)</label>
             <div class="pay-input-row">
               <input type="number" id="pay-amount-now" class="form-control" step="0.01" min="0" placeholder="0,00">
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-pay-quitar">Quitar total</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-pay-quitar" onclick="app.fillPaymentAmountFromBalance()">Quitar total</button>
             </div>
           </div>
 
@@ -989,7 +989,10 @@
                 <img src="assets/icons/icon-192.png" alt="Logo da clínica" class="whatsapp-send-logo" onerror="this.style.display='none'">
                 <strong>Recibo de Pagamento</strong>
               </div>
+              <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-payment-receipt-template" onclick="app.togglePaymentReceiptTemplateEditor()">Editar Modelo</button>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-generate-payment-receipt" onclick="app.generatePaymentReceipt()">Gerar Recibo</button>
+              </div>
             </div>
             <div class="form-group" style="margin-top:0.6rem;">
               <label for="pay-receipt-text">Texto do recibo (editável)</label>
@@ -998,24 +1001,24 @@
             <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
               <button type="button" class="btn btn-secondary" id="btn-print-payment-receipt"><i data-lucide="printer"></i> Imprimir Recibo</button>
               <button type="button" class="btn btn-secondary" id="btn-send-payment-receipt-whatsapp"><i data-lucide="message-circle"></i> Enviar Recibo no WhatsApp</button>
-                <button type="button" class="btn btn-secondary" id="btn-send-payment-receipt-pdf-whatsapp"><i data-lucide="file-text"></i> Enviar PDF no WhatsApp</button>
+              <button type="button" class="btn btn-secondary" id="btn-send-payment-receipt-pdf-whatsapp"><i data-lucide="file-text"></i> Enviar PDF no WhatsApp</button>
+            </div>
+          </div>
+
+          <div class="payment-receipt-template-card" id="payment-receipt-template-card">
+            <div class="payment-receipt-head">
+              <div class="whatsapp-send-brand">
+                <img src="assets/icons/icon-192.png" alt="Logo da clínica" class="whatsapp-send-logo" onerror="this.style.display='none'">
+                <strong>Editar modelo do recibo</strong>
+              </div>
+              <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-save-payment-receipt-template">Salvar Modelo</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-payment-receipt-template">Restaurar Padrão</button>
               </div>
             </div>
-
-            <div class="payment-receipt-template-card" id="payment-receipt-template-card">
-              <div class="payment-receipt-head">
-                <div class="whatsapp-send-brand">
-                  <img src="assets/icons/icon-192.png" alt="Logo da clínica" class="whatsapp-send-logo" onerror="this.style.display='none'">
-                  <strong>Editar modelo do recibo</strong>
-                </div>
-                <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
-                  <button type="button" class="btn btn-secondary btn-sm" id="btn-save-payment-receipt-template">Salvar Modelo</button>
-                  <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-payment-receipt-template">Restaurar Padrão</button>
-                </div>
-              </div>
-              <div class="form-group" style="margin-top:0.6rem;">
-                <label for="pay-receipt-template">Modelo do recibo</label>
-                <textarea id="pay-receipt-template" class="form-control" rows="12" spellcheck="false" placeholder="Edite o modelo com variáveis como {{cliente}}, {{data}}, {{valor_total}} e salve."></textarea>
+            <div class="form-group" style="margin-top:0.6rem;">
+              <label for="pay-receipt-template">Modelo do recibo</label>
+              <textarea id="pay-receipt-template" class="form-control" rows="12" spellcheck="false" placeholder="Edite o modelo com variáveis como {{cliente}}, {{data}}, {{valor_total}} e salve."></textarea>
             </div>
           </div>
         </div>

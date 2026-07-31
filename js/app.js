@@ -2114,8 +2114,11 @@ class ConsultorioApp {
     const topStart = document.getElementById('top-date-start');
     const topEnd = document.getElementById('top-date-end');
     if (topStart) {
+      topStart.addEventListener('click', () => topStart.focus());
       topStart.addEventListener('input', () => {
         topStart.value = this.formatTopDateDisplay(topStart.value);
+        // Keep manual typing uninterrupted (do not rerender on each keystroke).
+        this.syncTopDatesToAgendaFilters();
       });
       topStart.addEventListener('blur', () => {
         topStart.value = this.formatTopDateForInput(topStart.value);
@@ -2129,8 +2132,11 @@ class ConsultorioApp {
       });
     }
     if (topEnd) {
+      topEnd.addEventListener('click', () => topEnd.focus());
       topEnd.addEventListener('input', () => {
         topEnd.value = this.formatTopDateDisplay(topEnd.value);
+        // Keep manual typing uninterrupted (do not rerender on each keystroke).
+        this.syncTopDatesToAgendaFilters();
       });
       topEnd.addEventListener('blur', () => {
         topEnd.value = this.formatTopDateForInput(topEnd.value);
@@ -2202,6 +2208,16 @@ class ConsultorioApp {
 
     const formAppointment = document.getElementById('form-appointment');
     if (formAppointment) formAppointment.addEventListener('submit', (e) => { e.preventDefault(); this.saveAppointmentForm(); });
+
+    const apptDateInput = document.getElementById('appt-date');
+    if (apptDateInput) {
+      apptDateInput.addEventListener('input', () => {
+        apptDateInput.value = this.formatDobDisplay(apptDateInput.value);
+      });
+      apptDateInput.addEventListener('blur', () => {
+        apptDateInput.value = this.formatDobForInput(apptDateInput.value);
+      });
+    }
 
     const formExpense = document.getElementById('form-expense');
     if (formExpense) formExpense.addEventListener('submit', (e) => { e.preventDefault(); this.saveExpenseForm(); });
@@ -3445,10 +3461,18 @@ class ConsultorioApp {
     const filtered = this.filterAppointmentsForAgenda();
 
     if (this.agendaViewMode === 'calendar' && agendaStartInput && agendaEndInput) {
-      const selectedDate = this.normalizeAgendaDateToIso(agendaStartInput.value) || this.agendaCalendarStartDate || getTodayStr();
+      const startIso = this.normalizeAgendaDateToIso(agendaStartInput.value);
+      const endIso = this.normalizeAgendaDateToIso(agendaEndInput.value);
+      const selectedDate = startIso || this.agendaCalendarStartDate || getTodayStr();
       this.agendaCalendarStartDate = getWeekStartMondayIso(selectedDate);
-      agendaStartInput.value = this.formatAgendaDateForInput(this.agendaCalendarStartDate);
-      agendaEndInput.value = this.formatAgendaDateForInput(addDaysIso(this.agendaCalendarStartDate, 6));
+
+      // Keep manual period edits; only auto-fill when fields are empty.
+      if (!startIso) {
+        agendaStartInput.value = this.formatAgendaDateForInput(this.agendaCalendarStartDate);
+      }
+      if (!endIso) {
+        agendaEndInput.value = this.formatAgendaDateForInput(addDaysIso(this.agendaCalendarStartDate, 6));
+      }
     }
 
     this.updateAgendaViewModeUI();
@@ -4349,7 +4373,7 @@ class ConsultorioApp {
     this.selectAppointmentColor(DEFAULT_APPOINTMENT_COLOR);
 
     const dateInput = document.getElementById('appt-date');
-    if (dateInput && !dateInput.value) dateInput.value = getTodayStr();
+    if (dateInput && !dateInput.value) dateInput.value = this.formatDobForInput(getTodayStr());
 
     if (appointmentId) {
       const a = this.appointments.find((x) => x.id === appointmentId);
@@ -4360,7 +4384,7 @@ class ConsultorioApp {
           if (el) el.value = val == null ? '' : val;
         };
         set('appt-client-id', a.clientId);
-        set('appt-date', a.date);
+        set('appt-date', this.formatDobForInput(a.date));
         set('appt-time', a.time);
         set('appt-procedure', a.procedure);
         set('appt-price', a.price);
@@ -4506,10 +4530,16 @@ class ConsultorioApp {
   saveAppointmentForm() {
     const id = (document.getElementById('appointment-id') || {}).value || '';
     const clientId = String((document.getElementById('appt-client-id') || {}).value || '').trim();
-    const date = String((document.getElementById('appt-date') || {}).value || '').trim();
+    const dateRaw = String((document.getElementById('appt-date') || {}).value || '').trim();
+    const date = this.normalizeDobToIso(dateRaw);
     const time = String((document.getElementById('appt-time') || {}).value || '').trim();
     const procedure = String((document.getElementById('appt-procedure') || {}).value || '').trim();
     const price = toNumber((document.getElementById('appt-price') || {}).value || 0);
+
+    if (dateRaw && !date) {
+      this.showToast('Data inválida. Use o formato ddmmaaaa.', 'warning');
+      return;
+    }
 
     if (!clientId || !date || !time || !procedure || price <= 0) {
       this.showToast('Preencha cliente, data, horário, abordagem e valor da consulta.', 'warning');

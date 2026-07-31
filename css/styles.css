@@ -3383,6 +3383,19 @@ body.analytics-focus-mode .analytics-grid {
   background: rgba(15, 23, 42, 0.46);
 }
 
+.payment-receipt-template-card {
+  margin-top: 0.8rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.38);
+  display: none;
+}
+
+.payment-receipt-template-card.is-open {
+  display: block;
+}
+
 .payment-receipt-head {
   display: flex;
   align-items: center;
@@ -3393,6 +3406,13 @@ body.analytics-focus-mode .analytics-grid {
 #pay-receipt-text {
   resize: vertical;
   min-height: 150px;
+}
+
+#pay-receipt-template {
+  resize: vertical;
+  min-height: 200px;
+  font-family: Consolas, monospace;
+  white-space: pre-wrap;
 }
 
 /* Keep appointment form scrollable with a visible scrollbar on smaller viewports */

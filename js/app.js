@@ -23,6 +23,28 @@ const WHATSAPP_CONFIRM_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_confirm_tem
 const WHATSAPP_BIRTHDAY_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_birthday_templates';
 const WHATSAPP_CONFIRM_SELECTED_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_selected';
 const WHATSAPP_BIRTHDAY_SELECTED_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_selected';
+const PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY = 'consultorio_payment_receipt_template';
+const DEFAULT_PAYMENT_RECEIPT_TEMPLATE = [
+  'LOGO: Patricia Grando Muller',
+  'RECIBO DE PAGAMENTO',
+  '',
+  'Profissional: Patricia Grando Muller',
+  'Responsável: {{assinatura}}',
+  'Paciente: {{cliente}}',
+  'Data da consulta: {{data}} às {{hora}}',
+  'Procedimento: {{procedimento}}',
+  'Forma de pagamento: {{forma_pagamento}}',
+  '',
+  'Valor total: {{valor_total}}',
+  'Valor já pago (antes): {{valor_pago_antes}}',
+  'Valor pago agora: {{valor_pago_agora}}',
+  'Total pago (após): {{total_pago}}',
+  'Saldo em aberto: {{saldo_aberto}}',
+  '',
+  'Emitido em: {{emitido_em}}',
+  '',
+  'Assinatura: ____________________________'
+].join('\n');
 const DEFAULT_WHATSAPP_CONFIRM_TEMPLATE = [
   'Olá, {{cliente}}!',
   '',
@@ -366,6 +388,7 @@ class ConsultorioApp {
     this.whatsAppBirthdayTemplates = [];
     this.whatsAppSelectedConfirmTemplateId = '';
     this.whatsAppSelectedBirthdayTemplateId = '';
+    this.paymentReceiptTemplate = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
     this.lastDashboardCardAction = '';
     this.lastDashboardCardActionAt = 0;
     this.lastAnamneseIndividualCepLookup = '';
@@ -381,6 +404,7 @@ class ConsultorioApp {
     this.updateReady = false;
     this.loadStore();
     this.loadWhatsAppTemplates();
+    this.loadPaymentReceiptTemplate();
     this.loadVersionInfo();
   }
 
@@ -699,6 +723,190 @@ class ConsultorioApp {
     } catch (err) {
       console.log('Falha ao salvar templates de WhatsApp:', err);
     }
+  }
+
+  loadPaymentReceiptTemplate() {
+    try {
+      const raw = localStorage.getItem(PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY);
+      const template = String(raw || DEFAULT_PAYMENT_RECEIPT_TEMPLATE).trim();
+      this.paymentReceiptTemplate = template || DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+    } catch (err) {
+      this.paymentReceiptTemplate = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+    }
+  }
+
+  savePaymentReceiptTemplate(templateText) {
+    try {
+      const next = String(templateText == null ? '' : templateText).trim();
+      this.paymentReceiptTemplate = next || DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+      localStorage.setItem(PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY, this.paymentReceiptTemplate);
+      return true;
+    } catch (err) {
+      this.showToast('Não foi possível salvar o modelo do recibo.', 'warning');
+      return false;
+    }
+  }
+
+  getPaymentReceiptTemplate() {
+    return String(this.paymentReceiptTemplate || DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
+  }
+
+  buildPaymentReceiptVars(appointment, amountNow = 0) {
+    const clientName = String((appointment && appointment.clientName) || 'Cliente').trim() || 'Cliente';
+    const procedure = String((appointment && appointment.procedure) || 'Consulta').trim() || 'Consulta';
+    const date = formatDateBR((appointment && appointment.date) || '');
+    const time = String((appointment && appointment.time) || '--:--').trim() || '--:--';
+    const paymentMethod = String((document.getElementById('pay-method') || {}).value || appointment.paymentMethod || 'Pix');
+    const total = toNumber((appointment && appointment.price) || 0);
+    const paidBefore = toNumber((appointment && appointment.amountPaid) || 0);
+    const paidNow = Math.max(0, toNumber(amountNow || 0));
+    const paidAfter = Math.min(total, paidBefore + paidNow);
+    const openAfter = Math.max(0, total - paidAfter);
+
+    return {
+      assinatura: this.getSignatureName(),
+      cliente: clientName,
+      data: date,
+      hora: time,
+      procedimento: procedure,
+      forma_pagamento: paymentMethod,
+      valor_total: formatCurrency(total),
+      valor_pago_antes: formatCurrency(paidBefore),
+      valor_pago_agora: formatCurrency(paidNow),
+      total_pago: formatCurrency(paidAfter),
+      saldo_aberto: formatCurrency(openAfter),
+      emitido_em: new Date().toLocaleString('pt-BR')
+    };
+  }
+
+  buildPaymentReceiptDocument(appointment, amountNow = 0) {
+    const vars = this.buildPaymentReceiptVars(appointment, amountNow);
+    return this.applyTemplateVars(this.getPaymentReceiptTemplate(), vars).trim();
+  }
+
+  normalizePaymentReceiptText(rawText) {
+    return String(rawText || '').replace(/\r/g, '').split('\n').map((line) => String(line || '').trimEnd()).join('\n').trim();
+  }
+
+  escapePdfText(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
+  }
+
+  buildReceiptPdfBlob(title, content) {
+    const pageWidth = 595.28;
+    const pageHeight = 841.89;
+    const marginLeft = 42;
+    const marginTop = 54;
+    const lineHeight = 14;
+    const maxCharsPerLine = 84;
+    const lines = [];
+
+    String(content || '').replace(/\r/g, '').split('\n').forEach((line) => {
+      const safeLine = String(line || '');
+      if (!safeLine) {
+        lines.push('');
+        return;
+      }
+
+      let remaining = safeLine;
+      while (remaining.length > maxCharsPerLine) {
+        lines.push(remaining.slice(0, maxCharsPerLine));
+        remaining = remaining.slice(maxCharsPerLine);
+      }
+      lines.push(remaining);
+    });
+
+    if (!lines.length) lines.push('');
+
+    const usableHeight = pageHeight - (marginTop * 2);
+    const linesPerPage = Math.max(1, Math.floor(usableHeight / lineHeight));
+    const pages = [];
+    for (let index = 0; index < lines.length; index += linesPerPage) {
+      pages.push(lines.slice(index, index + linesPerPage));
+    }
+
+    const objects = [];
+    const addObject = (value) => {
+      objects.push(value);
+      return objects.length;
+    };
+
+    const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+    const contentIds = pages.map((pageLines) => {
+      const streamLines = ['BT', '/F1 12 Tf', `${marginLeft} ${pageHeight - marginTop} Td`];
+      pageLines.forEach((line, lineIndex) => {
+        const escaped = this.escapePdfText(line);
+        if (lineIndex === 0) {
+          streamLines.push(`(${escaped}) Tj`);
+        } else {
+          streamLines.push('T*');
+          streamLines.push(`(${escaped}) Tj`);
+        }
+      });
+      streamLines.push('ET');
+      const stream = streamLines.join('\n');
+      return addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+    });
+
+    const pagesObjectIndex = addObject('');
+    const pageIds = pages.map(() => addObject(''));
+    const catalogId = addObject('');
+
+    objects[pagesObjectIndex - 1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`;
+    pageIds.forEach((pageId, index) => {
+      objects[pageId - 1] = `<< /Type /Page /Parent ${pagesObjectIndex} 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentIds[index]} 0 R >>`;
+    });
+    objects[catalogId - 1] = `<< /Type /Catalog /Pages ${pagesObjectIndex} 0 R >>`;
+
+    const pdfParts = ['%PDF-1.4\n'];
+    const offsets = [0];
+
+    objects.forEach((obj, index) => {
+      offsets[index + 1] = pdfParts.join('').length;
+      pdfParts.push(`${index + 1} 0 obj\n${obj}\nendobj\n`);
+    });
+
+    const xrefStart = pdfParts.join('').length;
+    pdfParts.push(`xref\n0 ${objects.length + 1}\n`);
+    pdfParts.push('0000000000 65535 f \n');
+    for (let index = 1; index <= objects.length; index += 1) {
+      pdfParts.push(`${String(offsets[index]).padStart(10, '0')} 00000 n \n`);
+    }
+    pdfParts.push(`trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+
+    return new Blob([pdfParts.join('')], { type: 'application/pdf' });
+  }
+
+  async sharePaymentReceiptPdf(appointment, content) {
+    const blob = this.buildReceiptPdfBlob('Recibo de Pagamento', content);
+    const fileName = `recibo-pagamento-${String(appointment && appointment.id ? appointment.id : Date.now())}.pdf`;
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+      await navigator.share({
+        title: 'Recibo de Pagamento',
+        text: 'Recibo em PDF',
+        files: [file]
+      });
+      return true;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    return false;
   }
 
   renderWhatsAppTemplateEditor(kind) {
@@ -2413,9 +2621,24 @@ class ConsultorioApp {
       btnGeneratePaymentReceipt.addEventListener('click', () => this.generatePaymentReceipt());
     }
 
+    const btnSavePaymentReceiptTemplate = document.getElementById('btn-save-payment-receipt-template');
+    if (btnSavePaymentReceiptTemplate) {
+      btnSavePaymentReceiptTemplate.addEventListener('click', () => this.savePaymentReceiptTemplateFromUI());
+    }
+
+    const btnResetPaymentReceiptTemplate = document.getElementById('btn-reset-payment-receipt-template');
+    if (btnResetPaymentReceiptTemplate) {
+      btnResetPaymentReceiptTemplate.addEventListener('click', () => this.resetPaymentReceiptTemplateFromUI());
+    }
+
     const btnSendPaymentReceiptWhatsApp = document.getElementById('btn-send-payment-receipt-whatsapp');
     if (btnSendPaymentReceiptWhatsApp) {
       btnSendPaymentReceiptWhatsApp.addEventListener('click', () => this.sendPaymentReceiptWhatsApp());
+    }
+
+    const btnSendPaymentReceiptPdfWhatsApp = document.getElementById('btn-send-payment-receipt-pdf-whatsapp');
+    if (btnSendPaymentReceiptPdfWhatsApp) {
+      btnSendPaymentReceiptPdfWhatsApp.addEventListener('click', () => this.sendPaymentReceiptPdfWhatsApp());
     }
 
     const btnPrintPaymentReceipt = document.getElementById('btn-print-payment-receipt');
@@ -3551,39 +3774,7 @@ class ConsultorioApp {
   }
 
   buildPaymentReceiptText(appointment, amountNow = 0) {
-    const clientName = String((appointment && appointment.clientName) || 'Cliente').trim() || 'Cliente';
-    const procedure = String((appointment && appointment.procedure) || 'Consulta').trim() || 'Consulta';
-    const date = formatDateBR((appointment && appointment.date) || '');
-    const time = String((appointment && appointment.time) || '--:--').trim() || '--:--';
-    const paymentMethod = String((document.getElementById('pay-method') || {}).value || appointment.paymentMethod || 'Pix');
-    const total = toNumber((appointment && appointment.price) || 0);
-    const paidBefore = toNumber((appointment && appointment.amountPaid) || 0);
-    const paidNow = Math.max(0, toNumber(amountNow || 0));
-    const paidAfter = Math.min(total, paidBefore + paidNow);
-    const openAfter = Math.max(0, total - paidAfter);
-    const signature = this.getSignatureName();
-
-    return [
-      'LOGO: Patricia Grando Muller',
-      'RECIBO DE PAGAMENTO',
-      '',
-      `Profissional: Patricia Grando Muller`,
-      `Responsável: ${signature}`,
-      `Paciente: ${clientName}`,
-      `Data da consulta: ${date} às ${time}`,
-      `Procedimento: ${procedure}`,
-      `Forma de pagamento: ${paymentMethod}`,
-      '',
-      `Valor total: ${formatCurrency(total)}`,
-      `Valor já pago (antes): ${formatCurrency(paidBefore)}`,
-      `Valor pago agora: ${formatCurrency(paidNow)}`,
-      `Total pago (após): ${formatCurrency(paidAfter)}`,
-      `Saldo em aberto: ${formatCurrency(openAfter)}`,
-      '',
-      `Emitido em: ${new Date().toLocaleString('pt-BR')}`,
-      '',
-      'Assinatura: ____________________________'
-    ].join('\n');
+    return this.buildPaymentReceiptDocument(appointment, amountNow);
   }
 
   generatePaymentReceipt() {
@@ -3598,6 +3789,30 @@ class ConsultorioApp {
     const receiptText = this.buildPaymentReceiptText(appt, amountNow);
     const receiptEl = document.getElementById('pay-receipt-text');
     if (receiptEl) receiptEl.value = receiptText;
+
+    const templateEl = document.getElementById('pay-receipt-template');
+    if (templateEl && !String(templateEl.value || '').trim()) {
+      templateEl.value = this.getPaymentReceiptTemplate();
+    }
+  }
+
+  savePaymentReceiptTemplateFromUI() {
+    const templateEl = document.getElementById('pay-receipt-template');
+    if (!templateEl) return;
+
+    const saved = this.savePaymentReceiptTemplate(templateEl.value);
+    if (saved) {
+      this.showToast('Modelo do recibo salvo.', 'success');
+      this.generatePaymentReceipt();
+    }
+  }
+
+  resetPaymentReceiptTemplateFromUI() {
+    const templateEl = document.getElementById('pay-receipt-template');
+    if (templateEl) templateEl.value = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+    this.savePaymentReceiptTemplate(DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
+    this.showToast('Modelo do recibo restaurado.', 'info');
+    this.generatePaymentReceipt();
   }
 
   sendPaymentReceiptWhatsApp() {
@@ -3621,6 +3836,27 @@ class ConsultorioApp {
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener');
     this.showToast('Recibo aberto no WhatsApp para envio.', 'success');
+  }
+
+  async sendPaymentReceiptPdfWhatsApp() {
+    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
+    const appt = this.appointments.find((a) => a.id === id);
+    if (!appt) {
+      this.showToast('Consulta não encontrada para envio em PDF.', 'warning');
+      return;
+    }
+
+    const receiptEl = document.getElementById('pay-receipt-text');
+    const manualText = String((receiptEl && receiptEl.value) || '').trim();
+    const content = this.normalizePaymentReceiptText(manualText || this.buildPaymentReceiptText(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0)));
+
+    try {
+      await this.sharePaymentReceiptPdf(appt, content);
+      this.showToast('PDF do recibo preparado para compartilhamento.', 'success');
+    } catch (err) {
+      console.log('Falha ao compartilhar PDF do recibo:', err);
+      this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
+    }
   }
 
   printPaymentReceipt() {
@@ -4827,6 +5063,11 @@ class ConsultorioApp {
     if (receiptEl) {
       const previewAmount = balance > 0 ? balance : 0;
       receiptEl.value = this.buildPaymentReceiptText(appt, previewAmount);
+    }
+
+    const templateEl = document.getElementById('pay-receipt-template');
+    if (templateEl) {
+      templateEl.value = this.getPaymentReceiptTemplate();
     }
 
     modal.classList.add('active');

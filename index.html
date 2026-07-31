@@ -113,6 +113,7 @@
               <i data-lucide="cloud"></i>
               <span id="cloud-status-text">Modo Local</span>
             </div>
+            <span id="app-version-badge" class="cloud-sync-meta local">Versão: v00.00/00000000</span>
             <span id="cloud-sync-last" class="cloud-sync-meta">Sem atualização</span>
             <span id="firebase-auth-status" class="firebase-auth-meta auth-offline" role="button" tabindex="0" title="Clique para ver diagnóstico de autenticação Firebase">Auth Firebase: Desconectado</span>
 
@@ -234,8 +235,8 @@
                 <i data-lucide="search"></i>
                 <input type="text" id="agenda-search" placeholder="Buscar por cliente ou procedimento...">
               </div>
-              <input type="date" id="agenda-filter-start" class="form-control date-input agenda-filter-date" title="Data inicial">
-              <input type="date" id="agenda-filter-end" class="form-control date-input agenda-filter-date agenda-filter-end-hidden" title="Data final">
+              <input type="text" id="agenda-filter-start" class="form-control date-input agenda-filter-date" title="Data inicial" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa">
+              <input type="text" id="agenda-filter-end" class="form-control date-input agenda-filter-date agenda-filter-end-hidden" title="Data final" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa">
               <select id="agenda-filter-status" class="form-control">
                 <option value="todos">Todos os Status</option>
                 <option value="Agendado">Agendado</option>

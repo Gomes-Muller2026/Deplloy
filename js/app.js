@@ -14,6 +14,7 @@ const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
 const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
+const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
 const WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_template';
 const WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_template';
@@ -374,8 +375,10 @@ class ConsultorioApp {
     this.reminderCheckIntervalMs = 30000;
     this.firebaseSyncIntervalId = null;
     this.firebaseSyncIntervalMs = 5 * 60 * 1000;
+    this.versionInfo = { dateKey: getTodayStr(), seq: 0, label: 'v00.00/000000' };
     this.loadStore();
     this.loadWhatsAppTemplates();
+    this.loadVersionInfo();
   }
 
   setDashboardCardActive(cardId, animate = true) {
@@ -441,6 +444,63 @@ class ConsultorioApp {
     }
   }
 
+  buildVersionLabel(dateKey, seq) {
+    const safeDate = /^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || '')) ? String(dateKey) : getTodayStr();
+    const [year, month, day] = safeDate.split('-');
+    const serial = `${day}${month}${year}`;
+    const safeSeq = Math.max(0, Number(seq) || 0);
+    return `v${String(safeSeq).padStart(2, '0')}.${serial}`;
+  }
+
+  loadVersionInfo() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(APP_VERSION_STORAGE_KEY) || '{}');
+      const dateKey = /^\d{4}-\d{2}-\d{2}$/.test(String(raw.dateKey || '')) ? String(raw.dateKey) : getTodayStr();
+      const seq = Number.isFinite(Number(raw.seq)) ? Math.max(0, Number(raw.seq)) : 0;
+      const today = getTodayStr();
+      const normalizedSeq = dateKey === today ? seq : 0;
+
+      this.versionInfo = {
+        dateKey: today,
+        seq: normalizedSeq,
+        label: this.buildVersionLabel(today, normalizedSeq)
+      };
+      this.saveVersionInfo();
+    } catch (err) {
+      const today = getTodayStr();
+      this.versionInfo = { dateKey: today, seq: 0, label: this.buildVersionLabel(today, 0) };
+      this.saveVersionInfo();
+    }
+  }
+
+  saveVersionInfo() {
+    try {
+      localStorage.setItem(APP_VERSION_STORAGE_KEY, JSON.stringify(this.versionInfo));
+    } catch (err) {
+      console.log('Falha ao salvar versão local:', err);
+    }
+  }
+
+  bumpVersion() {
+    const today = getTodayStr();
+    const baseSeq = this.versionInfo && this.versionInfo.dateKey === today ? Number(this.versionInfo.seq || 0) : 0;
+    const nextSeq = baseSeq + 1;
+    this.versionInfo = {
+      dateKey: today,
+      seq: nextSeq,
+      label: this.buildVersionLabel(today, nextSeq)
+    };
+    this.saveVersionInfo();
+    this.renderVersionBadge();
+  }
+
+  renderVersionBadge() {
+    const el = document.getElementById('app-version-badge');
+    if (!el) return;
+    const label = (this.versionInfo && this.versionInfo.label) ? this.versionInfo.label : this.buildVersionLabel(getTodayStr(), 0);
+    el.textContent = `Versão: ${label}`;
+  }
+
   saveStore() {
     localStorage.setItem('consultorio_clients', JSON.stringify(this.clients));
     localStorage.setItem('consultorio_appointments', JSON.stringify(this.appointments));
@@ -450,6 +510,7 @@ class ConsultorioApp {
 
   saveData() {
     this.saveStore();
+    this.bumpVersion();
     this.updateCloudSyncMeta();
     this.setFirebaseSyncDirty(true);
 
@@ -613,6 +674,7 @@ class ConsultorioApp {
       localStorage.setItem(WHATSAPP_BIRTHDAY_SELECTED_TEMPLATE_STORAGE_KEY, this.whatsAppSelectedBirthdayTemplateId);
       localStorage.setItem(WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY, this.whatsAppConfirmTemplate);
       localStorage.setItem(WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY, this.whatsAppBirthdayTemplate);
+      this.bumpVersion();
     } catch (err) {
       console.log('Falha ao salvar templates de WhatsApp:', err);
     }
@@ -855,6 +917,20 @@ class ConsultorioApp {
   formatTopDateForInput(value) {
     const iso = this.normalizeTopDateToIso(value);
     if (!iso) return this.formatTopDateDisplay(value);
+    return this.formatDobForInput(iso);
+  }
+
+  formatAgendaDateDisplay(value) {
+    return this.formatDobDisplay(value);
+  }
+
+  normalizeAgendaDateToIso(value) {
+    return this.normalizeDobToIso(value);
+  }
+
+  formatAgendaDateForInput(value) {
+    const iso = this.normalizeAgendaDateToIso(value);
+    if (!iso) return this.formatAgendaDateDisplay(value);
     return this.formatDobForInput(iso);
   }
 
@@ -1263,6 +1339,7 @@ class ConsultorioApp {
     const loginUserInput = document.getElementById('login-username');
     if (loginUserInput) loginUserInput.value = creds.username || '';
 
+    this.bumpVersion();
     this.renderRegisteredUsersCards();
     this.render();
     this.showToast('Senha alterada com sucesso.', 'success');
@@ -1311,6 +1388,7 @@ class ConsultorioApp {
     const loginUserInput = document.getElementById('login-username');
     if (loginUserInput) loginUserInput.value = newUsername;
 
+    this.bumpVersion();
     this.renderRegisteredUsersCards();
     this.render();
     this.showToast('Novo usuário cadastrado com sucesso.', 'success');
@@ -1372,6 +1450,7 @@ class ConsultorioApp {
           return;
         }
 
+        this.bumpVersion();
         this.prefillSenhaTabFields();
         const loginUserInput = document.getElementById('login-username');
         if (loginUserInput) loginUserInput.value = selected.username;
@@ -1430,6 +1509,7 @@ class ConsultorioApp {
           setActiveLoginUser(nextUsername);
         }
 
+        this.bumpVersion();
         this.prefillSenhaTabFields();
         this.render();
         this.showToast('Usuário atualizado com sucesso.', 'success');
@@ -1458,6 +1538,7 @@ class ConsultorioApp {
           setActiveLoginUser((usersList[0] || {}).username || '');
         }
 
+        this.bumpVersion();
         this.prefillSenhaTabFields();
         this.render();
         this.showToast('Usuário excluído com sucesso.', 'success');
@@ -1479,6 +1560,7 @@ class ConsultorioApp {
 
   initDOM() {
     ensureLoginCredentials();
+    this.renderVersionBadge();
 
     const userInput = document.getElementById('login-username');
     const creds = getLoginCredentials();
@@ -2184,8 +2266,32 @@ class ConsultorioApp {
     const agendaEnd = document.getElementById('agenda-filter-end');
     const agendaStatus = document.getElementById('agenda-filter-status');
     if (agendaSearch) agendaSearch.addEventListener('input', () => this.renderAgendaTable());
-    if (agendaStart) agendaStart.addEventListener('change', () => this.renderAgendaTable());
-    if (agendaEnd) agendaEnd.addEventListener('change', () => this.renderAgendaTable());
+    if (agendaStart) {
+      agendaStart.addEventListener('input', () => {
+        agendaStart.value = this.formatAgendaDateDisplay(agendaStart.value);
+      });
+      agendaStart.addEventListener('blur', () => {
+        agendaStart.value = this.formatAgendaDateForInput(agendaStart.value);
+        this.renderAgendaTable();
+      });
+      agendaStart.addEventListener('change', () => {
+        agendaStart.value = this.formatAgendaDateForInput(agendaStart.value);
+        this.renderAgendaTable();
+      });
+    }
+    if (agendaEnd) {
+      agendaEnd.addEventListener('input', () => {
+        agendaEnd.value = this.formatAgendaDateDisplay(agendaEnd.value);
+      });
+      agendaEnd.addEventListener('blur', () => {
+        agendaEnd.value = this.formatAgendaDateForInput(agendaEnd.value);
+        this.renderAgendaTable();
+      });
+      agendaEnd.addEventListener('change', () => {
+        agendaEnd.value = this.formatAgendaDateForInput(agendaEnd.value);
+        this.renderAgendaTable();
+      });
+    }
     if (agendaStatus) agendaStatus.addEventListener('change', () => this.renderAgendaTable());
 
     const btnAgendaViewList = document.getElementById('btn-agenda-view-list');
@@ -2212,7 +2318,7 @@ class ConsultorioApp {
       btnAgendaPrev.addEventListener('click', () => {
         this.agendaCalendarStartDate = addDaysIso(this.agendaCalendarStartDate, -7);
         const inp = document.getElementById('agenda-filter-start');
-        if (inp) inp.value = this.agendaCalendarStartDate;
+        if (inp) inp.value = this.formatAgendaDateForInput(this.agendaCalendarStartDate);
         this.renderAgendaTable();
       });
     }
@@ -2221,7 +2327,7 @@ class ConsultorioApp {
       btnAgendaNext.addEventListener('click', () => {
         this.agendaCalendarStartDate = addDaysIso(this.agendaCalendarStartDate, 7);
         const inp = document.getElementById('agenda-filter-start');
-        if (inp) inp.value = this.agendaCalendarStartDate;
+        if (inp) inp.value = this.formatAgendaDateForInput(this.agendaCalendarStartDate);
         this.renderAgendaTable();
       });
     }
@@ -2230,7 +2336,7 @@ class ConsultorioApp {
       btnAgendaToday.addEventListener('click', () => {
         this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
         const inp = document.getElementById('agenda-filter-start');
-        if (inp) inp.value = this.agendaCalendarStartDate;
+        if (inp) inp.value = this.formatAgendaDateForInput(this.agendaCalendarStartDate);
         this.renderAgendaTable();
       });
     }
@@ -2613,6 +2719,7 @@ class ConsultorioApp {
   saveFirebaseConfig(config) {
     try {
       localStorage.setItem(FIREBASE_CONFIG_STORAGE_KEY, JSON.stringify(config));
+      this.bumpVersion();
     } catch (err) {
       console.log('Falha ao salvar configuração do Firebase:', err);
     }
@@ -3232,8 +3339,8 @@ class ConsultorioApp {
 
   filterAppointmentsForAgenda() {
     const search = String((document.getElementById('agenda-search') || {}).value || '').toLowerCase().trim();
-    const start = (document.getElementById('agenda-filter-start') || {}).value || '';
-    const end = (document.getElementById('agenda-filter-end') || {}).value || '';
+    const start = this.normalizeAgendaDateToIso((document.getElementById('agenda-filter-start') || {}).value || '');
+    const end = this.normalizeAgendaDateToIso((document.getElementById('agenda-filter-end') || {}).value || '');
     const status = (document.getElementById('agenda-filter-status') || {}).value || 'todos';
 
     let filtered = this.appointments.slice();
@@ -3338,17 +3445,17 @@ class ConsultorioApp {
     const filtered = this.filterAppointmentsForAgenda();
 
     if (this.agendaViewMode === 'calendar' && agendaStartInput && agendaEndInput) {
-      const selectedDate = agendaStartInput.value || this.agendaCalendarStartDate || getTodayStr();
+      const selectedDate = this.normalizeAgendaDateToIso(agendaStartInput.value) || this.agendaCalendarStartDate || getTodayStr();
       this.agendaCalendarStartDate = getWeekStartMondayIso(selectedDate);
-      agendaStartInput.value = this.agendaCalendarStartDate;
-      agendaEndInput.value = addDaysIso(this.agendaCalendarStartDate, 6);
+      agendaStartInput.value = this.formatAgendaDateForInput(this.agendaCalendarStartDate);
+      agendaEndInput.value = this.formatAgendaDateForInput(addDaysIso(this.agendaCalendarStartDate, 6));
     }
 
     this.updateAgendaViewModeUI();
 
     if (rangeLabel) {
-      const start = (document.getElementById('agenda-filter-start') || {}).value || '-';
-      const end = (document.getElementById('agenda-filter-end') || {}).value || '-';
+      const start = this.normalizeAgendaDateToIso((document.getElementById('agenda-filter-start') || {}).value || '') || '-';
+      const end = this.normalizeAgendaDateToIso((document.getElementById('agenda-filter-end') || {}).value || '') || '-';
       rangeLabel.textContent = `${formatDateBR(start)} até ${formatDateBR(end)}`;
     }
 
@@ -3356,7 +3463,7 @@ class ConsultorioApp {
       if (!filtered.length) {
         calendarGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;"><p>Nenhum agendamento no período.</p></div>';
       } else {
-        const start = agendaStartInput && agendaStartInput.value ? agendaStartInput.value : this.agendaCalendarStartDate;
+        const start = agendaStartInput ? (this.normalizeAgendaDateToIso(agendaStartInput.value) || this.agendaCalendarStartDate) : this.agendaCalendarStartDate;
         const days = Array.from({ length: 7 }, (_, idx) => addDaysIso(start, idx));
         const hours = Array.from({ length: 14 }, (_, idx) => 7 + idx);
 
@@ -5125,6 +5232,7 @@ class ConsultorioApp {
   }
 
   render() {
+    this.renderVersionBadge();
     this.renderDashboard();
     this.renderAgendaTable();
     this.renderClientsTable();

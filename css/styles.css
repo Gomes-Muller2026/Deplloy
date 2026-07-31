@@ -950,6 +950,28 @@ input[type="date"]:focus {
   color: var(--text-muted);
 }
 
+.reminder-mins-box.has-pending-alert {
+  border-color: rgba(239, 68, 68, 0.65);
+  background: rgba(127, 29, 29, 0.32);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2) inset;
+}
+
+.reminder-alert-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-left: 0.15rem;
+}
+
 .reminder-intensity-box {
   display: flex;
   align-items: center;

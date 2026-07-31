@@ -401,6 +401,7 @@ class ConsultorioApp {
     this.lastFinanceiroRows = [];
     this.reminderIntervalId = null;
     this.reminderNotifiedKeys = new Set();
+    this.lastReminderAlertCount = 0;
     this.reminderCheckIntervalMs = 30000;
     this.firebaseSyncIntervalId = null;
     this.firebaseSyncIntervalMs = 5 * 60 * 1000;
@@ -1493,6 +1494,7 @@ class ConsultorioApp {
     this.showToast(body, 'warning');
 
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+    const isDesktop = !isMobile;
     const level = ['normal', 'strong', 'ultra'].includes(this.reminderIntensity) ? this.reminderIntensity : 'strong';
     const vibratePattern = level === 'ultra'
       ? [320, 110, 320, 110, 320, 110, 520]
@@ -1513,7 +1515,7 @@ class ConsultorioApp {
     const sent = await this.sendSystemNotification(title, body, {
       appointmentId: appointment && appointment.id ? appointment.id : '',
       tag: appointment && appointment.id ? `appt-reminder-${appointment.id}` : `appt-reminder-${Date.now()}`,
-      requireInteraction: !isManualTest,
+      requireInteraction: isDesktop && !isManualTest,
       vibrate: vibratePattern
     });
 
@@ -1524,24 +1526,21 @@ class ConsultorioApp {
   }
 
   checkAppointmentReminders() {
-    if (!Array.isArray(this.appointments) || !this.appointments.length) return;
+    if (!Array.isArray(this.appointments) || !this.appointments.length) {
+      this.updateReminderAlertUI(0);
+      return;
+    }
 
     this.pruneReminderNotifiedKeys();
 
-    const now = new Date();
-    const reminderWindow = Number.isFinite(Number(this.reminderMinutes)) ? Math.max(1, Number(this.reminderMinutes)) : 15;
+    const pendingAppointments = this.getPendingReminderAppointments();
+    this.updateReminderAlertUI(pendingAppointments.length);
 
-    this.appointments.forEach((appointment) => {
+    pendingAppointments.forEach((appointment) => {
       if (!appointment || !appointment.id) return;
-      if (this.isReminderBlockedByStatus(appointment)) return;
-
       const startsAt = this.getAppointmentDateTime(appointment);
       if (!startsAt) return;
-
-      const diffMs = startsAt.getTime() - now.getTime();
-      const diffMinutes = diffMs / 60000;
-      if (diffMinutes > reminderWindow) return;
-      if (diffMinutes < -2) return;
+      const diffMinutes = (startsAt.getTime() - Date.now()) / 60000;
 
       const reminderKey = this.buildReminderKey(appointment);
       if (this.reminderNotifiedKeys.has(reminderKey)) return;
@@ -1899,7 +1898,56 @@ class ConsultorioApp {
     if (intensityInput) intensityInput.value = ['normal', 'strong', 'ultra'].includes(this.reminderIntensity)
       ? this.reminderIntensity
       : 'strong';
+    this.updateReminderAlertUI();
     this.updateNotificationPermissionUI();
+  }
+
+  getPendingReminderAppointments() {
+    if (!Array.isArray(this.appointments) || !this.appointments.length) return [];
+
+    const now = new Date();
+    const reminderWindow = Number.isFinite(Number(this.reminderMinutes)) ? Math.max(1, Number(this.reminderMinutes)) : 15;
+
+    return this.appointments.filter((appointment) => {
+      if (!appointment || !appointment.id) return false;
+      if (this.isReminderBlockedByStatus(appointment)) return false;
+
+      const startsAt = this.getAppointmentDateTime(appointment);
+      if (!startsAt) return false;
+
+      const diffMinutes = (startsAt.getTime() - now.getTime()) / 60000;
+      if (diffMinutes > reminderWindow) return false;
+      if (diffMinutes < -2) return false;
+
+      return true;
+    });
+  }
+
+  updateReminderAlertUI(pendingCountOverride = null) {
+    const container = document.querySelector('.reminder-mins-box');
+    const badge = document.getElementById('reminder-alert-badge');
+    const pendingCount = Number.isFinite(Number(pendingCountOverride))
+      ? Math.max(0, Number(pendingCountOverride))
+      : this.getPendingReminderAppointments().length;
+
+    this.lastReminderAlertCount = pendingCount;
+
+    if (container) {
+      container.classList.toggle('has-pending-alert', pendingCount > 0);
+      container.title = pendingCount > 0
+        ? `${pendingCount} atendimento(s) no período de aviso.`
+        : 'Defina com quantos minutos de antecedência o alarme deve tocar';
+    }
+
+    if (badge) {
+      if (pendingCount > 0) {
+        badge.style.display = 'inline-flex';
+        badge.textContent = pendingCount > 99 ? '99+' : String(pendingCount);
+      } else {
+        badge.style.display = 'none';
+        badge.textContent = '0';
+      }
+    }
   }
 
   updateNotificationPermissionUI() {
@@ -6027,6 +6075,7 @@ class ConsultorioApp {
     this.renderGraficosTab();
     this.renderRegisteredUsersCards();
     this.populateClientSelectOptions();
+    this.updateReminderAlertUI();
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
       window.lucide.createIcons();

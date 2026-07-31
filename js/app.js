@@ -5245,10 +5245,7 @@ class ConsultorioApp {
 
     const revenueValues = labels.map((date) => Number((revenueByDate[date] || 0).toFixed(2)));
     const expenseValues = labels.map((date) => Number((expenseByDate[date] || 0).toFixed(2)));
-    const resultValues = labels.map((_, index) => Number((revenueValues[index] - expenseValues[index]).toFixed(2)));
-    const hasData = revenueValues.some((value) => value > 0)
-      || expenseValues.some((value) => value > 0)
-      || resultValues.some((value) => Math.abs(value) > 0);
+    const hasData = revenueValues.some((value) => value > 0) || expenseValues.some((value) => value > 0);
 
     if (!hasData) {
       container.innerHTML = '<div class="empty-state analytics-empty-state"><p>Sem receita ou despesas no período selecionado.</p></div>';
@@ -5269,13 +5266,6 @@ class ConsultorioApp {
         front: '#f97316',
         top: '#fdba74',
         side: '#c2410c'
-      },
-      {
-        name: 'Resultado',
-        values: resultValues,
-        front: '#84cc16',
-        top: '#bef264',
-        side: '#4d7c0f'
       }
     ], { legendType: 'currency' });
   }

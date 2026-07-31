@@ -1,6 +1,6 @@
 ﻿// oi
 // Service Worker - Consultório Control PWA
-const CACHE_NAME = 'consultorio-app-v46';
+const CACHE_NAME = 'consultorio-app-v47';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -101,6 +101,9 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
+        if (client && 'postMessage' in client) {
+          client.postMessage({ type: 'OPEN_REMINDER_ROUTE', url: targetUrl });
+        }
         if (client && 'focus' in client) {
           return client.focus();
         }

@@ -2319,6 +2319,38 @@ input[type="date"]:focus {
   border-color: rgba(245, 158, 11, 0.25);
 }
 
+.agenda-reminder-target {
+  border-color: rgba(239, 68, 68, 0.85) !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35), 0 10px 20px rgba(127, 29, 29, 0.36);
+}
+
+.agenda-reminder-target-row {
+  background: linear-gradient(90deg, rgba(127, 29, 29, 0.22), rgba(127, 29, 29, 0.06));
+}
+
+.agenda-reminder-target-row td {
+  border-bottom-color: rgba(239, 68, 68, 0.38);
+}
+
+.agenda-reminder-target-pulse {
+  animation: agendaReminderPulse 1.6s ease-out;
+}
+
+@keyframes agendaReminderPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.58);
+  }
+  45% {
+    transform: scale(1.01);
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
 .input-icon {
   position: relative;
   max-width: 380px;
@@ -4078,17 +4110,35 @@ textarea.form-control,
   }
 
   .sound-control-group {
-    grid-template-columns: 1fr;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .sound-control-group > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  #btn-toggle-sound,
+  #btn-test-sound,
+  #btn-enable-notifications {
+    width: 100%;
+    justify-content: center;
   }
 
   .sound-control-group .reminder-mins-box {
-    flex-wrap: wrap;
+    width: 100%;
+    justify-content: center;
     gap: 0.45rem;
   }
 
   .sound-control-group .reminder-intensity-box {
     width: 100%;
-    justify-content: space-between;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .notification-permission-pill {
@@ -4101,7 +4151,8 @@ textarea.form-control,
   }
 
   .sound-control-group .reminder-intensity-input {
-    width: 120px;
+    width: 100%;
+    min-width: 0;
   }
 
   .header-actions .btn {
@@ -4125,6 +4176,71 @@ textarea.form-control,
   .data-table th,
   .data-table td {
     padding: 0.7rem 0.75rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .header-actions > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .header-actions .btn,
+  .header-actions .cloud-status-badge,
+  .header-actions .header-user-pill,
+  .top-date-picker {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .top-date-picker {
+    padding: 0.55rem;
+  }
+
+  .top-date-picker .top-date-input {
+    flex: 1 1 calc(50% - 0.25rem);
+    width: calc(50% - 0.25rem);
+    min-width: 0;
+  }
+
+  #btn-refresh-firebase-top,
+  #btn-header-new-client,
+  #btn-open-birthdays,
+  #btn-logout-session,
+  #btn-header-new-appointment {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .main-content {
+    padding-left: 0.72rem;
+    padding-right: 0.72rem;
+  }
+
+  .header-title h1 {
+    font-size: 1.5rem;
+  }
+
+  .cloud-sync-meta {
+    display: none;
+  }
+
+  .top-date-picker i {
+    display: none;
+  }
+
+  .top-date-picker .top-date-input {
+    flex: 1 1 100%;
+    width: 100%;
   }
 }
 

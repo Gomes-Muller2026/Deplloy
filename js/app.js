@@ -402,6 +402,10 @@ class ConsultorioApp {
     this.reminderIntervalId = null;
     this.reminderNotifiedKeys = new Set();
     this.lastReminderAlertCount = 0;
+    this.pendingNotificationRoute = null;
+    this.agendaAttentionAppointmentId = '';
+    this.agendaAttentionNeedsFocus = false;
+    this.agendaAttentionTimerId = null;
     this.reminderCheckIntervalMs = 30000;
     this.firebaseSyncIntervalId = null;
     this.firebaseSyncIntervalMs = 5 * 60 * 1000;
@@ -1461,7 +1465,7 @@ class ConsultorioApp {
       vibrate: Array.isArray(options.vibrate) ? options.vibrate : [260, 120, 260, 120, 420],
       data: {
         appointmentId: options.appointmentId || '',
-        url: './'
+        url: options.url || './'
       }
     };
 
@@ -1491,6 +1495,8 @@ class ConsultorioApp {
 
     const title = isManualTest ? 'Teste de aviso' : 'Lembrete de consulta';
     const body = `${clientName} - ${procedure} às ${time} (${whenText})`;
+    const appointmentId = appointment && appointment.id ? String(appointment.id) : '';
+    const reminderUrl = `./?open=agenda&focus=reminder${appointmentId ? `&appointmentId=${encodeURIComponent(appointmentId)}` : ''}`;
     this.showToast(body, 'warning');
 
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
@@ -1513,8 +1519,9 @@ class ConsultorioApp {
     }
 
     const sent = await this.sendSystemNotification(title, body, {
-      appointmentId: appointment && appointment.id ? appointment.id : '',
-      tag: appointment && appointment.id ? `appt-reminder-${appointment.id}` : `appt-reminder-${Date.now()}`,
+      appointmentId,
+      url: reminderUrl,
+      tag: appointmentId ? `appt-reminder-${appointmentId}` : `appt-reminder-${Date.now()}`,
       requireInteraction: isDesktop && !isManualTest,
       vibrate: vibratePattern
     });
@@ -1854,6 +1861,7 @@ class ConsultorioApp {
     this.prefillSenhaTabFields();
     this.prefillFirebaseConfig();
     this.updateCloudSyncMeta('Modo local', 'local');
+    this.captureReminderRouteFromCurrentUrl();
     this.startReminderWatcher();
   }
 
@@ -2134,6 +2142,7 @@ class ConsultorioApp {
           this.localLoginUnlocked = true;
           this.showAppShell();
           this.render();
+          this.applyPendingReminderRoute();
           this.showToast('Login realizado com sucesso!', 'success');
         } else {
           this.showLoginScreen('Usuário ou senha incorretos.');
@@ -3101,6 +3110,136 @@ class ConsultorioApp {
 
     this.render();
     this.syncDashboardCardFromTab(this.currentTab, previousTab);
+  }
+
+  parseReminderRouteParams(params) {
+    if (!params || typeof params.get !== 'function') return null;
+    const open = String(params.get('open') || '').toLowerCase();
+    const focus = String(params.get('focus') || '').toLowerCase();
+    if (open !== 'agenda' || focus !== 'reminder') return null;
+
+    return {
+      open: 'agenda',
+      focus: 'reminder',
+      appointmentId: String(params.get('appointmentId') || '').trim()
+    };
+  }
+
+  queueReminderRouteFromUrl(targetUrl = '') {
+    const raw = String(targetUrl || '').trim();
+    if (!raw) return false;
+
+    try {
+      const parsed = new URL(raw, window.location.origin);
+      const route = this.parseReminderRouteParams(parsed.searchParams);
+      if (!route) return false;
+      this.pendingNotificationRoute = route;
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  captureReminderRouteFromCurrentUrl() {
+    const queued = this.queueReminderRouteFromUrl(window.location.href || './');
+    if (!queued) return;
+
+    if (window.history && typeof window.history.replaceState === 'function') {
+      const cleanUrl = `${window.location.pathname || './'}${window.location.hash || ''}`;
+      window.history.replaceState({}, document.title, cleanUrl || './');
+    }
+  }
+
+  applyPendingReminderRoute() {
+    if (!this.localLoginUnlocked) return false;
+    if (!this.pendingNotificationRoute) return false;
+
+    const route = this.pendingNotificationRoute;
+    this.pendingNotificationRoute = null;
+
+    if (route.open !== 'agenda') return false;
+
+    const today = getTodayStr();
+    const agendaSearch = document.getElementById('agenda-search');
+    const agendaStart = document.getElementById('agenda-filter-start');
+    const agendaEnd = document.getElementById('agenda-filter-end');
+    const agendaStatus = document.getElementById('agenda-filter-status');
+
+    if (agendaSearch) agendaSearch.value = '';
+    if (agendaStart) agendaStart.value = this.formatAgendaDateForInput(today);
+    if (agendaEnd) agendaEnd.value = this.formatAgendaDateForInput(today);
+    if (agendaStatus) {
+      const hasAgendado = Array.from(agendaStatus.options || []).some((option) => option.value === 'Agendado');
+      agendaStatus.value = hasAgendado ? 'Agendado' : 'todos';
+    }
+
+    this.switchTab('agenda');
+    this.showToast('Agenda aberta pelo lembrete de atendimento.', 'info');
+
+    if (route.appointmentId) {
+      this.activateAgendaReminderFocus(route.appointmentId, 12000);
+      window.setTimeout(() => this.openAppointmentModal(route.appointmentId), 140);
+    }
+
+    return true;
+  }
+
+  handleServiceWorkerMessage(data = {}) {
+    if (!data || typeof data !== 'object') return;
+    if (String(data.type || '') !== 'OPEN_REMINDER_ROUTE') return;
+
+    const queued = this.queueReminderRouteFromUrl(String(data.url || './'));
+    if (queued && this.localLoginUnlocked) {
+      this.applyPendingReminderRoute();
+    }
+  }
+
+  activateAgendaReminderFocus(appointmentId, durationMs = 12000) {
+    const id = String(appointmentId || '').trim();
+    if (!id) return;
+
+    this.agendaAttentionAppointmentId = id;
+    this.agendaAttentionNeedsFocus = true;
+
+    if (this.agendaAttentionTimerId) {
+      window.clearTimeout(this.agendaAttentionTimerId);
+      this.agendaAttentionTimerId = null;
+    }
+
+    this.agendaAttentionTimerId = window.setTimeout(() => {
+      this.agendaAttentionAppointmentId = '';
+      this.agendaAttentionNeedsFocus = false;
+      this.agendaAttentionTimerId = null;
+      if (this.currentTab === 'agenda') this.renderAgendaTable();
+    }, Math.max(1200, Number(durationMs) || 12000));
+
+    if (this.currentTab === 'agenda') {
+      this.renderAgendaTable();
+    }
+  }
+
+  focusAgendaReminderTarget() {
+    const targetId = String(this.agendaAttentionAppointmentId || '').trim();
+    if (!targetId) return;
+
+    const targetNodes = Array.from(document.querySelectorAll('[data-appointment-id]'))
+      .filter((node) => String(node.getAttribute('data-appointment-id') || '') === targetId);
+
+    if (!targetNodes.length) return;
+
+    const visibleNode = targetNodes.find((node) => {
+      if (!node || typeof node.getClientRects !== 'function') return false;
+      return node.getClientRects().length > 0;
+    }) || targetNodes[0];
+
+    if (this.agendaAttentionNeedsFocus && visibleNode && typeof visibleNode.scrollIntoView === 'function') {
+      visibleNode.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      targetNodes.forEach((node) => node.classList.add('agenda-reminder-target-pulse'));
+      window.setTimeout(() => {
+        targetNodes.forEach((node) => node.classList.remove('agenda-reminder-target-pulse'));
+      }, 1800);
+      this.agendaAttentionNeedsFocus = false;
+    }
   }
 
   showLoginScreen(message = '') {
@@ -4278,11 +4417,12 @@ class ConsultorioApp {
             return `
               <div class="agenda-cell">
                 ${events.map((a) => {
+                  const isReminderTarget = String(this.agendaAttentionAppointmentId || '') === String(a.id || '');
                   const statusClass = String(a.paymentStatus || '').toLowerCase().includes('pago')
                     ? 'agenda-event-pago'
                     : (String(a.paymentStatus || '').toLowerCase().includes('parcial') ? 'agenda-event-parcial' : 'agenda-event-pendente');
                   return `
-                    <div class="agenda-event ${statusClass}" style="${agendaEventInlineStyle(a.color || DEFAULT_APPOINTMENT_COLOR)}" role="button" tabindex="0" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
+                    <div class="agenda-event ${statusClass} ${isReminderTarget ? 'agenda-reminder-target' : ''}" style="${agendaEventInlineStyle(a.color || DEFAULT_APPOINTMENT_COLOR)}" role="button" tabindex="0" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
                       <div class="agenda-event-time">${safeText(a.time || '--:--')}</div>
                       <div class="agenda-event-title-row">
                         <div class="agenda-event-title">${safeText(a.clientName || '-')}</div>
@@ -4322,6 +4462,7 @@ class ConsultorioApp {
     }
 
     tbody.innerHTML = filtered.map((a) => {
+      const isReminderTarget = String(this.agendaAttentionAppointmentId || '') === String(a.id || '');
       const payment = String(a.paymentStatus || 'Pendente');
       const status = String(a.status || 'Agendado');
       const pendingBalance = Math.max(0, toNumber(a.price) - toNumber(a.amountPaid));
@@ -4338,7 +4479,7 @@ class ConsultorioApp {
         ? 'badge-pago'
         : (String(payment).toLowerCase().includes('parcial') ? 'badge-parcial' : 'badge-pendente');
       return `
-        <tr>
+        <tr data-appointment-id="${safeText(a.id || '')}" class="${isReminderTarget ? 'agenda-reminder-target-row' : ''}">
           <td><strong>${formatDateBR(a.date)}</strong><br><span style="color:var(--text-muted);font-size:0.82rem;">${safeText(a.time || '--:--')} hs</span></td>
           <td>${safeText(a.clientName || '-')}</td>
           <td>${safeText(a.procedure || '-')}</td>
@@ -4357,6 +4498,8 @@ class ConsultorioApp {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
       window.lucide.createIcons();
     }
+
+    this.focusAgendaReminderTarget();
   }
 
   cycleAppointmentStatus(id) {
@@ -6117,7 +6260,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   await window.app.initFirebase();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=20260730-1')
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
+    });
+
+    navigator.serviceWorker.register('./sw.js?v=20260731-1')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

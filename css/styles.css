@@ -3466,6 +3466,21 @@ body.analytics-focus-mode .analytics-grid {
   scrollbar-gutter: stable;
 }
 
+.payment-receipt-professional-panel {
+  margin-top: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.34);
+  display: none;
+  position: relative;
+  z-index: 1;
+}
+
+.payment-receipt-professional-panel.is-open {
+  display: block;
+}
+
 .payment-receipt-template-panel.is-open {
   display: block;
 }

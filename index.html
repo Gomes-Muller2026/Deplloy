@@ -991,6 +991,7 @@
                 <strong>Recibo de Pagamento</strong>
               </div>
               <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-payment-receipt-professional">Editar Profissional</button>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-payment-receipt-template" onclick="app.togglePaymentReceiptTemplateEditor()">Editar Modelo</button>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-generate-payment-receipt" onclick="app.generatePaymentReceipt()">Gerar Recibo</button>
               </div>
@@ -1032,21 +1033,30 @@
                 <label for="pay-receipt-dates">Data(s) do atendimento</label>
                 <input type="text" id="pay-receipt-dates" class="form-control" placeholder="DD/MM/AAAA">
               </div>
-              <div class="form-group">
-                <label for="pay-receipt-professional-name">Profissional</label>
-                <input type="text" id="pay-receipt-professional-name" class="form-control" placeholder="Nome do psicólogo(a)">
+            </div>
+            <div class="payment-receipt-professional-panel" id="payment-receipt-professional-panel">
+              <div class="payment-receipt-head">
+                <div class="whatsapp-send-brand">
+                  <strong>Dados do Profissional</strong>
+                </div>
               </div>
-              <div class="form-group">
-                <label for="pay-receipt-professional-crp">CRP</label>
-                <input type="text" id="pay-receipt-professional-crp" class="form-control" placeholder="Número do CRP/Região">
-              </div>
-              <div class="form-group">
-                <label for="pay-receipt-professional-cpf">CPF profissional</label>
-                <input type="text" id="pay-receipt-professional-cpf" class="form-control" placeholder="000.000.000-00">
-              </div>
-              <div class="form-group payment-receipt-edit-full">
-                <label for="pay-receipt-professional-address">Endereço do consultório</label>
-                <input type="text" id="pay-receipt-professional-address" class="form-control" placeholder="Endereço do consultório">
+              <div class="payment-receipt-edit-grid" style="margin-top:0.45rem;">
+                <div class="form-group">
+                  <label for="pay-receipt-professional-name">Profissional</label>
+                  <input type="text" id="pay-receipt-professional-name" class="form-control" placeholder="Nome do psicólogo(a)">
+                </div>
+                <div class="form-group">
+                  <label for="pay-receipt-professional-crp">CRP</label>
+                  <input type="text" id="pay-receipt-professional-crp" class="form-control" placeholder="Número do CRP/Região">
+                </div>
+                <div class="form-group">
+                  <label for="pay-receipt-professional-cpf">CPF profissional</label>
+                  <input type="text" id="pay-receipt-professional-cpf" class="form-control" placeholder="000.000.000-00">
+                </div>
+                <div class="form-group payment-receipt-edit-full">
+                  <label for="pay-receipt-professional-address">Endereço do consultório</label>
+                  <input type="text" id="pay-receipt-professional-address" class="form-control" placeholder="Endereço do consultório">
+                </div>
               </div>
             </div>
             <div class="form-group" style="margin-top:0.6rem;">

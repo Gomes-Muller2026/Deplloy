@@ -88,6 +88,27 @@ const sanitizePaymentReceiptTemplate = (templateText) => String(templateText || 
   .filter((line) => !/^\s*logo\s*:/i.test(String(line || '').trim()))
   .join('\n')
   .trim();
+
+const isLegacyPaymentReceiptTemplate = (templateText) => {
+  const normalized = String(templateText || '').toLowerCase();
+  const hasLegacyMarkers = [
+    '{{cliente}}',
+    '{{procedimento}}',
+    '{{valor_total}}',
+    'data da consulta:',
+    'forma de pagamento:'
+  ].some((token) => normalized.includes(token));
+
+  const hasNewMarkers = [
+    '{{paciente_nome}}',
+    '{{paciente_cpf}}',
+    '{{pagador_nome}}',
+    '{{pagador_cpf}}',
+    '{{recibo_numero}}'
+  ].some((token) => normalized.includes(token));
+
+  return hasLegacyMarkers && !hasNewMarkers;
+};
 const DEFAULT_WHATSAPP_CONFIRM_TEMPLATE = [
   'Olá, {{cliente}}!',
   '',
@@ -787,7 +808,10 @@ class ConsultorioApp {
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
-      if (!raw || normalizeForCompare(template) === normalizeForCompare(LEGACY_PAYMENT_RECEIPT_TEMPLATE)) {
+      const isLegacyByCompare = normalizeForCompare(template) === normalizeForCompare(LEGACY_PAYMENT_RECEIPT_TEMPLATE);
+      const isLegacyByMarkers = isLegacyPaymentReceiptTemplate(template);
+
+      if (!raw || isLegacyByCompare || isLegacyByMarkers) {
         this.paymentReceiptTemplate = sanitizePaymentReceiptTemplate(DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
         localStorage.setItem(PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY, this.paymentReceiptTemplate);
         return;
@@ -843,6 +867,17 @@ class ConsultorioApp {
 
     if (card) card.classList.toggle('is-open', nextOpen);
     if (button) button.textContent = nextOpen ? 'Fechar Modelo' : 'Editar Modelo';
+
+    return nextOpen;
+  }
+
+  togglePaymentReceiptProfessionalEditor(forceOpen = null) {
+    const card = document.getElementById('payment-receipt-professional-panel');
+    const button = document.getElementById('btn-toggle-payment-receipt-professional');
+    const nextOpen = forceOpen == null ? !(card && card.classList.contains('is-open')) : Boolean(forceOpen);
+
+    if (card) card.classList.toggle('is-open', nextOpen);
+    if (button) button.textContent = nextOpen ? 'Fechar Profissional' : 'Editar Profissional';
 
     return nextOpen;
   }
@@ -3105,6 +3140,11 @@ class ConsultorioApp {
     const btnTogglePaymentReceiptTemplate = document.getElementById('btn-toggle-payment-receipt-template');
     if (btnTogglePaymentReceiptTemplate) {
       btnTogglePaymentReceiptTemplate.addEventListener('click', () => this.togglePaymentReceiptTemplateEditor());
+    }
+
+    const btnTogglePaymentReceiptProfessional = document.getElementById('btn-toggle-payment-receipt-professional');
+    if (btnTogglePaymentReceiptProfessional) {
+      btnTogglePaymentReceiptProfessional.addEventListener('click', () => this.togglePaymentReceiptProfessionalEditor());
     }
 
     const btnSavePaymentReceiptTemplate = document.getElementById('btn-save-payment-receipt-template');
@@ -5763,6 +5803,8 @@ class ConsultorioApp {
     if (templateEl) {
       templateEl.value = this.getPaymentReceiptTemplate();
     }
+
+    this.togglePaymentReceiptProfessionalEditor(false);
 
     modal.classList.add('active');
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();

@@ -2398,7 +2398,18 @@ class ConsultorioApp {
         const raw = String(balanceEl.textContent || '').replace(/[^\d,\.]/g, '').replace(',', '.');
         input.value = parseFloat(raw) || 0;
       }
+      this.generatePaymentReceipt();
     });
+
+    const btnGeneratePaymentReceipt = document.getElementById('btn-generate-payment-receipt');
+    if (btnGeneratePaymentReceipt) {
+      btnGeneratePaymentReceipt.addEventListener('click', () => this.generatePaymentReceipt());
+    }
+
+    const btnSendPaymentReceiptWhatsApp = document.getElementById('btn-send-payment-receipt-whatsapp');
+    if (btnSendPaymentReceiptWhatsApp) {
+      btnSendPaymentReceiptWhatsApp.addEventListener('click', () => this.sendPaymentReceiptWhatsApp());
+    }
 
     const btnNewExpense = document.getElementById('btn-new-expense');
     if (btnNewExpense) btnNewExpense.addEventListener('click', () => this.openExpenseModal());
@@ -3404,6 +3415,79 @@ class ConsultorioApp {
       assinatura: this.getSignatureName()
     };
     return this.applyTemplateVars(this.whatsAppBirthdayTemplate, vars).trim();
+  }
+
+  buildPaymentReceiptText(appointment, amountNow = 0) {
+    const clientName = String((appointment && appointment.clientName) || 'Cliente').trim() || 'Cliente';
+    const procedure = String((appointment && appointment.procedure) || 'Consulta').trim() || 'Consulta';
+    const date = formatDateBR((appointment && appointment.date) || '');
+    const time = String((appointment && appointment.time) || '--:--').trim() || '--:--';
+    const paymentMethod = String((document.getElementById('pay-method') || {}).value || appointment.paymentMethod || 'Pix');
+    const total = toNumber((appointment && appointment.price) || 0);
+    const paidBefore = toNumber((appointment && appointment.amountPaid) || 0);
+    const paidNow = Math.max(0, toNumber(amountNow || 0));
+    const paidAfter = Math.min(total, paidBefore + paidNow);
+    const openAfter = Math.max(0, total - paidAfter);
+    const signature = this.getSignatureName();
+
+    return [
+      'LOGO: Patricia Grando Muller',
+      'RECIBO DE PAGAMENTO',
+      '',
+      `Profissional: Patricia Grando Muller`,
+      `Responsável: ${signature}`,
+      `Paciente: ${clientName}`,
+      `Data da consulta: ${date} às ${time}`,
+      `Procedimento: ${procedure}`,
+      `Forma de pagamento: ${paymentMethod}`,
+      '',
+      `Valor total: ${formatCurrency(total)}`,
+      `Valor já pago (antes): ${formatCurrency(paidBefore)}`,
+      `Valor pago agora: ${formatCurrency(paidNow)}`,
+      `Total pago (após): ${formatCurrency(paidAfter)}`,
+      `Saldo em aberto: ${formatCurrency(openAfter)}`,
+      '',
+      `Emitido em: ${new Date().toLocaleString('pt-BR')}`,
+      '',
+      'Assinatura: ____________________________'
+    ].join('\n');
+  }
+
+  generatePaymentReceipt() {
+    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
+    const appt = this.appointments.find((a) => a.id === id);
+    if (!appt) {
+      this.showToast('Consulta não encontrada para gerar recibo.', 'warning');
+      return;
+    }
+
+    const amountNow = toNumber((document.getElementById('pay-amount-now') || {}).value || 0);
+    const receiptText = this.buildPaymentReceiptText(appt, amountNow);
+    const receiptEl = document.getElementById('pay-receipt-text');
+    if (receiptEl) receiptEl.value = receiptText;
+  }
+
+  sendPaymentReceiptWhatsApp() {
+    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
+    const appt = this.appointments.find((a) => a.id === id);
+    if (!appt) {
+      this.showToast('Consulta não encontrada para envio.', 'warning');
+      return;
+    }
+
+    const client = this.clients.find((c) => String(c.id || '') === String(appt.clientId || '')) || null;
+    const phone = this.normalizeWhatsAppPhone((client && client.phone) || '');
+    if (!phone) {
+      this.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
+      return;
+    }
+
+    const receiptEl = document.getElementById('pay-receipt-text');
+    const manualText = String((receiptEl && receiptEl.value) || '').trim();
+    const text = manualText || this.buildPaymentReceiptText(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener');
+    this.showToast('Recibo aberto no WhatsApp para envio.', 'success');
   }
 
   getBirthdaysFromWindow(windowDays = 30) {
@@ -4590,6 +4674,12 @@ class ConsultorioApp {
     const statusSelect = document.getElementById('pay-status-select');
     if (statusSelect) {
       statusSelect.value = balance <= 0 ? 'Pago' : (paid > 0 ? 'Parcial' : 'Pendente');
+    }
+
+    const receiptEl = document.getElementById('pay-receipt-text');
+    if (receiptEl) {
+      const previewAmount = balance > 0 ? balance : 0;
+      receiptEl.value = this.buildPaymentReceiptText(appt, previewAmount);
     }
 
     modal.classList.add('active');

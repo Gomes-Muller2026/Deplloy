@@ -734,7 +734,8 @@
           <label for="pay-receipt-text">Texto do recibo (editável)</label>
           <textarea id="pay-receipt-text" class="form-control" rows="8" placeholder="Clique em Gerar Recibo para preencher."></textarea>
         </div>
-        <div style="display:flex; justify-content:flex-end; margin-top:0.5rem;">
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary" id="btn-print-payment-receipt"><i data-lucide="printer"></i> Imprimir Recibo</button>
           <button type="button" class="btn btn-secondary" id="btn-send-payment-receipt-whatsapp"><i data-lucide="message-circle"></i> Enviar Recibo no WhatsApp</button>
         </div>
       </div>

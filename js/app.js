@@ -2411,6 +2411,11 @@ class ConsultorioApp {
       btnSendPaymentReceiptWhatsApp.addEventListener('click', () => this.sendPaymentReceiptWhatsApp());
     }
 
+    const btnPrintPaymentReceipt = document.getElementById('btn-print-payment-receipt');
+    if (btnPrintPaymentReceipt) {
+      btnPrintPaymentReceipt.addEventListener('click', () => this.printPaymentReceipt());
+    }
+
     const btnNewExpense = document.getElementById('btn-new-expense');
     if (btnNewExpense) btnNewExpense.addEventListener('click', () => this.openExpenseModal());
 
@@ -3488,6 +3493,20 @@ class ConsultorioApp {
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener');
     this.showToast('Recibo aberto no WhatsApp para envio.', 'success');
+  }
+
+  printPaymentReceipt() {
+    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
+    const appt = this.appointments.find((a) => a.id === id);
+    if (!appt) {
+      this.showToast('Consulta não encontrada para impressão.', 'warning');
+      return;
+    }
+
+    const receiptEl = document.getElementById('pay-receipt-text');
+    const manualText = String((receiptEl && receiptEl.value) || '').trim();
+    const content = manualText || this.buildPaymentReceiptText(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
+    this.openReportWindow('Recibo de Pagamento', content, true);
   }
 
   getBirthdaysFromWindow(windowDays = 30) {

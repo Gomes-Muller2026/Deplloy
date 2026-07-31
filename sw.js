@@ -1,6 +1,6 @@
 ﻿// oi
 // Service Worker - Consultório Control PWA
-const CACHE_NAME = 'consultorio-app-v45';
+const CACHE_NAME = 'consultorio-app-v46';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -43,29 +43,52 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Estratégia: Cache First, depois Network
+// Estratégia:
+// - Navegação (HTML): Network First para sempre buscar versão nova no deploy
+// - Assets estáticos: Cache First com atualização de cache em background
 self.addEventListener('fetch', (event) => {
+  const { request } = event;
+
+  if (request.method !== 'GET') return;
+
+  // Para páginas HTML, prioriza rede para refletir atualizações do GitHub Pages.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response && response.status === 200) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put('./index.html', responseToCache);
+          });
+        }
+        return response;
+      }).catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // Para assets (css/js/imagens), mantém cache-first com atualização de cache.
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
+        fetch(request).then((response) => {
+          if (!response || response.status !== 200) return;
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseToCache);
+          });
+        }).catch(() => null);
         return cachedResponse;
       }
-      return fetch(event.request).then((response) => {
-        // Não salvar requisições inválidas
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
-        }
+
+      return fetch(request).then((response) => {
+        if (!response || response.status !== 200) return response;
         const responseToCache = response.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+          cache.put(request, responseToCache);
         });
         return response;
-      }).catch(() => {
-        // Fallback offline se necessário
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-      });
+      }).catch(() => null);
     })
   );
 });
@@ -86,5 +109,12 @@ self.addEventListener('notificationclick', (event) => {
       return null;
     })
   );
+});
+
+self.addEventListener('message', (event) => {
+  const data = event && event.data ? event.data : {};
+  if (data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 // att

@@ -72,8 +72,16 @@
         <div class="top-date-picker">
           <i data-lucide="calendar-range"></i>
           <input type="text" id="top-date-start" class="top-date-input date-input" title="Data inicial" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa">
+          <button type="button" class="btn-date-picker" id="btn-top-date-start-picker" title="Selecionar data inicial no calendário">
+            <i data-lucide="calendar"></i>
+          </button>
           <span class="top-date-sep">até</span>
           <input type="text" id="top-date-end" class="top-date-input date-input" title="Data final" inputmode="numeric" maxlength="10" placeholder="ddmmaaaa">
+          <button type="button" class="btn-date-picker" id="btn-top-date-end-picker" title="Selecionar data final no calendário">
+            <i data-lucide="calendar"></i>
+          </button>
+          <input type="date" id="top-date-start-native" class="visually-hidden" tabindex="-1" aria-hidden="true">
+          <input type="date" id="top-date-end-native" class="visually-hidden" tabindex="-1" aria-hidden="true">
           <button class="btn-clear-date" id="btn-reset-top-dates" title="Resetar período">
             <i data-lucide="rotate-ccw"></i>
           </button>
@@ -527,6 +535,7 @@
               <button class="btn btn-secondary" id="btn-refresh-firebase" data-action="refresh-firebase">Atualizar Agora</button>
               <button class="btn btn-secondary" id="btn-validate-firebase">Revalidar Firebase</button>
               <button class="btn btn-secondary" id="btn-disconnect-firebase">Desconectar</button>
+              <button class="btn btn-secondary" id="btn-force-app-update" title="Forçar atualização para a versão mais recente do site">Forçar Atualização do App</button>
             </div>
             <div id="firebase-validation-panel" class="firebase-validation-panel">
               <p class="firebase-validation-summary">Clique em Revalidar Firebase para executar checklist de conexão.</p>

@@ -1770,10 +1770,40 @@ class ConsultorioApp {
     });
   }
 
+  async forceAppUpdate() {
+    if (!('serviceWorker' in navigator)) {
+      this.showToast('Service Worker não suportado neste navegador.', 'warning');
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        this.showToast('Atualização acionada. Recarregando...', 'info');
+        window.location.reload();
+        return;
+      }
+
+      await registration.update();
+
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      this.showToast('Buscando versão mais recente do app...', 'info');
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 450);
+    } catch (err) {
+      this.showToast('Não foi possível forçar atualização agora.', 'warning');
+    }
+  }
+
 
   initEvents() {
     const loginForm = document.getElementById('login-form');
     const saveFirebaseBtn = document.getElementById('btn-save-firebase');
+    const forceAppUpdateBtn = document.getElementById('btn-force-app-update');
     const refreshFirebaseBtns = document.querySelectorAll('[data-action="refresh-firebase"]');
     const validateFirebaseBtn = document.getElementById('btn-validate-firebase');
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
@@ -1866,6 +1896,12 @@ class ConsultorioApp {
     if (saveFirebaseBtn) {
       saveFirebaseBtn.addEventListener('click', () => {
         void this.initFirebase();
+      });
+    }
+
+    if (forceAppUpdateBtn) {
+      forceAppUpdateBtn.addEventListener('click', () => {
+        void this.forceAppUpdate();
       });
     }
 
@@ -5074,7 +5110,11 @@ class ConsultorioApp {
     const safeLabels = Array.isArray(labels) ? labels : [];
     const safeSeries = Array.isArray(series) ? series : [];
     const grouped = safeSeries.length > 1;
-    const maxValue = Math.max(1, ...safeSeries.flatMap((item) => item.values || []).map((value) => Number(value || 0)));
+    const allowNegative = options.allowNegative === true;
+    const allValues = safeSeries.flatMap((item) => item.values || []).map((value) => Number(value || 0));
+    const maxRawValue = Math.max(0, ...allValues);
+    const minRawValue = allowNegative ? Math.min(0, ...allValues) : 0;
+    const range = Math.max(1, maxRawValue - minRawValue);
 
     const width = 760;
     const height = 290;
@@ -5100,23 +5140,30 @@ class ConsultorioApp {
       return `<line class="chart-grid-line" x1="${padLeft}" y1="${y.toFixed(2)}" x2="${(padLeft + plotWidth).toFixed(2)}" y2="${y.toFixed(2)}"></line>`;
     }).join('');
 
+    const zeroRatio = (maxRawValue - 0) / range;
+    const zeroY = padTop + (plotHeight * zeroRatio);
+    const zeroLine = allowNegative
+      ? `<line class="chart-grid-line" x1="${padLeft}" y1="${zeroY.toFixed(2)}" x2="${(padLeft + plotWidth).toFixed(2)}" y2="${zeroY.toFixed(2)}" style="opacity:0.92;stroke-width:1.4;"></line>`
+      : '';
+
     const bars = safeLabels.map((_, labelIndex) => {
       const currentGroupWidth = seriesCount * barWidth + (seriesCount - 1) * barGap;
       const baseX = padLeft + labelIndex * groupWidth + (groupWidth - currentGroupWidth) / 2;
 
       return safeSeries.map((item, seriesIndex) => {
         const rawValue = Number((item.values || [])[labelIndex] || 0);
-        const ratio = rawValue <= 0 ? 0 : rawValue / maxValue;
-        const barHeight = Math.max(0, ratio * (plotHeight - 8));
+        const valueY = padTop + (((maxRawValue - rawValue) / range) * plotHeight);
+        const barHeight = Math.abs(zeroY - valueY);
         if (barHeight <= 0.5) return '';
 
         const x = baseX + seriesIndex * (barWidth + barGap);
-        const y = padTop + plotHeight - barHeight;
+        const y = rawValue >= 0 ? valueY : zeroY;
 
-        const frontColor = item.front || '#60a5fa';
-        const topColor = item.top || '#93c5fd';
-        const valueLabel = rawValue > 0
-          ? `<text class="chart-value-label" x="${(x + (barWidth / 2)).toFixed(2)}" y="${(y - 6).toFixed(2)}">${safeText(String(rawValue.toFixed(rawValue % 1 === 0 ? 0 : 2)).replace('.', ','))}</text>`
+        const isNegative = rawValue < 0;
+        const frontColor = isNegative ? (item.negativeFront || '#ef4444') : (item.front || '#60a5fa');
+        const topColor = isNegative ? (item.negativeTop || '#fca5a5') : (item.top || '#93c5fd');
+        const valueLabel = rawValue !== 0
+          ? `<text class="chart-value-label" x="${(x + (barWidth / 2)).toFixed(2)}" y="${(isNegative ? (y + barHeight + 14) : (y - 6)).toFixed(2)}">${safeText(String(rawValue.toFixed(rawValue % 1 === 0 ? 0 : 2)).replace('.', ','))}</text>`
           : '';
 
         const glossHeight = Math.max(8, barHeight * 0.28);
@@ -5137,6 +5184,7 @@ class ConsultorioApp {
     const svg = `
       <svg class="analytics-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gráfico analítico 3D">
         ${gridLines}
+        ${zeroLine}
         ${bars}
       </svg>
     `;
@@ -5150,15 +5198,26 @@ class ConsultorioApp {
     const legend = `
       <div class="analytics-legend">
         ${safeSeries.map((item) => {
-          const total = (item.values || []).reduce((sum, value) => sum + Number(value || 0), 0);
-          return `<span class="analytics-legend-item"><i style="background:${item.front};"></i><strong>${safeText(item.name || '-')}</strong><em>${safeText(formatLegendTotal(total))}</em></span>`;
+          const computedTotal = (item.values || []).reduce((sum, value) => sum + Number(value || 0), 0);
+          const total = Number.isFinite(Number(item.totalOverride)) ? Number(item.totalOverride) : computedTotal;
+          const legendColor = total < 0
+            ? (item.legendNegative || item.front)
+            : (item.legendPositive || item.front);
+          const legendValueColor = total < 0
+            ? (item.legendValueNegative || item.legendNegative || '#fda4af')
+            : (item.legendValuePositive || item.legendPositive || '#d9f99d');
+          return `<span class="analytics-legend-item"><i style="background:${legendColor};"></i><strong>${safeText(item.name || '-')}</strong><em style="color:${legendValueColor};">${safeText(formatLegendTotal(total))}</em></span>`;
         }).join('')}
       </div>
     `;
 
     const axis = `
       <div class="chart-axis-labels ${grouped ? 'chart-axis-labels-grouped' : ''}" style="--chart-columns:${labelCount};">
-        ${safeLabels.map((dateLabel) => `<span>${safeText(formatDateBR(dateLabel).slice(0, 5))}</span>`).join('')}
+        ${safeLabels.map((dateLabel) => {
+          const normalized = String(dateLabel || '').trim().toLowerCase();
+          const labelText = normalized === 'total' ? 'Total' : formatDateBR(dateLabel).slice(0, 5);
+          return `<span>${safeText(labelText)}</span>`;
+        }).join('')}
       </div>
     `;
 
@@ -5226,26 +5285,15 @@ class ConsultorioApp {
     const container = document.getElementById('analytics-finance-chart');
     if (!container) return;
 
-    const labels = this.getAnalyticsDateLabels(31);
-    const labelSet = new Set(labels);
-    const revenueByDate = {};
-    const expenseByDate = {};
+    const labels = ['total'];
+    const revenueTotal = Number(this.appointments.reduce((sum, appt) => sum + toNumber(appt.amountPaid), 0).toFixed(2));
+    const expenseTotal = Number(this.expenses.reduce((sum, expense) => sum + toNumber(expense.amount), 0).toFixed(2));
+    const resultTotal = Number((revenueTotal - expenseTotal).toFixed(2));
 
-    this.appointments.forEach((appt) => {
-      const date = String(appt.date || '');
-      if (!labelSet.has(date)) return;
-      revenueByDate[date] = (revenueByDate[date] || 0) + toNumber(appt.amountPaid);
-    });
-
-    this.expenses.forEach((expense) => {
-      const date = String(expense.date || '');
-      if (!labelSet.has(date)) return;
-      expenseByDate[date] = (expenseByDate[date] || 0) + toNumber(expense.amount);
-    });
-
-    const revenueValues = labels.map((date) => Number((revenueByDate[date] || 0).toFixed(2)));
-    const expenseValues = labels.map((date) => Number((expenseByDate[date] || 0).toFixed(2)));
-    const hasData = revenueValues.some((value) => value > 0) || expenseValues.some((value) => value > 0);
+    const revenueValues = [revenueTotal];
+    const expenseValues = [expenseTotal];
+    const resultValues = [resultTotal];
+    const hasData = revenueTotal > 0 || expenseTotal > 0 || resultTotal !== 0;
 
     if (!hasData) {
       container.innerHTML = '<div class="empty-state analytics-empty-state"><p>Sem receita ou despesas no período selecionado.</p></div>';
@@ -5258,16 +5306,36 @@ class ConsultorioApp {
         values: revenueValues,
         front: '#38bdf8',
         top: '#93c5fd',
-        side: '#1d4ed8'
+        side: '#1d4ed8',
+        totalOverride: revenueTotal,
+        legendValuePositive: '#7dd3fc',
+        legendValueNegative: '#7dd3fc'
       },
       {
         name: 'Despesas',
         values: expenseValues,
         front: '#f97316',
         top: '#fdba74',
-        side: '#c2410c'
+        side: '#c2410c',
+        totalOverride: expenseTotal,
+        legendValuePositive: '#fdba74',
+        legendValueNegative: '#fdba74'
+      },
+      {
+        name: 'Resultado',
+        values: resultValues,
+        front: '#84cc16',
+        top: '#bef264',
+        side: '#4d7c0f',
+        negativeFront: '#ef4444',
+        negativeTop: '#fca5a5',
+        legendPositive: '#84cc16',
+        legendNegative: '#ef4444',
+        totalOverride: resultTotal,
+        legendValuePositive: '#a3e635',
+        legendValueNegative: '#fca5a5'
       }
-    ], { legendType: 'currency' });
+    ], { legendType: 'currency', allowNegative: true });
   }
 
   toggleChartFocus(cardKey) {
@@ -5387,8 +5455,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   await window.app.initFirebase();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then((reg) => console.log('[PWA] Service Worker registrado:', reg.scope))
+    navigator.serviceWorker.register('./sw.js?v=20260730-1')
+      .then((reg) => {
+        console.log('[PWA] Service Worker registrado:', reg.scope);
+        if (reg && typeof reg.update === 'function') reg.update();
+      })
       .catch((err) => console.log('[PWA] Falha Service Worker:', err));
   }
 });

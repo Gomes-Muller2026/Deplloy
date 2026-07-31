@@ -6264,7 +6264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260731-1')
+    navigator.serviceWorker.register('./sw.js?v=20260731-2')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

@@ -8,6 +8,8 @@ const LOGIN_DEFAULT_USERNAME = 'Patricia';
 const LOGIN_DEFAULT_PASSWORD = 'Flora1658';
 const LOGIN_USER_STORAGE_KEY = 'consultorio_login_user';
 const LOGIN_PASSWORD_STORAGE_KEY = 'consultorio_login_password';
+const LOGIN_USERS_STORAGE_KEY = 'consultorio_login_users';
+const LOGIN_ACTIVE_USER_STORAGE_KEY = 'consultorio_login_active_user';
 const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
 const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
@@ -176,40 +178,154 @@ const agendaEventInlineStyle = (hexColor) => {
   return `background-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18); border-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.52);`;
 };
 
+const normalizeLoginUsers = (rawUsers) => {
+  if (!Array.isArray(rawUsers)) return [];
+
+  const seen = new Set();
+  const users = [];
+
+  rawUsers.forEach((entry) => {
+    const username = String((entry && entry.username) || '').trim();
+    const password = String((entry && entry.password) || '');
+    if (!username || !password) return;
+
+    const key = username.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    users.push({
+      username,
+      password,
+      createdAt: String((entry && entry.createdAt) || getTodayStr()),
+      updatedAt: String((entry && entry.updatedAt) || getTodayStr())
+    });
+  });
+
+  return users;
+};
+
+const saveLoginUsers = (users) => {
+  const normalized = normalizeLoginUsers(users);
+  localStorage.setItem(LOGIN_USERS_STORAGE_KEY, JSON.stringify(normalized));
+  return normalized;
+};
+
 const ensureLoginCredentials = () => {
   try {
-    if (!localStorage.getItem(LOGIN_USER_STORAGE_KEY)) {
-      localStorage.setItem(LOGIN_USER_STORAGE_KEY, LOGIN_DEFAULT_USERNAME);
+    const legacyUsername = String(localStorage.getItem(LOGIN_USER_STORAGE_KEY) || LOGIN_DEFAULT_USERNAME).trim() || LOGIN_DEFAULT_USERNAME;
+    const legacyPassword = String(localStorage.getItem(LOGIN_PASSWORD_STORAGE_KEY) || LOGIN_DEFAULT_PASSWORD) || LOGIN_DEFAULT_PASSWORD;
+
+    let users = [];
+    try {
+      users = normalizeLoginUsers(JSON.parse(localStorage.getItem(LOGIN_USERS_STORAGE_KEY) || '[]'));
+    } catch (err) {
+      users = [];
     }
-    if (!localStorage.getItem(LOGIN_PASSWORD_STORAGE_KEY)) {
-      localStorage.setItem(LOGIN_PASSWORD_STORAGE_KEY, LOGIN_DEFAULT_PASSWORD);
+
+    if (!users.length) {
+      users = [{
+        username: legacyUsername,
+        password: legacyPassword,
+        createdAt: getTodayStr(),
+        updatedAt: getTodayStr()
+      }];
     }
+
+    users = saveLoginUsers(users);
+
+    const activeStored = String(localStorage.getItem(LOGIN_ACTIVE_USER_STORAGE_KEY) || '').trim();
+    const activeMatch = users.find((item) => item.username.toLowerCase() === activeStored.toLowerCase());
+    const activeUser = activeMatch || users[0];
+
+    localStorage.setItem(LOGIN_ACTIVE_USER_STORAGE_KEY, activeUser.username);
+    localStorage.setItem(LOGIN_USER_STORAGE_KEY, activeUser.username);
+    localStorage.setItem(LOGIN_PASSWORD_STORAGE_KEY, activeUser.password);
   } catch (err) {
     console.log('Falha ao inicializar credenciais locais:', err);
   }
 };
 
-const getLoginCredentials = () => {
+const getLoginUsers = () => {
   ensureLoginCredentials();
   try {
-    return {
-      username: localStorage.getItem(LOGIN_USER_STORAGE_KEY) || LOGIN_DEFAULT_USERNAME,
-      password: localStorage.getItem(LOGIN_PASSWORD_STORAGE_KEY) || LOGIN_DEFAULT_PASSWORD
-    };
+    return normalizeLoginUsers(JSON.parse(localStorage.getItem(LOGIN_USERS_STORAGE_KEY) || '[]'));
   } catch (err) {
-    return { username: LOGIN_DEFAULT_USERNAME, password: LOGIN_DEFAULT_PASSWORD };
+    return [{ username: LOGIN_DEFAULT_USERNAME, password: LOGIN_DEFAULT_PASSWORD, createdAt: getTodayStr(), updatedAt: getTodayStr() }];
   }
 };
 
-const setLoginCredentials = (username, password) => {
+const getLoginCredentials = (preferredUsername = '') => {
+  const users = getLoginUsers();
+  const wanted = String(preferredUsername || '').trim().toLowerCase();
+
+  let selected = null;
+  if (wanted) {
+    selected = users.find((item) => item.username.toLowerCase() === wanted) || null;
+  }
+
+  if (!selected) {
+    try {
+      const activeStored = String(localStorage.getItem(LOGIN_ACTIVE_USER_STORAGE_KEY) || '').trim().toLowerCase();
+      selected = users.find((item) => item.username.toLowerCase() === activeStored) || null;
+    } catch (err) {
+      selected = null;
+    }
+  }
+
+  selected = selected || users[0] || { username: LOGIN_DEFAULT_USERNAME, password: LOGIN_DEFAULT_PASSWORD };
+  return { username: selected.username, password: selected.password };
+};
+
+const setActiveLoginUser = (username) => {
+  const wanted = String(username || '').trim();
+  if (!wanted) return false;
+
+  const users = getLoginUsers();
+  const selected = users.find((item) => item.username.toLowerCase() === wanted.toLowerCase());
+  if (!selected) return false;
+
+  try {
+    localStorage.setItem(LOGIN_ACTIVE_USER_STORAGE_KEY, selected.username);
+    localStorage.setItem(LOGIN_USER_STORAGE_KEY, selected.username);
+    localStorage.setItem(LOGIN_PASSWORD_STORAGE_KEY, selected.password);
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
+
+const setLoginCredentials = (username, password, options = {}) => {
   const safeUser = String(username || '').trim();
   const safePass = String(password || '');
   if (!safeUser || !safePass) return false;
 
+  const allowCreate = options.allowCreate !== false;
+
+  const users = getLoginUsers();
+  const index = users.findIndex((item) => item.username.toLowerCase() === safeUser.toLowerCase());
+
+  if (index < 0 && !allowCreate) return false;
+
+  const today = getTodayStr();
+  if (index >= 0) {
+    users[index] = {
+      ...users[index],
+      username: safeUser,
+      password: safePass,
+      updatedAt: today
+    };
+  } else {
+    users.push({
+      username: safeUser,
+      password: safePass,
+      createdAt: today,
+      updatedAt: today
+    });
+  }
+
   try {
-    localStorage.setItem(LOGIN_USER_STORAGE_KEY, safeUser);
-    localStorage.setItem(LOGIN_PASSWORD_STORAGE_KEY, safePass);
-    return true;
+    saveLoginUsers(users);
+    return setActiveLoginUser(safeUser);
   } catch (err) {
     return false;
   }
@@ -1090,6 +1206,7 @@ class ConsultorioApp {
 
     if (currentUser) currentUser.value = creds.username || '';
     if (newUser && !String(newUser.value || '').trim()) newUser.value = creds.username || '';
+    this.renderRegisteredUsersCards();
   }
 
   handleChangePasswordForm() {
@@ -1118,7 +1235,7 @@ class ConsultorioApp {
       return;
     }
 
-    if (!setLoginCredentials(creds.username, newPassword)) {
+    if (!setLoginCredentials(creds.username, newPassword, { allowCreate: false })) {
       this.showToast('Não foi possível salvar a nova senha.', 'warning');
       return;
     }
@@ -1132,6 +1249,8 @@ class ConsultorioApp {
     const loginUserInput = document.getElementById('login-username');
     if (loginUserInput) loginUserInput.value = creds.username || '';
 
+    this.renderRegisteredUsersCards();
+    this.render();
     this.showToast('Senha alterada com sucesso.', 'success');
   }
 
@@ -1155,6 +1274,12 @@ class ConsultorioApp {
       return;
     }
 
+    const exists = getLoginUsers().some((user) => user.username.toLowerCase() === newUsername.toLowerCase());
+    if (exists) {
+      this.showToast('Este usuário já existe. Edite o card abaixo para atualizar.', 'warning');
+      return;
+    }
+
     if (!setLoginCredentials(newUsername, newPassword)) {
       this.showToast('Não foi possível salvar o novo usuário.', 'warning');
       return;
@@ -1172,7 +1297,167 @@ class ConsultorioApp {
     const loginUserInput = document.getElementById('login-username');
     if (loginUserInput) loginUserInput.value = newUsername;
 
+    this.renderRegisteredUsersCards();
+    this.render();
     this.showToast('Novo usuário cadastrado com sucesso.', 'success');
+  }
+
+  renderRegisteredUsersCards() {
+    const container = document.getElementById('senha-users-cards-list');
+    if (!container) return;
+
+    const users = getLoginUsers();
+    const active = getLoginCredentials().username;
+
+    if (!users.length) {
+      container.innerHTML = '<div class="empty-state"><p>Nenhum usuário cadastrado.</p></div>';
+      return;
+    }
+
+    container.innerHTML = users.map((user, index) => {
+      const isActive = String(user.username || '').toLowerCase() === String(active || '').toLowerCase();
+      return `
+        <div class="user-manage-card ${isActive ? 'is-active' : ''}" data-user-index="${index}">
+          <div class="user-manage-head">
+            <strong>${safeText(user.username || '-')}</strong>
+            ${isActive ? '<span class="user-active-pill">Ativo</span>' : ''}
+          </div>
+          <div class="user-manage-grid">
+            <div class="form-group">
+              <label>Usuário</label>
+              <input type="text" class="form-control" data-user-field="username" value="${safeText(user.username || '')}">
+            </div>
+            <div class="form-group">
+              <label>Senha</label>
+              <input type="password" class="form-control" data-user-field="password" value="${safeText(user.password || '')}">
+            </div>
+          </div>
+          <label class="login-show-password user-manage-toggle"><input type="checkbox" data-user-action="toggle-pass" data-user-index="${index}"> Mostrar senha</label>
+          <div class="user-manage-actions">
+            <button type="button" class="btn btn-secondary btn-sm" data-user-action="activate" data-user-index="${index}"><i data-lucide="user-round-check"></i> Usar neste login</button>
+            <button type="button" class="btn btn-primary btn-sm" data-user-action="save" data-user-index="${index}"><i data-lucide="save"></i> Salvar</button>
+            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger);" data-user-action="delete" data-user-index="${index}"><i data-lucide="trash-2"></i> Excluir</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.querySelectorAll('[data-user-action="toggle-pass"]').forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        const card = checkbox.closest('[data-user-index]');
+        if (!card) return;
+        const passInput = card.querySelector('[data-user-field="password"]');
+        if (passInput) passInput.type = checkbox.checked ? 'text' : 'password';
+      });
+    });
+
+    container.querySelectorAll('[data-user-action="activate"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const index = Number(btn.getAttribute('data-user-index'));
+        const usersList = getLoginUsers();
+        const selected = usersList[index];
+        if (!selected) return;
+
+        if (!setActiveLoginUser(selected.username)) {
+          this.showToast('Não foi possível ativar este usuário.', 'warning');
+          return;
+        }
+
+        this.prefillSenhaTabFields();
+        const loginUserInput = document.getElementById('login-username');
+        if (loginUserInput) loginUserInput.value = selected.username;
+        this.render();
+        this.showToast(`Usuário ativo: ${selected.username}`, 'success');
+      });
+    });
+
+    container.querySelectorAll('[data-user-action="save"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const index = Number(btn.getAttribute('data-user-index'));
+        const usersList = getLoginUsers();
+        const target = usersList[index];
+        if (!target) return;
+
+        const card = btn.closest('[data-user-index]');
+        if (!card) return;
+
+        const nextUsername = String(((card.querySelector('[data-user-field="username"]') || {}).value) || '').trim();
+        const nextPassword = String(((card.querySelector('[data-user-field="password"]') || {}).value) || '');
+
+        if (!nextUsername || !nextPassword) {
+          this.showToast('Usuário e senha são obrigatórios.', 'warning');
+          return;
+        }
+
+        if (nextPassword.length < 4) {
+          this.showToast('A senha deve ter ao menos 4 caracteres.', 'warning');
+          return;
+        }
+
+        const usernameConflict = usersList.some((user, idx) => idx !== index && String(user.username || '').toLowerCase() === nextUsername.toLowerCase());
+        if (usernameConflict) {
+          this.showToast('Já existe outro usuário com esse nome.', 'warning');
+          return;
+        }
+
+        const previousUsername = target.username;
+        const today = getTodayStr();
+        usersList[index] = {
+          ...target,
+          username: nextUsername,
+          password: nextPassword,
+          updatedAt: today
+        };
+
+        try {
+          saveLoginUsers(usersList);
+        } catch (err) {
+          this.showToast('Não foi possível salvar o usuário.', 'warning');
+          return;
+        }
+
+        const activeUser = getLoginCredentials().username;
+        if (String(activeUser || '').toLowerCase() === String(previousUsername || '').toLowerCase()) {
+          setActiveLoginUser(nextUsername);
+        }
+
+        this.prefillSenhaTabFields();
+        this.render();
+        this.showToast('Usuário atualizado com sucesso.', 'success');
+      });
+    });
+
+    container.querySelectorAll('[data-user-action="delete"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const index = Number(btn.getAttribute('data-user-index'));
+        const usersList = getLoginUsers();
+        if (!Number.isInteger(index) || index < 0 || index >= usersList.length) return;
+
+        if (usersList.length <= 1) {
+          this.showToast('Não é possível excluir o último usuário do sistema.', 'warning');
+          return;
+        }
+
+        const removed = usersList[index];
+        if (!confirm(`Excluir o usuário ${removed.username}?`)) return;
+
+        usersList.splice(index, 1);
+        saveLoginUsers(usersList);
+
+        const activeUser = getLoginCredentials().username;
+        if (String(activeUser || '').toLowerCase() === String((removed || {}).username || '').toLowerCase()) {
+          setActiveLoginUser((usersList[0] || {}).username || '');
+        }
+
+        this.prefillSenhaTabFields();
+        this.render();
+        this.showToast('Usuário excluído com sucesso.', 'success');
+      });
+    });
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
   }
 
   initDOM() {
@@ -1354,9 +1639,10 @@ class ConsultorioApp {
         event.preventDefault();
         const enteredUser = String((loginUserInput && loginUserInput.value) || '').trim();
         const enteredPass = String((loginPassInput && loginPassInput.value) || '');
-        const creds = getLoginCredentials();
+        const creds = getLoginCredentials(enteredUser);
 
-        if (enteredUser === creds.username && enteredPass === creds.password) {
+        if (enteredUser.toLowerCase() === String(creds.username || '').toLowerCase() && enteredPass === creds.password) {
+          setActiveLoginUser(creds.username);
           this.localLoginUnlocked = true;
           this.showAppShell();
           this.render();
@@ -4799,6 +5085,7 @@ class ConsultorioApp {
     this.renderDespesasTable();
     this.renderWhatsAppTab();
     this.renderGraficosTab();
+    this.renderRegisteredUsersCards();
     this.populateClientSelectOptions();
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {

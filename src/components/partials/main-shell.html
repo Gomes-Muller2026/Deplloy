@@ -738,14 +738,19 @@
           <label for="pay-receipt-text">Texto do recibo (editável)</label>
           <textarea id="pay-receipt-text" class="form-control" rows="8" placeholder="Clique em Gerar Recibo para preencher."></textarea>
         </div>
+            <div class="form-group" style="margin-top:0.6rem;">
+              <label for="pay-receipt-send-source">Ao enviar, usar</label>
+              <select id="pay-receipt-send-source" class="form-control">
+                <option value="edited">Texto editado do recibo</option>
+                <option value="generated">Gerar agora pelo modelo salvo</option>
+              </select>
+            </div>
         <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
           <button type="button" class="btn btn-secondary" id="btn-print-payment-receipt"><i data-lucide="printer"></i> Imprimir Recibo</button>
           <button type="button" class="btn btn-secondary" id="btn-send-payment-receipt-whatsapp"><i data-lucide="message-circle"></i> Enviar Recibo no WhatsApp</button>
           <button type="button" class="btn btn-secondary" id="btn-send-payment-receipt-pdf-whatsapp"><i data-lucide="file-text"></i> Enviar PDF no WhatsApp</button>
         </div>
-      </div>
-
-      <div class="payment-receipt-template-card" id="payment-receipt-template-card">
+            <div class="payment-receipt-template-panel" id="payment-receipt-template-panel">
         <div class="payment-receipt-head">
           <div class="whatsapp-send-brand">
             <img src="assets/icons/icon-192.png" alt="Logo da clínica" class="whatsapp-send-logo" onerror="this.style.display='none'">
@@ -761,6 +766,7 @@
           <textarea id="pay-receipt-template" class="form-control" rows="12" spellcheck="false" placeholder="Edite o modelo com variáveis como {{cliente}}, {{data}}, {{valor_total}} e salve."></textarea>
         </div>
       </div>
+          </div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" id="btn-cancel-payment">Cancelar</button>

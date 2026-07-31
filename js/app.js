@@ -752,7 +752,7 @@ class ConsultorioApp {
   }
 
   togglePaymentReceiptTemplateEditor(forceOpen = null) {
-    const card = document.getElementById('payment-receipt-template-card');
+    const card = document.getElementById('payment-receipt-template-panel');
     const button = document.getElementById('btn-toggle-payment-receipt-template');
     const nextOpen = forceOpen == null ? !(card && card.classList.contains('is-open')) : Boolean(forceOpen);
 
@@ -3886,6 +3886,18 @@ class ConsultorioApp {
     }
   }
 
+  getPaymentReceiptSendContent(appointment, amountNow = 0) {
+    const source = String((document.getElementById('pay-receipt-send-source') || {}).value || 'edited');
+    const receiptEl = document.getElementById('pay-receipt-text');
+    const manualText = String((receiptEl && receiptEl.value) || '').trim();
+
+    if (source === 'generated') {
+      return this.normalizePaymentReceiptText(this.buildPaymentReceiptText(appointment, amountNow));
+    }
+
+    return this.normalizePaymentReceiptText(manualText || this.buildPaymentReceiptText(appointment, amountNow));
+  }
+
   savePaymentReceiptTemplateFromUI() {
     const templateEl = document.getElementById('pay-receipt-template');
     if (!templateEl) return;
@@ -3921,8 +3933,7 @@ class ConsultorioApp {
     }
 
     const receiptEl = document.getElementById('pay-receipt-text');
-    const manualText = String((receiptEl && receiptEl.value) || '').trim();
-    const text = manualText || this.buildPaymentReceiptText(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
+    const text = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener');
     this.showToast('Recibo aberto no WhatsApp para envio.', 'success');
@@ -3936,9 +3947,7 @@ class ConsultorioApp {
       return;
     }
 
-    const receiptEl = document.getElementById('pay-receipt-text');
-    const manualText = String((receiptEl && receiptEl.value) || '').trim();
-    const content = this.normalizePaymentReceiptText(manualText || this.buildPaymentReceiptText(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0)));
+    const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
 
     try {
       await this.sharePaymentReceiptPdf(appt, content);
@@ -3957,9 +3966,7 @@ class ConsultorioApp {
       return;
     }
 
-    const receiptEl = document.getElementById('pay-receipt-text');
-    const manualText = String((receiptEl && receiptEl.value) || '').trim();
-    const content = manualText || this.buildPaymentReceiptText(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
+    const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
     this.openReportWindow('Recibo de Pagamento', content, true);
   }
 

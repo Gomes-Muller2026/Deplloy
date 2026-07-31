@@ -81,6 +81,13 @@ const DEFAULT_PAYMENT_RECEIPT_TEMPLATE = [
   'CPF: {{profissional_cpf}}',
   'Endereco: {{profissional_endereco}}'
 ].join('\n');
+
+const sanitizePaymentReceiptTemplate = (templateText) => String(templateText || '')
+  .replace(/\r/g, '')
+  .split('\n')
+  .filter((line) => !/^\s*logo\s*:/i.test(String(line || '').trim()))
+  .join('\n')
+  .trim();
 const DEFAULT_WHATSAPP_CONFIRM_TEMPLATE = [
   'Olá, {{cliente}}!',
   '',
@@ -774,20 +781,21 @@ class ConsultorioApp {
   loadPaymentReceiptTemplate() {
     try {
       const raw = localStorage.getItem(PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY);
-      const template = String(raw || DEFAULT_PAYMENT_RECEIPT_TEMPLATE).trim();
+      const template = sanitizePaymentReceiptTemplate(raw || DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
       const normalizeForCompare = (text) => String(text || '')
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
       if (!raw || normalizeForCompare(template) === normalizeForCompare(LEGACY_PAYMENT_RECEIPT_TEMPLATE)) {
-        this.paymentReceiptTemplate = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+        this.paymentReceiptTemplate = sanitizePaymentReceiptTemplate(DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
         localStorage.setItem(PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY, this.paymentReceiptTemplate);
         return;
       }
-      this.paymentReceiptTemplate = template || DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+      this.paymentReceiptTemplate = template || sanitizePaymentReceiptTemplate(DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
+      localStorage.setItem(PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY, this.paymentReceiptTemplate);
     } catch (err) {
-      this.paymentReceiptTemplate = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+      this.paymentReceiptTemplate = sanitizePaymentReceiptTemplate(DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
     }
   }
 
@@ -818,8 +826,8 @@ class ConsultorioApp {
 
   savePaymentReceiptTemplate(templateText) {
     try {
-      const next = String(templateText == null ? '' : templateText).trim();
-      this.paymentReceiptTemplate = next || DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
+      const next = sanitizePaymentReceiptTemplate(templateText);
+      this.paymentReceiptTemplate = next || sanitizePaymentReceiptTemplate(DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
       localStorage.setItem(PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY, this.paymentReceiptTemplate);
       return true;
     } catch (err) {

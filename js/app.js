@@ -1825,6 +1825,7 @@ class ConsultorioApp {
     const forceAppUpdateBtn = document.getElementById('btn-force-app-update');
     const versionBadge = document.getElementById('app-version-badge');
     const refreshFirebaseBtns = document.querySelectorAll('[data-action="refresh-firebase"]');
+    const fetchLatestFirebaseUpdateBtn = document.getElementById('btn-fetch-latest-firebase-update');
     const validateFirebaseBtn = document.getElementById('btn-validate-firebase');
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
     const firebaseConfigInput = document.getElementById('cfg-firebase-json');
@@ -1944,6 +1945,12 @@ class ConsultorioApp {
         void this.refreshFirebaseDataNow();
       });
     });
+
+    if (fetchLatestFirebaseUpdateBtn) {
+      fetchLatestFirebaseUpdateBtn.addEventListener('click', () => {
+        void this.fetchLatestFirebaseUpdate();
+      });
+    }
 
     if (disconnectFirebaseBtn) {
       disconnectFirebaseBtn.addEventListener('click', () => {
@@ -3325,6 +3332,127 @@ class ConsultorioApp {
       const message = err && err.message ? err.message : 'Erro desconhecido';
       this.updateCloudSyncMeta('Falha ao atualizar dados do Firebase', 'local');
       this.showToast(`Falha ao atualizar dados: ${message}`, 'warning');
+    }
+  }
+
+  async fetchLatestFirebaseUpdate() {
+    this.updateCloudSyncMeta('Buscando última atualização no Firebase...', 'live');
+
+    if (!this.firebaseConnected || !this.firebaseDb) {
+      const connected = await this.initFirebase();
+      if (!connected || !this.firebaseDb) return;
+    }
+
+    const parseUpdateMillis = (value) => {
+      if (!value) return 0;
+
+      if (typeof value === 'string') {
+        const normalized = value.trim();
+        if (!normalized) return 0;
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+          const [year, month, day] = normalized.split('-').map((part) => Number(part));
+          const dateValue = new Date(year, month - 1, day);
+          return Number.isNaN(dateValue.getTime()) ? 0 : dateValue.getTime();
+        }
+
+        const dateValue = new Date(normalized);
+        return Number.isNaN(dateValue.getTime()) ? 0 : dateValue.getTime();
+      }
+
+      if (typeof value.toDate === 'function') {
+        const dateValue = value.toDate();
+        return dateValue instanceof Date && !Number.isNaN(dateValue.getTime()) ? dateValue.getTime() : 0;
+      }
+
+      if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? 0 : value.getTime();
+      }
+
+      if (typeof value.seconds === 'number') {
+        const milliseconds = (Number(value.seconds) * 1000) + Math.floor(Number(value.nanoseconds || 0) / 1e6);
+        return Number.isFinite(milliseconds) ? milliseconds : 0;
+      }
+
+      return 0;
+    };
+
+    const formatUpdateLabel = (value) => {
+      if (!value) return '';
+
+      if (typeof value === 'string') {
+        const normalized = value.trim();
+        if (!normalized) return '';
+
+        const asDate = new Date(normalized);
+        if (!Number.isNaN(asDate.getTime())) {
+          return asDate.toLocaleString('pt-BR');
+        }
+
+        return normalized;
+      }
+
+      if (typeof value.toDate === 'function') {
+        const dateValue = value.toDate();
+        return dateValue instanceof Date && !Number.isNaN(dateValue.getTime())
+          ? dateValue.toLocaleString('pt-BR')
+          : '';
+      }
+
+      if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? '' : value.toLocaleString('pt-BR');
+      }
+
+      if (typeof value.seconds === 'number') {
+        const dateValue = new Date((Number(value.seconds) * 1000) + Math.floor(Number(value.nanoseconds || 0) / 1e6));
+        return Number.isNaN(dateValue.getTime()) ? '' : dateValue.toLocaleString('pt-BR');
+      }
+
+      return String(value);
+    };
+
+    try {
+      const collections = [
+        { name: 'clients', label: 'Clientes' },
+        { name: 'appointments', label: 'Agenda' },
+        { name: 'expenses', label: 'Financeiro' }
+      ];
+      let latest = null;
+
+      for (const collection of collections) {
+        const snapshot = await this.firebaseDb.collection(collection.name).get();
+
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data ? doc.data() : {};
+          const candidates = [data.updatedAt, doc.updateTime, doc.createTime];
+
+          candidates.forEach((candidate) => {
+            const millis = parseUpdateMillis(candidate);
+            if (!millis) return;
+
+            if (!latest || millis > latest.millis) {
+              latest = {
+                millis,
+                label: formatUpdateLabel(candidate),
+                collection: collection.label
+              };
+            }
+          });
+        });
+      }
+
+      if (!latest) {
+        this.updateCloudSyncMeta('Nenhuma atualização remota encontrada', 'local');
+        this.showToast('Não encontrei registros remotos com data de atualização.', 'info');
+        return;
+      }
+
+      this.updateCloudSyncMeta(`Última atualização remota: ${latest.label} (${latest.collection})`, 'live');
+      this.showToast(`Última atualização encontrada em ${latest.label}.`, 'success');
+    } catch (err) {
+      const message = err && err.message ? err.message : 'Erro desconhecido';
+      this.updateCloudSyncMeta('Falha ao buscar última atualização remota', 'local');
+      this.showToast(`Não foi possível buscar a última atualização: ${message}`, 'warning');
     }
   }
 

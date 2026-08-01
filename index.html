@@ -639,6 +639,16 @@
                 <div id="firebase-validation-panel" class="firebase-validation-panel">
                   <p class="firebase-validation-summary">Clique em Revalidar Firebase para executar checklist de conexão.</p>
                 </div>
+                <div class="sync-audit-shell">
+                  <div class="sync-audit-head">
+                    <h4>Auditoria de Sincronização</h4>
+                    <p>Últimos eventos de push, pull e alterações remotas.</p>
+                    <button class="btn btn-secondary btn-sm" type="button" id="btn-export-sync-audit">Exportar Log Sync</button>
+                  </div>
+                  <div id="sync-audit-panel" class="sync-audit-panel">
+                    <p class="sync-audit-empty">Sem eventos ainda. Execute uma ação para registrar push/pull.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1151,6 +1161,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260730-8"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260730-8"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260730-8"></script>
-  <script src="js/app.js?v=20260801-1"></script>
+  <script src="js/app.js?v=20260801-7"></script>
 </body>
 </html>

@@ -479,6 +479,14 @@ class ConsultorioApp {
     this.firebaseSyncIntervalId = null;
     this.firebaseSyncIntervalMs = 5 * 60 * 1000;
     this.firebaseSyncRealtimeUnsubscribe = null;
+    this.firebaseCollectionRealtimeUnsubscribes = [];
+    this.firebaseRealtimeSyncTimerId = null;
+    this.firebaseRealtimeSyncDelayMs = 120;
+    this.firebasePushInFlight = false;
+    this.firebasePushQueued = false;
+    this.firebasePushRetryTimerId = null;
+    this.syncAuditLogLimit = 18;
+    this.syncAuditEvents = [];
     this.firebaseDeviceId = this.getOrCreateFirebaseDeviceId();
     this.lastRealtimeSyncMillis = 0;
     this.versionInfo = { dateKey: getTodayStr(), seq: 0, label: 'v00.00/000000' };
@@ -644,16 +652,49 @@ class ConsultorioApp {
     this.updateCloudSyncMeta();
     this.setFirebaseSyncDirty(true);
 
-    if (this.firebaseConnected && this.firebaseDb) {
-      // Sync in background; UI should not block local save flow.
-      void this.pushAllDataToFirebase()
-        .then(() => {
-          this.setFirebaseSyncDirty(false);
-        })
-        .catch((err) => {
-          console.log('Falha ao enviar dados para o Firebase:', err);
-        });
+    this.requestFirebasePushSync();
+  }
+
+  requestFirebasePushSync() {
+    if (!this.firebaseConnected || !this.firebaseDb) return;
+
+    if (this.firebasePushRetryTimerId) {
+      window.clearTimeout(this.firebasePushRetryTimerId);
+      this.firebasePushRetryTimerId = null;
     }
+
+    if (this.firebasePushInFlight) {
+      this.firebasePushQueued = true;
+      this.logSyncAudit('info', 'Push enfileirado (aguardando envio em andamento).');
+      return;
+    }
+
+    this.firebasePushInFlight = true;
+    this.logSyncAudit('push', 'Push iniciado para enviar alterações locais.');
+    void this.pushAllDataToFirebase()
+      .then(() => {
+        this.setFirebaseSyncDirty(false);
+        this.logSyncAudit('push', 'Push concluído com sucesso.');
+      })
+      .catch((err) => {
+        console.log('Falha ao enviar dados para o Firebase:', err);
+        this.setFirebaseSyncDirty(true);
+        this.logSyncAudit('error', `Falha no push: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
+
+        // Retry quickly to avoid losing cross-device freshness after transient network issues.
+        this.firebasePushRetryTimerId = window.setTimeout(() => {
+          this.firebasePushRetryTimerId = null;
+          this.logSyncAudit('warning', 'Repetindo push automático após falha de rede.');
+          this.requestFirebasePushSync();
+        }, 1200);
+      })
+      .finally(() => {
+        this.firebasePushInFlight = false;
+        if (this.firebasePushQueued) {
+          this.firebasePushQueued = false;
+          this.requestFirebasePushSync();
+        }
+      });
   }
 
   isFirebaseSyncDirty() {
@@ -669,6 +710,112 @@ class ConsultorioApp {
       localStorage.setItem(FIREBASE_SYNC_DIRTY_STORAGE_KEY, isDirty ? '1' : '0');
     } catch (err) {
       console.log('Falha ao atualizar estado de sincronização local:', err);
+    }
+  }
+
+  logSyncAudit(kind, message, extra = {}) {
+    const entry = {
+      at: Date.now(),
+      kind: String(kind || 'info'),
+      message: String(message || '').trim() || 'Evento de sincronização',
+      extra: extra && typeof extra === 'object' ? extra : {}
+    };
+
+    this.syncAuditEvents.unshift(entry);
+    if (this.syncAuditEvents.length > this.syncAuditLogLimit) {
+      this.syncAuditEvents = this.syncAuditEvents.slice(0, this.syncAuditLogLimit);
+    }
+
+    this.renderSyncAuditPanel();
+  }
+
+  renderSyncAuditPanel() {
+    const panel = document.getElementById('sync-audit-panel');
+    if (!panel) return;
+
+    if (!Array.isArray(this.syncAuditEvents) || !this.syncAuditEvents.length) {
+      panel.innerHTML = '<p class="sync-audit-empty">Sem eventos ainda. Execute uma ação para registrar push/pull.</p>';
+      return;
+    }
+
+    const kindLabel = {
+      push: 'Push',
+      pull: 'Pull',
+      realtime: 'Realtime',
+      warning: 'Aviso',
+      error: 'Erro',
+      info: 'Info'
+    };
+
+    const rows = this.syncAuditEvents.map((entry) => {
+      const when = new Date(Number(entry.at) || Date.now()).toLocaleTimeString('pt-BR');
+      const label = kindLabel[entry.kind] || 'Info';
+      const css = `sync-audit-kind sync-audit-${safeText(entry.kind)}`;
+      const uid = this.firebaseAuthUid ? `uid:${safeText(String(this.firebaseAuthUid).slice(0, 8))}` : 'uid:-';
+      const device = this.firebaseDeviceId ? `dev:${safeText(String(this.firebaseDeviceId).slice(-6))}` : 'dev:-';
+      return `
+        <li class="sync-audit-item">
+          <span class="sync-audit-time">${safeText(when)}</span>
+          <span class="${css}">${safeText(label)}</span>
+          <span class="sync-audit-message">${safeText(entry.message)}</span>
+          <span class="sync-audit-meta">${uid} ${device}</span>
+        </li>
+      `;
+    }).join('');
+
+    panel.innerHTML = `<ul class="sync-audit-list">${rows}</ul>`;
+  }
+
+  async exportSyncAuditLog() {
+    try {
+      const now = new Date();
+      const remoteState = await this.getRemoteSyncState();
+      const lines = [];
+
+      lines.push('CONSULTORIO CONTROL - LOG DE SINCRONIZACAO');
+      lines.push(`Gerado em: ${now.toLocaleString('pt-BR')}`);
+      lines.push(`Dispositivo: ${this.firebaseDeviceId || '-'}`);
+      lines.push(`UID Firebase: ${this.firebaseAuthUid || '-'}`);
+      lines.push(`Firebase conectado: ${this.firebaseConnected ? 'sim' : 'nao'}`);
+      lines.push(`Dirty local: ${this.isFirebaseSyncDirty() ? 'sim' : 'nao'}`);
+      lines.push(`Ultimo push local (ms): ${this.getLocalLastPushMillis()}`);
+      lines.push(`Remote updatedAtMillis: ${Number((remoteState && remoteState.updatedAtMillis) || 0)}`);
+      lines.push(`Remote updatedByDeviceId: ${String((remoteState && remoteState.updatedByDeviceId) || '-')}`);
+      lines.push('');
+      lines.push('EVENTOS:');
+
+      if (!Array.isArray(this.syncAuditEvents) || !this.syncAuditEvents.length) {
+        lines.push('- Sem eventos registrados.');
+      } else {
+        this.syncAuditEvents
+          .slice()
+          .reverse()
+          .forEach((entry) => {
+            const time = new Date(Number(entry.at) || Date.now()).toLocaleString('pt-BR');
+            const kind = String(entry.kind || 'info').toUpperCase();
+            const message = String(entry.message || '').trim() || '-';
+            lines.push(`[${time}] [${kind}] ${message}`);
+          });
+      }
+
+      const content = `${lines.join('\n')}\n`;
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const fileName = `sync-audit-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}.txt`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.showToast('Log de sincronização exportado com sucesso.', 'success');
+      this.logSyncAudit('info', 'Log de sincronização exportado.');
+    } catch (err) {
+      this.showToast('Falha ao exportar o log de sincronização.', 'warning');
+      this.logSyncAudit('error', `Falha ao exportar log: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
     }
   }
 
@@ -787,16 +934,91 @@ class ConsultorioApp {
         if (!remoteMillis || remoteMillis <= this.lastRealtimeSyncMillis) return;
 
         this.lastRealtimeSyncMillis = remoteMillis;
-        void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true })
-          .then(() => {
-            this.showRemoteSyncIndicator(remoteMillis);
-          })
-          .catch((err) => {
-            console.log('Falha na sincronização em tempo real:', err);
-          });
+        this.logSyncAudit('realtime', 'Alteração remota detectada via metadata.');
+        this.scheduleFirebaseRealtimePullSync('meta', remoteMillis);
       }, (err) => {
         console.log('Falha no listener de sincronização em tempo real:', err);
+        this.logSyncAudit('error', `Falha no listener metadata: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
       });
+  }
+
+  stopFirebaseCollectionRealtimeWatchers() {
+    if (this.firebaseRealtimeSyncTimerId) {
+      window.clearTimeout(this.firebaseRealtimeSyncTimerId);
+      this.firebaseRealtimeSyncTimerId = null;
+    }
+
+    if (!Array.isArray(this.firebaseCollectionRealtimeUnsubscribes)) {
+      this.firebaseCollectionRealtimeUnsubscribes = [];
+      return;
+    }
+
+    this.firebaseCollectionRealtimeUnsubscribes.forEach((unsubscribe) => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    });
+    this.firebaseCollectionRealtimeUnsubscribes = [];
+  }
+
+  scheduleFirebaseRealtimePullSync(source = 'collection', remoteMillis = 0) {
+    if (!this.firebaseConnected || !this.firebaseDb) return;
+
+    if (this.firebaseRealtimeSyncTimerId) {
+      window.clearTimeout(this.firebaseRealtimeSyncTimerId);
+      this.firebaseRealtimeSyncTimerId = null;
+    }
+
+    const baseDelay = Number(this.firebaseRealtimeSyncDelayMs) || 120;
+    const delay = source === 'meta' ? 0 : Math.max(40, baseDelay);
+    this.firebaseRealtimeSyncTimerId = window.setTimeout(() => {
+      this.firebaseRealtimeSyncTimerId = null;
+      if (!this.firebaseConnected || !this.firebaseDb) return;
+
+      void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true })
+        .then(() => {
+          if (source === 'meta') {
+            this.showRemoteSyncIndicator(remoteMillis || Date.now());
+            this.logSyncAudit('pull', 'Pull aplicado por alteração remota (metadata).');
+            return;
+          }
+          this.updateCloudSyncMeta('Dados atualizados em tempo real', 'live');
+          this.logSyncAudit('pull', 'Pull aplicado por alteração em coleção remota.');
+        })
+        .catch((err) => {
+          console.log('Falha na sincronização automática em tempo real:', err);
+          this.logSyncAudit('error', `Falha no pull automático: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
+        });
+    }, delay);
+  }
+
+  startFirebaseCollectionRealtimeWatchers() {
+    if (!this.firebaseDb || !this.firebaseConnected) return;
+
+    this.stopFirebaseCollectionRealtimeWatchers();
+    const collectionNames = [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses'];
+    const initializedCollections = new Set();
+
+    collectionNames.forEach((collectionName) => {
+      const unsubscribe = this.firebaseDb.collection(collectionName).onSnapshot((snapshot) => {
+        if (!snapshot) return;
+
+        if (!initializedCollections.has(collectionName)) {
+          initializedCollections.add(collectionName);
+          return;
+        }
+
+        if (snapshot.metadata && snapshot.metadata.hasPendingWrites) return;
+        const hasRemoteChanges = snapshot.docChanges().some((change) => !(change.doc && change.doc.metadata && change.doc.metadata.hasPendingWrites));
+        if (!hasRemoteChanges) return;
+
+        this.logSyncAudit('realtime', `Alteração detectada na coleção ${collectionName}.`);
+        this.scheduleFirebaseRealtimePullSync('collection', Date.now());
+      }, (err) => {
+        console.log(`Falha no listener da coleção ${collectionName}:`, err);
+        this.logSyncAudit('error', `Falha no listener da coleção ${collectionName}: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
+      });
+
+      this.firebaseCollectionRealtimeUnsubscribes.push(unsubscribe);
+    });
   }
 
   createWhatsAppTemplateId(prefix) {
@@ -3138,6 +3360,7 @@ class ConsultorioApp {
     const fetchLatestFirebaseUpdateBtn = document.getElementById('btn-fetch-latest-firebase-update');
     const validateFirebaseBtn = document.getElementById('btn-validate-firebase');
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
+    const exportSyncAuditBtn = document.getElementById('btn-export-sync-audit');
     const firebaseConfigInput = document.getElementById('cfg-firebase-json');
     const loginUserInput = document.getElementById('login-username');
     const loginPassInput = document.getElementById('login-password');
@@ -3296,6 +3519,12 @@ class ConsultorioApp {
     if (validateFirebaseBtn) {
       validateFirebaseBtn.addEventListener('click', () => {
         void this.runFirebaseValidationChecklist();
+      });
+    }
+
+    if (exportSyncAuditBtn) {
+      exportSyncAuditBtn.addEventListener('click', () => {
+        void this.exportSyncAuditLog();
       });
     }
 
@@ -4738,10 +4967,20 @@ class ConsultorioApp {
       this.firebaseSyncRealtimeUnsubscribe = null;
     }
 
+    this.stopFirebaseCollectionRealtimeWatchers();
+
+    if (this.firebasePushRetryTimerId) {
+      window.clearTimeout(this.firebasePushRetryTimerId);
+      this.firebasePushRetryTimerId = null;
+    }
+    this.firebasePushInFlight = false;
+    this.firebasePushQueued = false;
+
     this.firebaseConnected = false;
     this.firebaseApp = null;
     this.firebaseDb = null;
     this.firebaseAuthUid = '';
+    this.logSyncAudit('info', 'Firebase desconectado manualmente.');
     this.setFirebaseStatus(false, 'Desconectado do Firebase', 'local');
     this.updateFirebaseAuthStatus('offline', 'Auth Firebase: Desconectado');
     this.showToast('Firebase desconectado.', 'info');
@@ -4803,21 +5042,24 @@ class ConsultorioApp {
 
       this.firebaseDb = window.firebase.firestore(this.firebaseApp);
       this.firebaseConnected = true;
+      this.logSyncAudit('info', 'Firebase conectado; iniciando listeners e pull inicial.');
       this.setFirebaseStatus(true, 'Conectado ao Firebase', 'live');
       this.startFirebaseAutoRefresh();
       this.startFirebaseRealtimeSyncWatcher();
+      this.startFirebaseCollectionRealtimeWatchers();
       this.showToast('Firebase conectado com sucesso.', 'success');
 
       try {
-        if (this.isFirebaseSyncDirty()) {
-          await this.pushAllDataToFirebase();
-          this.setFirebaseSyncDirty(false);
-        }
-
         await this.syncDataWithFirebase({ skipDirtyPush: false });
       } catch (syncErr) {
         const message = syncErr && syncErr.message ? syncErr.message : 'Erro desconhecido';
         this.setFirebaseLastError(syncErr, message);
+        this.logSyncAudit('error', `Falha no pull inicial: ${String((syncErr && (syncErr.code || syncErr.message)) || message)}`);
+        if (this.firebaseSyncRealtimeUnsubscribe) {
+          this.firebaseSyncRealtimeUnsubscribe();
+          this.firebaseSyncRealtimeUnsubscribe = null;
+        }
+        this.stopFirebaseCollectionRealtimeWatchers();
         this.firebaseConnected = false;
         this.firebaseDb = null;
         this.setFirebaseStatus(false, 'Firebase indisponível para sincronização', 'local');
@@ -4829,6 +5071,7 @@ class ConsultorioApp {
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
       this.setFirebaseLastError(err, message);
+      this.logSyncAudit('error', `Falha ao conectar Firebase: ${String((err && (err.code || err.message)) || message)}`);
       const isPermissionError = /permission|permissions/i.test(message);
       const isAuthError = /auth|autentica|signInAnonymously|anonymous/i.test(message);
       const isNetworkError = /network|Failed to fetch|ERR_ABORTED|unavailable/i.test(message);
@@ -4857,6 +5100,7 @@ class ConsultorioApp {
 
     const skipDirtyPush = Boolean(options.skipDirtyPush);
     const silent = Boolean(options.silent);
+    if (!silent) this.logSyncAudit('pull', 'Pull iniciado para atualizar dados locais.');
 
     try {
       if (this.isFirebaseSyncDirty() && !skipDirtyPush) {
@@ -4870,6 +5114,10 @@ class ConsultorioApp {
           if (!silent) {
             this.showToast('Detectei dados mais novos em outro dispositivo. Atualizando sem sobrescrever.', 'info');
           }
+          // Local pending flag must be cleared after accepting fresher remote snapshot.
+          this.setFirebaseSyncDirty(false);
+          if (remoteUpdatedMillis > 0) this.setLocalLastPushMillis(remoteUpdatedMillis);
+          this.logSyncAudit('warning', 'Push local bloqueado para não sobrescrever remoção remota mais nova.');
         } else {
           // Local changes (including deletions) can be safely sent first.
           await this.pushAllDataToFirebase();
@@ -4883,10 +5131,17 @@ class ConsultorioApp {
         { name: 'appointments', data: this.appointments },
         { name: 'expenses', data: this.expenses }
       ];
+
+      const snapshotsByCollection = {};
+      await Promise.all(collections.map(async (item) => {
+        const snapshot = await this.firebaseDb.collection(item.name).get();
+        snapshotsByCollection[item.name] = snapshot;
+      }));
+
       let shouldSeedRemoteFromLocal = false;
 
       for (const item of collections) {
-        const snapshot = await this.firebaseDb.collection(item.name).get();
+        const snapshot = snapshotsByCollection[item.name];
         if (snapshot.empty) {
           if (Array.isArray(item.data) && item.data.length) {
             shouldSeedRemoteFromLocal = true;
@@ -4921,13 +5176,16 @@ class ConsultorioApp {
 
       if (shouldSeedRemoteFromLocal) {
         await this.pushAllDataToFirebase();
+        this.logSyncAudit('push', 'Remote vazio detectado; base local enviada para semear dados.');
       }
 
       this.saveStore();
       this.render();
+      if (!silent) this.logSyncAudit('pull', 'Pull concluído e interface atualizada.');
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
       console.log('Falha ao sincronizar com Firestore:', message);
+      this.logSyncAudit('error', `Falha no pull: ${String((err && (err.code || err.message)) || message)}`);
       throw err;
     }
   }
@@ -4972,13 +5230,18 @@ class ConsultorioApp {
       });
 
       const collections = [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses'];
-      for (const collectionName of collections) {
-        const snapshot = await this.firebaseDb.collection(collectionName).get();
+      const remoteSnapshots = {};
+      await Promise.all(collections.map(async (collectionName) => {
+        remoteSnapshots[collectionName] = await this.firebaseDb.collection(collectionName).get();
+      }));
+
+      collections.forEach((collectionName) => {
+        const snapshot = remoteSnapshots[collectionName];
         snapshot.docs.forEach((doc) => {
           if (localIdsByCollection[collectionName].has(doc.id)) return;
           operations.push({ type: 'delete', collection: collectionName, id: doc.id });
         });
-      }
+      });
 
       const maxBatchSize = 450;
       for (let index = 0; index < operations.length; index += maxBatchSize) {
@@ -5000,6 +5263,11 @@ class ConsultorioApp {
 
       await this.updateRemoteSyncState();
       this.setLocalLastPushMillis(Date.now());
+      this.firebasePushQueued = false;
+      if (this.firebasePushRetryTimerId) {
+        window.clearTimeout(this.firebasePushRetryTimerId);
+        this.firebasePushRetryTimerId = null;
+      }
     } catch (err) {
       console.log('Falha ao enviar dados para o Firestore:', err);
       throw err;
@@ -7638,6 +7906,7 @@ class ConsultorioApp {
     this.renderRegisteredUsersCards();
     this.populateClientSelectOptions();
     this.updateReminderAlertUI();
+    this.renderSyncAuditPanel();
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
       window.lucide.createIcons();
@@ -7664,7 +7933,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260731-1', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260801-3', 'app-root')
       ]);
     }
   } catch (err) {
@@ -7683,7 +7952,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-1')
+    navigator.serviceWorker.register('./sw.js?v=20260801-7')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

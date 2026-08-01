@@ -549,6 +549,119 @@ img {
   gap: 0.45rem;
 }
 
+.sync-audit-shell {
+  margin-top: 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  background: rgba(7, 16, 22, 0.55);
+  padding: 0.72rem 0.82rem;
+}
+
+.sync-audit-head h4 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.sync-audit-head p {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.sync-audit-panel {
+  margin-top: 0.7rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.sync-audit-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.sync-audit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.sync-audit-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.5);
+  font-size: 0.75rem;
+}
+
+.sync-audit-time {
+  color: #a5f3fc;
+  min-width: 62px;
+}
+
+.sync-audit-kind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.4rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.sync-audit-push {
+  color: #86efac;
+  border-color: rgba(134, 239, 172, 0.4);
+  background: rgba(22, 163, 74, 0.16);
+}
+
+.sync-audit-pull {
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.4);
+  background: rgba(30, 64, 175, 0.16);
+}
+
+.sync-audit-realtime {
+  color: #67e8f9;
+  border-color: rgba(103, 232, 249, 0.4);
+  background: rgba(14, 116, 144, 0.16);
+}
+
+.sync-audit-warning {
+  color: #fcd34d;
+  border-color: rgba(252, 211, 77, 0.4);
+  background: rgba(161, 98, 7, 0.16);
+}
+
+.sync-audit-error {
+  color: #fda4af;
+  border-color: rgba(253, 164, 175, 0.4);
+  background: rgba(190, 24, 93, 0.16);
+}
+
+.sync-audit-info {
+  color: #cbd5e1;
+  border-color: rgba(203, 213, 225, 0.3);
+  background: rgba(71, 85, 105, 0.14);
+}
+
+.sync-audit-message {
+  color: #e2e8f0;
+}
+
+.sync-audit-meta {
+  color: rgba(148, 163, 184, 0.95);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
 .firebase-validation-item {
   display: grid;
   grid-template-columns: auto 1fr;

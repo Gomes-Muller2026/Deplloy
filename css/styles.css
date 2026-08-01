@@ -2115,6 +2115,26 @@ input[type="date"]:focus {
   vertical-align: middle;
 }
 
+.agenda-actions-cell {
+  text-align: right;
+  position: relative;
+  z-index: 6;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.42rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.agenda-actions-cell .btn,
+.agenda-actions-cell .agenda-delete-btn {
+  position: relative;
+  z-index: 7;
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
 .data-table tbody tr {
   transition: var(--transition);
 }

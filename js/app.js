@@ -10877,7 +10877,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260801-14', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260801-15', 'app-root')
       ]);
     }
   } catch (err) {

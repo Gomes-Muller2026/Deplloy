@@ -18,7 +18,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260801-6">
+  <link rel="stylesheet" href="css/styles.css?v=20260801-7">
 </head>
 <body>
   <div id="login-root">
@@ -1209,9 +1209,9 @@
                 <option value="generated">Gerar PDF pelo modelo salvo</option>
               </select>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
+            <div class="payment-receipt-actions">
               <button type="button" class="btn btn-secondary" id="btn-print-payment-receipt"><i data-lucide="printer"></i> Imprimir Recibo</button>
-              <button type="button" class="btn btn-secondary" id="btn-download-payment-receipt-pdf"><i data-lucide="share-2"></i> Compartilhar PDF no WhatsApp</button>
+              <button type="button" class="btn btn-whatsapp" id="btn-download-payment-receipt-pdf"><i data-lucide="message-circle"></i> Enviar pelo WhatsApp</button>
             </div>
             <div class="payment-receipt-template-panel" id="payment-receipt-template-panel">
             <div class="payment-receipt-head">
@@ -1243,6 +1243,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260801-3"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260801-100"></script>
+  <script src="js/app.js?v=20260801-101"></script>
 </body>
 </html>

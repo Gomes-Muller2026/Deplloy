@@ -11,6 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://accounts.google.com/gsi/client" defer></script>
+  <script src="https://apis.google.com/js/api.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -643,6 +645,30 @@
                 <div id="firebase-validation-panel" class="firebase-validation-panel">
                   <p class="firebase-validation-summary">Clique em Revalidar Firebase para executar checklist de conexão.</p>
                 </div>
+
+                <div class="card" style="margin-top:1rem;">
+                  <div class="card-header"><h3><i data-lucide="calendar-heart"></i> Google Calendar</h3></div>
+                  <div class="card-body">
+                    <p>Use um Client ID OAuth do tipo Web com origem JavaScript autorizada (por exemplo http://127.0.0.1:8000 ou https://...). Não cole o client_secret no navegador.</p>
+                    <div class="form-group">
+                      <label for="cfg-google-calendar-client-id">Google Client ID</label>
+                      <input type="text" id="cfg-google-calendar-client-id" class="form-control" placeholder="xxx.apps.googleusercontent.com">
+                    </div>
+                    <div class="config-actions">
+                      <button class="btn btn-primary" id="btn-save-google-calendar">Salvar Client ID</button>
+                      <button class="btn btn-secondary" id="btn-connect-google-calendar">Conectar Google Calendar</button>
+                      <button class="btn btn-secondary" id="btn-list-google-calendar-events">Atualizar Eventos</button>
+                      <button class="btn btn-secondary" id="btn-disconnect-google-calendar">Desconectar</button>
+                    </div>
+                    <div id="google-calendar-status" class="firebase-validation-panel" style="margin-top:0.9rem;">
+                      <p class="firebase-validation-summary">Google Calendar desconectado.</p>
+                    </div>
+                    <div id="google-calendar-events-panel" class="firebase-validation-panel" style="margin-top:0.9rem;">
+                      <p class="firebase-validation-summary">Nenhum evento carregado ainda.</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="sync-audit-shell">
                   <div class="sync-audit-head">
                     <h4>Auditoria de Sincronização</h4>
@@ -1166,6 +1192,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-1"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260801-2"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260801-29"></script>
+  <script src="js/app.js?v=20260801-33"></script>
 </body>
 </html>

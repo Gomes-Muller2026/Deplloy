@@ -18,6 +18,9 @@ const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const FIREBASE_DEVICE_ID_STORAGE_KEY = 'consultorio_firebase_device_id';
 const FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY = 'consultorio_firebase_last_push_millis';
 const FIREBASE_PUSH_SHADOW_STORAGE_KEY = 'consultorio_firebase_push_shadow';
+const GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY = 'consultorio_google_calendar_client_id';
+const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+const GOOGLE_CALENDAR_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 const FIREBASE_FORCE_LONG_POLLING = true;
 const APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY = 'consultorio_deleted_appointment_tombstones';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
@@ -501,6 +504,12 @@ class ConsultorioApp {
     this.firebasePushAttemptSeq = 0;
     this.firebasePushActiveAttemptId = 0;
     this.firebasePushShadowState = this.loadFirebasePushShadowState();
+    this.googleCalendarClientId = '';
+    this.googleCalendarTokenClient = null;
+    this.googleCalendarReady = false;
+    this.googleCalendarAuthorized = false;
+    this.googleCalendarAccessToken = '';
+    this.googleCalendarApiReady = false;
     this.syncAuditLogLimit = 18;
     this.syncAuditEvents = [];
     this.deletedAppointmentTombstones = {};
@@ -3500,6 +3509,7 @@ class ConsultorioApp {
     this.populateClientGroupOptions();
     this.prefillSenhaTabFields();
     this.prefillFirebaseConfig();
+    this.prefillGoogleCalendarConfig();
     this.updateCloudSyncMeta('Modo local', 'local');
     this.captureReminderRouteFromCurrentUrl();
     this.startReminderWatcher();
@@ -3911,9 +3921,14 @@ class ConsultorioApp {
     const fetchLatestFirebaseUpdateBtn = document.getElementById('btn-fetch-latest-firebase-update');
     const validateFirebaseBtn = document.getElementById('btn-validate-firebase');
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
+    const saveGoogleCalendarBtn = document.getElementById('btn-save-google-calendar');
+    const connectGoogleCalendarBtn = document.getElementById('btn-connect-google-calendar');
+    const listGoogleCalendarEventsBtn = document.getElementById('btn-list-google-calendar-events');
+    const disconnectGoogleCalendarBtn = document.getElementById('btn-disconnect-google-calendar');
     const exportSyncAuditBtn = document.getElementById('btn-export-sync-audit');
     const copySyncDiagnosticBtn = document.getElementById('btn-copy-sync-diagnostic');
     const firebaseConfigInput = document.getElementById('cfg-firebase-json');
+    const googleCalendarClientIdInput = document.getElementById('cfg-google-calendar-client-id');
     const loginUserInput = document.getElementById('login-username');
     const loginPassInput = document.getElementById('login-password');
     const showPassInput = document.getElementById('login-show-password');
@@ -4068,6 +4083,37 @@ class ConsultorioApp {
       });
     }
 
+    if (saveGoogleCalendarBtn) {
+      saveGoogleCalendarBtn.addEventListener('click', () => {
+        const clientId = String((googleCalendarClientIdInput && googleCalendarClientIdInput.value) || '').trim();
+        if (!clientId) {
+          this.updateGoogleCalendarStatus('error', 'Informe o Client ID do Google Calendar para salvar.');
+          return;
+        }
+
+        this.saveGoogleCalendarClientId(clientId);
+        this.updateGoogleCalendarStatus('ready', 'Client ID salvo. Clique em Conectar para autorizar o Google Calendar.');
+      });
+    }
+
+    if (connectGoogleCalendarBtn) {
+      connectGoogleCalendarBtn.addEventListener('click', () => {
+        void this.connectGoogleCalendar();
+      });
+    }
+
+    if (listGoogleCalendarEventsBtn) {
+      listGoogleCalendarEventsBtn.addEventListener('click', () => {
+        void this.listGoogleCalendarEvents();
+      });
+    }
+
+    if (disconnectGoogleCalendarBtn) {
+      disconnectGoogleCalendarBtn.addEventListener('click', () => {
+        this.disconnectGoogleCalendar();
+      });
+    }
+
     if (validateFirebaseBtn) {
       validateFirebaseBtn.addEventListener('click', () => {
         void this.runFirebaseValidationChecklist();
@@ -4093,6 +4139,17 @@ class ConsultorioApp {
           this.firebaseConfig = normalizeFirebaseConfig(parsed);
         } catch (err) {
           this.firebaseConfig = null;
+        }
+      });
+    }
+
+    if (googleCalendarClientIdInput) {
+      googleCalendarClientIdInput.addEventListener('input', () => {
+        this.googleCalendarClientId = String(googleCalendarClientIdInput.value || '').trim();
+        if (!this.googleCalendarClientId) {
+          this.updateGoogleCalendarStatus('offline', 'Google Calendar desconectado.');
+        } else {
+          this.updateGoogleCalendarStatus(this.googleCalendarAuthorized ? 'ok' : 'ready');
         }
       });
     }
@@ -5345,6 +5402,283 @@ class ConsultorioApp {
       this.bumpVersion();
     } catch (err) {
       console.log('Falha ao salvar configuração do Firebase:', err);
+    }
+  }
+
+  prefillGoogleCalendarConfig() {
+    const input = document.getElementById('cfg-google-calendar-client-id');
+    if (!input) return;
+
+    const storedClientId = this.loadGoogleCalendarClientId();
+    input.value = storedClientId || '';
+    this.googleCalendarClientId = String(storedClientId || '').trim();
+    this.updateGoogleCalendarStatus(this.googleCalendarAuthorized ? 'ok' : (storedClientId ? 'ready' : 'offline'));
+  }
+
+  loadGoogleCalendarClientId() {
+    try {
+      return String(localStorage.getItem(GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY) || '').trim();
+    } catch (err) {
+      return '';
+    }
+  }
+
+  saveGoogleCalendarClientId(clientId) {
+    const safeClientId = String(clientId || '').trim();
+    const looksLikeSecret = /^GOCSPX-/i.test(safeClientId) || /client_secret/i.test(safeClientId);
+
+    if (looksLikeSecret) {
+      this.updateGoogleCalendarStatus('error', 'Nao salve o client_secret no navegador. Use apenas o Client ID do tipo Web.');
+      this.showToast('Client secret bloqueado. Use apenas o Client ID do Google Calendar.', 'warning');
+      return false;
+    }
+
+    try {
+      if (safeClientId) {
+        localStorage.setItem(GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY, safeClientId);
+      } else {
+        localStorage.removeItem(GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY);
+      }
+      this.googleCalendarClientId = safeClientId;
+      this.bumpVersion();
+      this.updateGoogleCalendarStatus(safeClientId ? 'ready' : 'offline');
+      return true;
+    } catch (err) {
+      console.log('Falha ao salvar Client ID do Google Calendar:', err);
+      this.showToast('Falha ao salvar o Client ID do Google Calendar.', 'warning');
+      return false;
+    }
+  }
+
+  updateGoogleCalendarStatus(state = 'offline', message = '') {
+    const panel = document.getElementById('google-calendar-status');
+    if (!panel) return;
+
+    const summary = panel.querySelector('.firebase-validation-summary') || panel;
+    const normalizedState = String(state || 'offline').toLowerCase();
+    panel.classList.remove('is-ok', 'is-warning', 'is-error');
+
+    if (normalizedState === 'ok') {
+      panel.classList.add('is-ok');
+      summary.textContent = message || 'Google Calendar conectado e pronto.';
+      return;
+    }
+
+    if (normalizedState === 'ready') {
+      panel.classList.add('is-warning');
+      summary.textContent = message || 'Client ID salvo. Clique em Conectar para autorizar acesso ao calendário.';
+      return;
+    }
+
+    if (normalizedState === 'pending') {
+      panel.classList.add('is-warning');
+      summary.textContent = message || 'Autorizando Google Calendar...';
+      return;
+    }
+
+    if (normalizedState === 'error') {
+      panel.classList.add('is-error');
+      summary.textContent = message || 'Falha ao conectar Google Calendar.';
+      return;
+    }
+
+    summary.textContent = message || 'Google Calendar desconectado.';
+  }
+
+  renderGoogleCalendarEventsList(events = []) {
+    const panel = document.getElementById('google-calendar-events-panel');
+    if (!panel) return;
+
+    const summary = panel.querySelector('.firebase-validation-summary') || panel;
+    const items = Array.isArray(events) ? events : [];
+
+    if (!items.length) {
+      summary.textContent = 'Nenhum evento futuro encontrado no Google Calendar.';
+      panel.dataset.count = '0';
+      return;
+    }
+
+    const lines = items.slice(0, 8).map((event) => {
+      const rawStart = event && event.start ? (event.start.dateTime || event.start.date || '') : '';
+      const when = String(rawStart || '').trim();
+      const title = String((event && event.summary) || 'Sem título').trim();
+      const location = String((event && event.location) || '').trim();
+      return `${when || 'Sem data'} · ${title}${location ? ` · ${location}` : ''}`;
+    });
+
+    summary.innerHTML = `
+      <strong>Próximos eventos (${items.length})</strong>
+      <ul style="margin:0.65rem 0 0 1rem; padding:0; display:grid; gap:0.35rem;">
+        ${lines.map((line) => `<li>${line}</li>`).join('')}
+      </ul>
+    `;
+    panel.dataset.count = String(items.length);
+  }
+
+  async waitForGoogleCalendarLibraries(timeoutMs = 10000) {
+    const deadline = Date.now() + Math.max(1000, Number(timeoutMs) || 10000);
+    while (Date.now() < deadline) {
+      if (window.gapi && window.google && window.google.accounts && window.google.accounts.oauth2) return true;
+      // Yield to the browser while the external scripts finish loading.
+      await new Promise((resolve) => window.setTimeout(resolve, 120));
+    }
+    return Boolean(window.gapi && window.google && window.google.accounts && window.google.accounts.oauth2);
+  }
+
+  async initGoogleCalendarClient() {
+    if (window.location && String(window.location.protocol || '').toLowerCase() === 'file:') {
+      this.updateGoogleCalendarStatus(
+        'error',
+        'Abra o app em https ou http://localhost. O login OAuth do Google Calendar não funciona corretamente em file://.'
+      );
+      return false;
+    }
+
+    const input = document.getElementById('cfg-google-calendar-client-id');
+    const clientId = String((input && input.value) || this.loadGoogleCalendarClientId() || '').trim();
+    if (!clientId) {
+      this.updateGoogleCalendarStatus('error', 'Informe o Client ID do OAuth para usar o Google Calendar.');
+      return false;
+    }
+
+    this.googleCalendarClientId = clientId;
+    this.saveGoogleCalendarClientId(clientId);
+
+    const ready = await this.waitForGoogleCalendarLibraries();
+    if (!ready) {
+      this.updateGoogleCalendarStatus('error', 'Bibliotecas do Google Calendar ainda não carregaram. Recarregue a página e tente novamente.');
+      return false;
+    }
+
+    try {
+      if (!this.googleCalendarApiReady) {
+        await new Promise((resolve, reject) => {
+          try {
+            window.gapi.load('client', resolve);
+          } catch (err) {
+            reject(err);
+          }
+        });
+
+        await window.gapi.client.init({
+          discoveryDocs: [GOOGLE_CALENDAR_DISCOVERY_DOC]
+        });
+        this.googleCalendarApiReady = true;
+      }
+
+      if (!this.googleCalendarTokenClient) {
+        this.googleCalendarTokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: GOOGLE_CALENDAR_SCOPES,
+          callback: ''
+        });
+      }
+
+      this.googleCalendarReady = true;
+      this.updateGoogleCalendarStatus(this.googleCalendarAuthorized ? 'ok' : 'ready');
+      return true;
+    } catch (err) {
+      const message = err && err.message ? err.message : 'Erro desconhecido';
+      console.log('Falha ao inicializar Google Calendar:', err);
+      this.updateGoogleCalendarStatus('error', `Falha ao inicializar Google Calendar: ${message}`);
+      return false;
+    }
+  }
+
+  async connectGoogleCalendar() {
+    const initialized = await this.initGoogleCalendarClient();
+    if (!initialized || !this.googleCalendarTokenClient) return;
+
+    this.updateGoogleCalendarStatus('pending', 'Autorizando Google Calendar...');
+    this.googleCalendarTokenClient.callback = async (resp) => {
+      if (resp && resp.error) {
+        const message = String(resp.error_description || resp.error || 'Falha ao autorizar Google Calendar.');
+        this.googleCalendarAuthorized = false;
+        this.googleCalendarAccessToken = '';
+        this.updateGoogleCalendarStatus('error', message);
+        this.showToast(message, 'warning');
+        return;
+      }
+
+      this.googleCalendarAuthorized = true;
+      this.googleCalendarAccessToken = String((resp && resp.access_token) || '').trim();
+      if (window.gapi && window.gapi.client) {
+        window.gapi.client.setToken({ access_token: this.googleCalendarAccessToken });
+      }
+      this.updateGoogleCalendarStatus('ok', 'Google Calendar conectado e autorizado.');
+      this.showToast('Google Calendar conectado com sucesso.', 'success');
+      void this.listGoogleCalendarEvents();
+    };
+
+    if (!window.gapi || !window.gapi.client || typeof window.gapi.client.getToken !== 'function' || window.gapi.client.getToken() === null) {
+      this.googleCalendarTokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+      this.googleCalendarTokenClient.requestAccessToken({ prompt: '' });
+    }
+  }
+
+  disconnectGoogleCalendar() {
+    const token = window.gapi && window.gapi.client && typeof window.gapi.client.getToken === 'function'
+      ? window.gapi.client.getToken()
+      : null;
+
+    if (token && token.access_token && window.google && window.google.accounts && window.google.accounts.oauth2) {
+      try {
+        window.google.accounts.oauth2.revoke(token.access_token, () => {});
+      } catch (err) {
+        console.log('Falha ao revogar token do Google Calendar:', err);
+      }
+    }
+
+    if (window.gapi && window.gapi.client && typeof window.gapi.client.setToken === 'function') {
+      window.gapi.client.setToken(null);
+    }
+
+    this.googleCalendarAuthorized = false;
+    this.googleCalendarAccessToken = '';
+    this.updateGoogleCalendarStatus(this.googleCalendarClientId ? 'ready' : 'offline', this.googleCalendarClientId
+      ? 'Client ID salvo. Clique em Conectar para autorizar acesso ao calendário.'
+      : 'Google Calendar desconectado.');
+    this.showToast('Google Calendar desconectado.', 'info');
+  }
+
+  async listGoogleCalendarEvents() {
+    const initialized = await this.initGoogleCalendarClient();
+    if (!initialized) return;
+
+    if (!this.googleCalendarAuthorized) {
+      this.updateGoogleCalendarStatus('ready', 'Conecte o Google Calendar para atualizar os eventos.');
+      return;
+    }
+
+    try {
+      const response = await window.gapi.client.calendar.events.list({
+        calendarId: 'primary',
+        timeMin: new Date().toISOString(),
+        showDeleted: false,
+        singleEvents: true,
+        maxResults: 10,
+        orderBy: 'startTime'
+      });
+
+      const events = Array.isArray(response && response.result && response.result.items)
+        ? response.result.items
+        : [];
+
+      this.renderGoogleCalendarEventsList(events);
+
+      const nextEvent = events[0];
+      const eventLabel = nextEvent
+        ? `${String((nextEvent.start && (nextEvent.start.dateTime || nextEvent.start.date)) || '').trim()} - ${String(nextEvent.summary || 'Sem título').trim()}`
+        : 'Nenhum evento futuro encontrado.';
+
+      this.updateGoogleCalendarStatus('ok', `Google Calendar sincronizado. Próximo evento: ${eventLabel}`);
+      this.logSyncAudit('info', `Google Calendar lido com ${events.length} evento(s) futuros.`);
+    } catch (err) {
+      const message = err && err.message ? err.message : 'Erro desconhecido';
+      console.log('Falha ao listar eventos do Google Calendar:', err);
+      this.updateGoogleCalendarStatus('error', `Falha ao buscar eventos: ${message}`);
+      this.showToast(`Falha ao buscar eventos do Google Calendar: ${message}`, 'warning');
     }
   }
 
@@ -8810,7 +9144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260801-4', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260801-5', 'app-root')
       ]);
     }
   } catch (err) {
@@ -8829,7 +9163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-29')
+    navigator.serviceWorker.register('./sw.js?v=20260801-32')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

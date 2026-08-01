@@ -16,6 +16,7 @@ const REMINDER_INTENSITY_STORAGE_KEY = 'consultorio_reminder_intensity';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
+const APP_RELEASE_VERSION = 'v31.07.2026-2';
 const LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY = 'consultorio_landscape_sidebar_collapsed';
 const LOGIN_USERS_FIRESTORE_COLLECTION = 'login_users';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
@@ -600,7 +601,7 @@ class ConsultorioApp {
   renderVersionBadge() {
     const el = document.getElementById('app-version-badge');
     if (!el) return;
-    const label = (this.versionInfo && this.versionInfo.label) ? this.versionInfo.label : this.buildVersionLabel(getTodayStr(), 0);
+    const label = APP_RELEASE_VERSION;
 
     if (this.updateReady) {
       el.textContent = `Nova versão disponível - Atualizar`;
@@ -613,7 +614,7 @@ class ConsultorioApp {
       el.classList.remove('update-ready');
       el.removeAttribute('role');
       el.removeAttribute('tabindex');
-      el.removeAttribute('title');
+      el.setAttribute('title', 'Versão da release do sistema (atualiza somente em novo deploy).');
     }
   }
 
@@ -1301,19 +1302,35 @@ class ConsultorioApp {
   }
 
   normalizePaymentReceiptText(rawText) {
-    return String(rawText || '').replace(/\r/g, '').split('\n').map((line) => String(line || '').trimEnd()).join('\n').trim();
+    return String(rawText || '')
+      .replace(/\r/g, '')
+      .split('\n')
+      .map((line) => this.sanitizeReceiptPdfLine(line))
+      .join('\n')
+      .trim();
   }
 
-  escapePdfText(value) {
+  sanitizeReceiptPdfLine(value) {
     return String(value || '')
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[º°]/g, 'o')
+      .replace(/[ª]/g, 'a')
+      .replace(/[“”„«»]/g, '"')
+      .replace(/[‘’`´]/g, "'")
+      .replace(/[^\x20-\x7E]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trimEnd();
+  }
+
+  escapePdfText(value) {
+    return this.sanitizeReceiptPdfLine(value)
       .replace(/\\/g, '\\\\')
       .replace(/\(/g, '\\(')
       .replace(/\)/g, '\\)');
   }
 
-  buildReceiptPdfBlob(title, content) {
+  async buildReceiptPdfBlob(title, content) {
     const pageWidth = 595.28;
     const pageHeight = 841.89;
     const marginLeft = 42;
@@ -1321,8 +1338,43 @@ class ConsultorioApp {
     const fontSize = 11;
     const lineHeight = 15;
     const maxCharsPerLine = 82;
-    const lines = [];
+    const logoUrl = new URL('./assets/icons/icon-512.png', window.location.href).href;
+    const encoder = new TextEncoder();
+    const toBytes = (value) => (value instanceof Uint8Array ? value : encoder.encode(String(value)));
 
+    const loadLogoAsJpegBytes = () => new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const size = 88;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(null);
+            return;
+          }
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, size, size);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, size, size);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          const base64 = String(dataUrl.split(',')[1] || '');
+          resolve(base64 ? Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)) : null);
+        } catch (err) {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = logoUrl;
+    });
+
+    const logoBytes = await loadLogoAsJpegBytes();
+
+    const lines = [];
     String(content || '').replace(/\r/g, '').split('\n').forEach((line) => {
       const safeLine = String(line || '');
       if (!safeLine) {
@@ -1340,22 +1392,43 @@ class ConsultorioApp {
 
     if (!lines.length) lines.push('');
 
-    const usableHeight = pageHeight - (marginTop * 2);
-    const linesPerPage = Math.max(1, Math.floor(usableHeight / lineHeight));
+    const textStartX = logoBytes ? 94 : marginLeft;
+    const textStartY = pageHeight - 60;
+    const linesPerPage = Math.max(1, Math.floor((pageHeight - (marginTop * 2) - 46) / lineHeight));
     const pages = [];
     for (let index = 0; index < lines.length; index += linesPerPage) {
       pages.push(lines.slice(index, index + linesPerPage));
     }
 
     const objects = [];
-    const addObject = (value) => {
-      objects.push(value);
+    const addObject = (segments) => {
+      objects.push(Array.isArray(segments) ? segments : [segments]);
       return objects.length;
     };
 
-    const fontId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-    const contentIds = pages.map((pageLines) => {
-      const streamLines = ['BT', `/F1 ${fontSize} Tf`, `${lineHeight} TL`, `${marginLeft} ${pageHeight - marginTop} Td`];
+    const fontId = addObject(['<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']);
+    let imageId = 0;
+    if (logoBytes && logoBytes.length) {
+      imageId = addObject([
+        `<< /Type /XObject /Subtype /Image /Width 88 /Height 88 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoBytes.length} >>\nstream\n`,
+        logoBytes,
+        '\nendstream'
+      ]);
+    }
+
+    const contentIds = pages.map((pageLines, pageIndex) => {
+      const streamLines = [];
+      if (pageIndex === 0 && imageId) {
+        streamLines.push('q');
+        streamLines.push('40 0 0 40 42 748 cm');
+        streamLines.push('/Im1 Do');
+        streamLines.push('Q');
+      }
+      streamLines.push('BT');
+      streamLines.push(`/F1 ${fontSize} Tf`);
+      streamLines.push(`${lineHeight} TL`);
+      streamLines.push(`${textStartX} ${textStartY} Td`);
+
       pageLines.forEach((line, lineIndex) => {
         const escaped = this.escapePdfText(line);
         if (lineIndex === 0) {
@@ -1366,41 +1439,55 @@ class ConsultorioApp {
         }
       });
       streamLines.push('ET');
+
       const stream = streamLines.join('\n');
-      return addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+      return addObject([
+        `<< /Length ${encoder.encode(stream).length} >>\nstream\n`,
+        stream,
+        '\nendstream'
+      ]);
     });
 
-    const pagesObjectIndex = addObject('');
-    const pageIds = pages.map(() => addObject(''));
-    const catalogId = addObject('');
+    const pagesObjectIndex = addObject(['']);
+    const pageIds = pages.map(() => addObject(['']));
+    const catalogId = addObject(['']);
 
-    objects[pagesObjectIndex - 1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`;
+    objects[pagesObjectIndex - 1] = [`<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`];
     pageIds.forEach((pageId, index) => {
-      objects[pageId - 1] = `<< /Type /Page /Parent ${pagesObjectIndex} 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentIds[index]} 0 R >>`;
+      const xObjectPart = imageId && index === 0 ? ` /XObject << /Im1 ${imageId} 0 R >>` : '';
+      objects[pageId - 1] = [`<< /Type /Page /Parent ${pagesObjectIndex} 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /Font << /F1 ${fontId} 0 R >>${xObjectPart} >> /Contents ${contentIds[index]} 0 R >>`];
     });
-    objects[catalogId - 1] = `<< /Type /Catalog /Pages ${pagesObjectIndex} 0 R >>`;
+    objects[catalogId - 1] = [`<< /Type /Catalog /Pages ${pagesObjectIndex} 0 R >>`];
 
-    const pdfParts = ['%PDF-1.4\n'];
+    const pdfParts = [encoder.encode('%PDF-1.4\n')];
     const offsets = [0];
+    let currentLength = pdfParts[0].length;
+    const pushPart = (part) => {
+      const bytes = toBytes(part);
+      pdfParts.push(bytes);
+      currentLength += bytes.length;
+    };
 
-    objects.forEach((obj, index) => {
-      offsets[index + 1] = pdfParts.join('').length;
-      pdfParts.push(`${index + 1} 0 obj\n${obj}\nendobj\n`);
+    objects.forEach((segments, index) => {
+      offsets[index + 1] = currentLength;
+      pushPart(`${index + 1} 0 obj\n`);
+      segments.forEach((segment) => pushPart(segment));
+      pushPart('\nendobj\n');
     });
 
-    const xrefStart = pdfParts.join('').length;
-    pdfParts.push(`xref\n0 ${objects.length + 1}\n`);
-    pdfParts.push('0000000000 65535 f \n');
+    const xrefStart = currentLength;
+    pushPart(`xref\n0 ${objects.length + 1}\n`);
+    pushPart('0000000000 65535 f \n');
     for (let index = 1; index <= objects.length; index += 1) {
-      pdfParts.push(`${String(offsets[index]).padStart(10, '0')} 00000 n \n`);
+      pushPart(`${String(offsets[index]).padStart(10, '0')} 00000 n \n`);
     }
-    pdfParts.push(`trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+    pushPart(`trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
 
-    return new Blob([pdfParts.join('')], { type: 'application/pdf' });
+    return new Blob(pdfParts, { type: 'application/pdf' });
   }
 
   async sharePaymentReceiptPdf(appointment, content) {
-    const blob = this.buildReceiptPdfBlob('Recibo de Pagamento', content);
+    const blob = await this.buildReceiptPdfBlob('Recibo de Pagamento', content);
     const fileName = `recibo-pagamento-${String(appointment && appointment.id ? appointment.id : Date.now())}.pdf`;
     const file = new File([blob], fileName, { type: 'application/pdf' });
 
@@ -4911,7 +4998,7 @@ class ConsultorioApp {
     this.generatePaymentReceipt();
   }
 
-  sendPaymentReceiptWhatsApp() {
+  async sendPaymentReceiptWhatsApp() {
     const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
     const appt = this.appointments.find((a) => a.id === id);
     if (!appt) {
@@ -4921,19 +5008,18 @@ class ConsultorioApp {
 
     const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
 
-    this.sharePaymentReceiptPdf(appt, content)
-      .then((shared) => {
-        if (shared) {
-          this.showToast('PDF do recibo preparado para compartilhamento.', 'success');
-          return;
-        }
+    try {
+      const shared = await this.sharePaymentReceiptPdf(appt, content);
+      if (shared) {
+        this.showToast('PDF do recibo preparado para compartilhamento.', 'success');
+        return;
+      }
 
-        this.showToast('PDF do recibo baixado para envio no WhatsApp.', 'info');
-      })
-      .catch((err) => {
-        console.log('Falha ao compartilhar PDF do recibo:', err);
-        this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
-      });
+      this.showToast('PDF do recibo baixado para envio no WhatsApp.', 'info');
+    } catch (err) {
+      console.log('Falha ao compartilhar PDF do recibo:', err);
+      this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
+    }
   }
 
   async sendPaymentReceiptPdfWhatsApp() {
@@ -7073,7 +7159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260731-4')
+    navigator.serviceWorker.register('./sw.js?v=20260731-6')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

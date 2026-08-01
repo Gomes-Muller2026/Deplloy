@@ -5765,6 +5765,10 @@ class ConsultorioApp {
     return `appt:${String((appointment && appointment.id) || '').trim() || 'sem-cliente'}`;
   }
 
+  getFinanceScopeAppointments() {
+    return this.filterItemsByTopRange(this.appointments || [], 'date');
+  }
+
   renderFinanceiroTable() {
     const tbody = document.getElementById('financeiro-table-body');
     if (!tbody) return;
@@ -5790,7 +5794,8 @@ class ConsultorioApp {
 
     const search = String((document.getElementById('financeiro-search') || {}).value || '').toLowerCase().trim();
     const grouped = {};
-    const recentItems = this.appointments.slice().sort((a, b) => `${String(b.date || '')} ${String(b.time || '')}`.localeCompare(`${String(a.date || '')} ${String(a.time || '')}`));
+    const financeAppointments = this.getFinanceScopeAppointments();
+    const recentItems = financeAppointments.slice().sort((a, b) => `${String(b.date || '')} ${String(b.time || '')}`.localeCompare(`${String(a.date || '')} ${String(a.time || '')}`));
 
     if (recentContainer) {
       const visibleRecent = recentItems
@@ -5822,7 +5827,7 @@ class ConsultorioApp {
       }).join('') : '<div class="empty-state"><p>Nenhum agendamento recente encontrado.</p></div>';
     }
 
-    this.appointments.forEach((a) => {
+    financeAppointments.forEach((a) => {
       const key = this.getFinanceGroupingKey(a);
       grouped[key] = grouped[key] || {
         clientId: key,
@@ -6017,7 +6022,7 @@ class ConsultorioApp {
       const status = row.pending > 0 ? (row.paid > 0 ? 'Parcial' : 'Pendente') : 'Pago';
       lines.push(`- ${row.clientName || 'Sem cliente'} | Qtd: ${row.qty} | Total: ${formatCurrency(row.total)} | Pendente: ${formatCurrency(row.pending)} | Pago: ${formatCurrency(row.paid)} | Status: ${status}`);
 
-      const appointmentDetails = this.appointments
+      const appointmentDetails = this.getFinanceScopeAppointments()
         .filter((appt) => this.getFinanceGroupingKey(appt) === String(row.clientId || ''))
         .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
 
@@ -6063,7 +6068,7 @@ class ConsultorioApp {
       return;
     }
 
-    const matches = this.appointments
+    const matches = this.getFinanceScopeAppointments()
       .filter((a) => this.getFinanceGroupingKey(a) === key)
       .sort((a, b) => `${b.date || ''} ${b.time || ''}`.localeCompare(`${a.date || ''} ${a.time || ''}`));
 
@@ -6083,7 +6088,7 @@ class ConsultorioApp {
       return;
     }
 
-    const pendingMatches = this.appointments
+    const pendingMatches = this.getFinanceScopeAppointments()
       .filter((a) => this.getFinanceGroupingKey(a) === key)
       .filter((a) => Math.max(0, toNumber(a.price) - toNumber(a.amountPaid)) > 0)
       .sort((a, b) => `${b.date || ''} ${b.time || ''}`.localeCompare(`${a.date || ''} ${a.time || ''}`));
@@ -7503,7 +7508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260731-21')
+    navigator.serviceWorker.register('./sw.js?v=20260731-22')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

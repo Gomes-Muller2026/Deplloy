@@ -17,6 +17,7 @@ const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const FIREBASE_DEVICE_ID_STORAGE_KEY = 'consultorio_firebase_device_id';
 const FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY = 'consultorio_firebase_last_push_millis';
+const FIREBASE_PUSH_SHADOW_STORAGE_KEY = 'consultorio_firebase_push_shadow';
 const FIREBASE_FORCE_LONG_POLLING = true;
 const APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY = 'consultorio_deleted_appointment_tombstones';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
@@ -499,6 +500,7 @@ class ConsultorioApp {
     this.firebasePushWatchdogMs = 22000;
     this.firebasePushAttemptSeq = 0;
     this.firebasePushActiveAttemptId = 0;
+    this.firebasePushShadowState = this.loadFirebasePushShadowState();
     this.syncAuditLogLimit = 18;
     this.syncAuditEvents = [];
     this.deletedAppointmentTombstones = {};
@@ -846,14 +848,17 @@ class ConsultorioApp {
         console.log('Falha ao enviar dados para o Firebase:', err);
         this.setFirebaseSyncDirty(true);
         this.logSyncAudit('error', `Falha no push: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
-        this.notifyFirebaseQuotaPause(err, 'push');
+        const quotaPaused = this.notifyFirebaseQuotaPause(err, 'push');
+        const retryDelayMs = quotaPaused ? 20000 : 1200;
 
         // Retry quickly to avoid losing cross-device freshness after transient network issues.
         this.firebasePushRetryTimerId = window.setTimeout(() => {
           this.firebasePushRetryTimerId = null;
-          this.logSyncAudit('warning', 'Repetindo push automático após falha de rede.');
+          this.logSyncAudit('warning', quotaPaused
+            ? 'Repetindo push após espera por cota do Firebase.'
+            : 'Repetindo push automático após falha de rede.');
           this.requestFirebasePushSync();
-        }, 1200);
+        }, retryDelayMs);
       })
       .finally(() => {
         if (attemptId !== this.firebasePushActiveAttemptId) return;
@@ -1108,6 +1113,120 @@ class ConsultorioApp {
     } catch (err) {
       console.log('Falha ao salvar o timestamp de push local:', err);
     }
+  }
+
+  createEmptyFirebasePushShadowState() {
+    return {
+      [LOGIN_USERS_FIRESTORE_COLLECTION]: {},
+      clients: {},
+      appointments: {},
+      expenses: {}
+    };
+  }
+
+  loadFirebasePushShadowState() {
+    const fallback = this.createEmptyFirebasePushShadowState();
+    try {
+      const raw = JSON.parse(localStorage.getItem(FIREBASE_PUSH_SHADOW_STORAGE_KEY) || '{}');
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fallback;
+
+      return {
+        [LOGIN_USERS_FIRESTORE_COLLECTION]: (raw[LOGIN_USERS_FIRESTORE_COLLECTION] && typeof raw[LOGIN_USERS_FIRESTORE_COLLECTION] === 'object' && !Array.isArray(raw[LOGIN_USERS_FIRESTORE_COLLECTION])) ? raw[LOGIN_USERS_FIRESTORE_COLLECTION] : {},
+        clients: (raw.clients && typeof raw.clients === 'object' && !Array.isArray(raw.clients)) ? raw.clients : {},
+        appointments: (raw.appointments && typeof raw.appointments === 'object' && !Array.isArray(raw.appointments)) ? raw.appointments : {},
+        expenses: (raw.expenses && typeof raw.expenses === 'object' && !Array.isArray(raw.expenses)) ? raw.expenses : {}
+      };
+    } catch (err) {
+      return fallback;
+    }
+  }
+
+  saveFirebasePushShadowState() {
+    try {
+      localStorage.setItem(FIREBASE_PUSH_SHADOW_STORAGE_KEY, JSON.stringify(this.firebasePushShadowState || this.createEmptyFirebasePushShadowState()));
+    } catch (err) {
+      console.log('Falha ao salvar estado incremental do push:', err);
+    }
+  }
+
+  normalizeValueForSyncSignature(value) {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.normalizeValueForSyncSignature(item));
+    }
+
+    if (value && typeof value === 'object') {
+      if (value instanceof Date) return value.toISOString();
+      const keys = Object.keys(value).sort();
+      const output = {};
+      keys.forEach((key) => {
+        output[key] = this.normalizeValueForSyncSignature(value[key]);
+      });
+      return output;
+    }
+
+    return value;
+  }
+
+  computeSyncDocSignature(docData) {
+    try {
+      return JSON.stringify(this.normalizeValueForSyncSignature(docData));
+    } catch (err) {
+      return String(Date.now());
+    }
+  }
+
+  collectCurrentFirebaseDocsForPush() {
+    const map = {
+      [LOGIN_USERS_FIRESTORE_COLLECTION]: new Map(),
+      clients: new Map(),
+      appointments: new Map(),
+      expenses: new Map()
+    };
+
+    getLoginUsers().forEach((user) => {
+      if (!user || !user.username) return;
+      const id = this.buildLoginUserDocId(user.username);
+      map[LOGIN_USERS_FIRESTORE_COLLECTION].set(id, {
+        username: String(user.username || '').trim(),
+        password: String(user.password || ''),
+        createdAt: user.createdAt || getTodayStr(),
+        updatedAt: user.updatedAt || getTodayStr()
+      });
+    });
+
+    this.clients.forEach((client) => {
+      const id = String((client && client.id) || '').trim();
+      if (!id) return;
+      map.clients.set(id, client);
+    });
+
+    this.appointments.forEach((appt) => {
+      const id = String((appt && appt.id) || '').trim();
+      if (!id) return;
+      map.appointments.set(id, appt);
+    });
+
+    this.expenses.forEach((expense) => {
+      const id = String((expense && expense.id) || '').trim();
+      if (!id) return;
+      map.expenses.set(id, expense);
+    });
+
+    return map;
+  }
+
+  rebuildFirebasePushShadowFromCurrentState() {
+    const docsByCollection = this.collectCurrentFirebaseDocsForPush();
+    const nextState = this.createEmptyFirebasePushShadowState();
+
+    [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses'].forEach((collectionName) => {
+      docsByCollection[collectionName].forEach((data, id) => {
+        nextState[collectionName][id] = this.computeSyncDocSignature(data);
+      });
+    });
+
+    this.firebasePushShadowState = nextState;
+    this.saveFirebasePushShadowState();
   }
 
   parseFirebaseTimeToMillis(value) {
@@ -5695,6 +5814,7 @@ class ConsultorioApp {
       this.applyStableDataOrdering();
       this.saveStore();
       this.render();
+      this.rebuildFirebasePushShadowFromCurrentState();
       if (!silent) this.logSyncAudit('pull', 'Pull concluído e interface atualizada.');
       return { applied: true, deferred: false, reason: 'ok' };
     } catch (err) {
@@ -5709,67 +5829,59 @@ class ConsultorioApp {
   async pushAllDataToFirebase() {
     if (!this.firebaseDb) return;
     try {
+      const collectionNames = [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses'];
+      const docsByCollection = this.collectCurrentFirebaseDocsForPush();
+      const previousState = this.firebasePushShadowState || this.createEmptyFirebasePushShadowState();
+      const nextState = this.createEmptyFirebasePushShadowState();
       const operations = [];
-      const localIdsByCollection = {
-        [LOGIN_USERS_FIRESTORE_COLLECTION]: new Set(),
-        clients: new Set(),
-        appointments: new Set(),
-        expenses: new Set()
+      const operationKeys = new Set();
+
+      const addOperation = (operation) => {
+        const key = `${operation.type}|${operation.collection}|${operation.id}`;
+        if (operationKeys.has(key)) return;
+        operationKeys.add(key);
+        operations.push(operation);
       };
 
-      getLoginUsers().forEach((user) => {
-        if (!user.username) return;
-        const id = this.buildLoginUserDocId(user.username);
-        localIdsByCollection[LOGIN_USERS_FIRESTORE_COLLECTION].add(id);
-        operations.push({ type: 'set', collection: LOGIN_USERS_FIRESTORE_COLLECTION, id, data: user });
-      });
+      collectionNames.forEach((collectionName) => {
+        const currentDocs = docsByCollection[collectionName];
+        const previousCollectionState = (previousState[collectionName] && typeof previousState[collectionName] === 'object' && !Array.isArray(previousState[collectionName]))
+          ? previousState[collectionName]
+          : {};
 
-      this.clients.forEach((client) => {
-        if (!client.id) return;
-        const id = String(client.id);
-        localIdsByCollection.clients.add(id);
-        operations.push({ type: 'set', collection: 'clients', id, data: client });
-      });
+        currentDocs.forEach((data, id) => {
+          const signature = this.computeSyncDocSignature(data);
+          nextState[collectionName][id] = signature;
+          if (previousCollectionState[id] !== signature) {
+            addOperation({ type: 'set', collection: collectionName, id, data });
+          }
+        });
 
-      this.appointments.forEach((appt) => {
-        if (!appt.id) return;
-        const id = String(appt.id);
-        localIdsByCollection.appointments.add(id);
-        operations.push({ type: 'set', collection: 'appointments', id, data: appt });
-      });
-
-      Object.keys(this.deletedAppointmentTombstones || {}).forEach((id) => {
-        const normalizedId = String(id || '').trim();
-        if (!normalizedId) return;
-        localIdsByCollection.appointments.delete(normalizedId);
-      });
-
-      this.expenses.forEach((expense) => {
-        if (!expense.id) return;
-        const id = String(expense.id);
-        localIdsByCollection.expenses.add(id);
-        operations.push({ type: 'set', collection: 'expenses', id, data: expense });
-      });
-
-      const collections = [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses'];
-      const remoteSnapshots = {};
-      await Promise.all(collections.map(async (collectionName) => {
-        remoteSnapshots[collectionName] = await this.firebaseDb.collection(collectionName).get();
-      }));
-
-      collections.forEach((collectionName) => {
-        const snapshot = remoteSnapshots[collectionName];
-        snapshot.docs.forEach((doc) => {
-          if (localIdsByCollection[collectionName].has(doc.id)) return;
-          operations.push({ type: 'delete', collection: collectionName, id: doc.id });
+        Object.keys(previousCollectionState).forEach((id) => {
+          if (currentDocs.has(id)) return;
+          addOperation({ type: 'delete', collection: collectionName, id });
         });
       });
 
       Object.keys(this.deletedAppointmentTombstones || {}).forEach((id) => {
         const normalizedId = String(id || '').trim();
         if (!normalizedId) return;
-        operations.push({ type: 'delete', collection: 'appointments', id: normalizedId });
+        delete nextState.appointments[normalizedId];
+        addOperation({ type: 'delete', collection: 'appointments', id: normalizedId });
       });
+
+      if (!operations.length) {
+        this.firebasePushShadowState = nextState;
+        this.saveFirebasePushShadowState();
+        this.setLocalLastPushMillis(Date.now());
+        this.firebasePushQueued = false;
+        if (this.firebasePushRetryTimerId) {
+          window.clearTimeout(this.firebasePushRetryTimerId);
+          this.firebasePushRetryTimerId = null;
+        }
+        this.logSyncAudit('info', 'Push incremental sem alterações pendentes (no-op).');
+        return;
+      }
 
       const maxBatchSize = 450;
       for (let index = 0; index < operations.length; index += maxBatchSize) {
@@ -5789,7 +5901,14 @@ class ConsultorioApp {
         await batch.commit();
       }
 
-      await this.updateRemoteSyncState();
+      try {
+        await this.updateRemoteSyncState();
+      } catch (metaErr) {
+        const details = String((metaErr && (metaErr.code || metaErr.message)) || 'erro desconhecido');
+        this.logSyncAudit('warning', `Dados enviados, mas metadata de sync não foi atualizada: ${details}`);
+      }
+      this.firebasePushShadowState = nextState;
+      this.saveFirebasePushShadowState();
       this.setLocalLastPushMillis(Date.now());
       this.firebasePushQueued = false;
       if (this.firebasePushRetryTimerId) {
@@ -8710,7 +8829,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-27')
+    navigator.serviceWorker.register('./sw.js?v=20260801-29')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

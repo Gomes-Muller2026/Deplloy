@@ -19,9 +19,10 @@ const FIREBASE_DEVICE_ID_STORAGE_KEY = 'consultorio_firebase_device_id';
 const FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY = 'consultorio_firebase_last_push_millis';
 const FIREBASE_PUSH_SHADOW_STORAGE_KEY = 'consultorio_firebase_push_shadow';
 const GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY = 'consultorio_google_calendar_client_id';
-const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 const GOOGLE_CALENDAR_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 const FIREBASE_FORCE_LONG_POLLING = true;
+const LOCAL_BACKUP_DATA_URL = './data/backup_consultorio_2026-07-26%20(1).json';
 const APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY = 'consultorio_deleted_appointment_tombstones';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
 const APP_RELEASE_VERSION = 'v31.07.2026-2';
@@ -581,7 +582,7 @@ class ConsultorioApp {
       const g = JSON.parse(localStorage.getItem(CLIENT_GROUPS_STORAGE_KEY) || '[]');
       const t = JSON.parse(localStorage.getItem(APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY) || '{}');
       this.clients = Array.isArray(c) ? c : [];
-      this.appointments = Array.isArray(a) ? a : [];
+      this.appointments = this.normalizeAppointmentsCollection(Array.isArray(a) ? a : [], 'local-store');
       this.expenses = Array.isArray(e) ? e : [];
       this.clientGroups = Array.isArray(g) ? g.filter((item) => String(item || '').trim()) : [];
       this.deletedAppointmentTombstones = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
@@ -600,6 +601,105 @@ class ConsultorioApp {
       this.clientGroups = [];
       this.deletedAppointmentTombstones = {};
     }
+  }
+
+  async seedStoreFromBackupIfEmpty() {
+    try {
+      const response = await fetch(LOCAL_BACKUP_DATA_URL, { cache: 'no-store' });
+      if (!response.ok) return false;
+
+      const backup = await response.json();
+      const backupClients = Array.isArray(backup.clients) ? backup.clients : [];
+      const backupAppointments = Array.isArray(backup.appointments) ? backup.appointments : [];
+      const backupExpenses = Array.isArray(backup.expenses) ? backup.expenses : [];
+
+      const loadedCollections = [];
+
+      if (!this.clients.length && backupClients.length) {
+        this.clients = backupClients;
+        loadedCollections.push('clients');
+      }
+
+      if (!this.appointments.length && backupAppointments.length) {
+        this.appointments = this.normalizeAppointmentsCollection(backupAppointments, 'backup-seed');
+        loadedCollections.push('appointments');
+      }
+
+      if (!this.expenses.length && backupExpenses.length) {
+        this.expenses = backupExpenses;
+        loadedCollections.push('expenses');
+      }
+
+      if (!loadedCollections.length) return false;
+
+      this.clientGroups = this.collectClientGroupsFromClients();
+      this.applyStableDataOrdering();
+      this.reconcileAppointmentsClientLinks();
+
+      if (loadedCollections.includes('appointments') && this.appointments.length) {
+        const dates = this.appointments
+          .map((item) => String(item && item.date || '').trim())
+          .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+          .sort();
+        const startDate = dates[0] || getTodayStr();
+        const endDate = dates[dates.length - 1] || startDate;
+        const topStart = document.getElementById('top-date-start');
+        const topEnd = document.getElementById('top-date-end');
+        const agendaStart = document.getElementById('agenda-filter-start');
+        const agendaEnd = document.getElementById('agenda-filter-end');
+        this.agendaCalendarStartDate = getWeekStartMondayIso(startDate);
+        if (topStart) topStart.value = this.formatTopDateForInput(startDate);
+        if (topEnd) topEnd.value = this.formatTopDateForInput(endDate);
+        if (agendaStart) agendaStart.value = startDate;
+        if (agendaEnd) agendaEnd.value = endDate;
+      }
+
+      this.saveStore();
+      this.rebuildFirebasePushShadowFromCurrentState();
+      this.showToast('Backup local carregado para restaurar dados faltantes.', 'success');
+      this.logSyncAudit('info', `Backup local aplicado na inicialização para: ${loadedCollections.join(', ')}.`);
+      return true;
+    } catch (err) {
+      console.log('Falha ao carregar backup local:', err);
+      return false;
+    }
+  }
+
+  restoreAgendaFiltersForLoadedAppointments() {
+    if (!Array.isArray(this.appointments) || !this.appointments.length) return false;
+
+    const agendaStart = document.getElementById('agenda-filter-start');
+    const agendaEnd = document.getElementById('agenda-filter-end');
+    const topStart = document.getElementById('top-date-start');
+    const topEnd = document.getElementById('top-date-end');
+
+    const currentStart = this.normalizeAgendaDateToIso((agendaStart || {}).value || '');
+    const currentEnd = this.normalizeAgendaDateToIso((agendaEnd || {}).value || '');
+    const visibleAppointments = this.appointments.filter((item) => {
+      const date = String(item && item.date || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+      if (currentStart && date < currentStart) return false;
+      if (currentEnd && date > currentEnd) return false;
+      return true;
+    });
+
+    if (visibleAppointments.length) return false;
+
+    const dates = this.appointments
+      .map((item) => String(item && item.date || '').trim())
+      .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+      .sort();
+
+    if (!dates.length) return false;
+
+    const startDate = dates[0];
+    const endDate = dates[dates.length - 1];
+    this.agendaCalendarStartDate = getWeekStartMondayIso(startDate);
+    if (topStart) topStart.value = this.formatTopDateForInput(startDate);
+    if (topEnd) topEnd.value = this.formatTopDateForInput(endDate);
+    if (agendaStart) agendaStart.value = startDate;
+    if (agendaEnd) agendaEnd.value = endDate;
+    return true;
   }
 
   buildVersionLabel(dateKey, seq) {
@@ -1740,6 +1840,128 @@ class ConsultorioApp {
 
   normalizeIdentityCpf(value) {
     return String(value || '').replace(/\D/g, '');
+  }
+
+  normalizeAppointmentTime(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    const hhmmMatch = raw.match(/^(\d{1,2})\s*[:hH]\s*(\d{1,2})$/);
+    if (hhmmMatch) {
+      const hours = Number(hhmmMatch[1]);
+      const minutes = Number(hhmmMatch[2]);
+      if (Number.isFinite(hours) && Number.isFinite(minutes) && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+      return '';
+    }
+
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 3 || digits.length === 4) {
+      const hours = Number(digits.length === 3 ? digits.slice(0, 1) : digits.slice(0, 2));
+      const minutes = Number(digits.slice(-2));
+      if (Number.isFinite(hours) && Number.isFinite(minutes) && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+    }
+
+    return '';
+  }
+
+  normalizeAppointmentStatus(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    if (raw.includes('cancel')) return 'Cancelado';
+    if (raw.includes('concl') || raw.includes('finaliz') || raw.includes('realiz')) return 'Concluido';
+    return 'Agendado';
+  }
+
+  normalizeAppointmentPaymentStatus(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    if (raw.includes('pago') || raw.includes('quit')) return 'Pago';
+    if (raw.includes('parcial') || raw.includes('partial')) return 'Parcial';
+    return 'Pendente';
+  }
+
+  normalizeSingleAppointmentRecord(rawAppointment = {}, source = 'unknown') {
+    const raw = rawAppointment && typeof rawAppointment === 'object' ? rawAppointment : {};
+    const sourceTag = String(source || '').trim();
+
+    const id = String(
+      raw.id || raw.appointmentId || raw.agendamentoId || raw.uid || ''
+    ).trim() || `app-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+    const date = this.normalizeAgendaDateToIso(
+      raw.date || raw.data || raw.scheduledDate || raw.appointmentDate || raw.dia || ''
+    );
+    const normalizedTime = this.normalizeAppointmentTime(
+      raw.time || raw.hora || raw.scheduledTime || raw.appointmentTime || raw.hour || ''
+    );
+    const time = normalizedTime || '08:00';
+
+    const incomingClientId = String(
+      raw.clientId || raw.clienteId || raw.patientId || ''
+    ).trim();
+
+    const incomingClientName = String(
+      raw.clientName || raw.clienteNome || raw.nomeCliente || raw.cliente || raw.patientName || raw.nome || ''
+    ).trim();
+
+    const incomingClientCpf = this.formatCpfInput(
+      raw.clientCpf || raw.clienteCpf || raw.cpfPaciente || ''
+    );
+
+    const normalizedNameKey = this.normalizeIdentityName(incomingClientName);
+    const resolvedById = incomingClientId
+      ? this.clients.find((client) => String((client && client.id) || '').trim() === incomingClientId) || null
+      : null;
+    const resolvedByName = normalizedNameKey
+      ? this.clients.find((client) => this.normalizeIdentityName((client && client.name) || '') === normalizedNameKey) || null
+      : null;
+    const resolvedClient = resolvedById || resolvedByName;
+
+    const clientId = String((resolvedClient && resolvedClient.id) || incomingClientId || '').trim();
+    const clientName = String((resolvedClient && resolvedClient.name) || incomingClientName || '').trim();
+    const clientCpf = this.formatCpfInput((resolvedClient && resolvedClient.cpf) || incomingClientCpf || '');
+
+    const normalized = {
+      ...raw,
+      id,
+      clientId,
+      clientName: clientName || 'Cliente',
+      clientCpf,
+      date,
+      time,
+      procedure: String(raw.procedure || raw.abordagem || raw.reason || raw.motivo || 'Consulta').trim() || 'Consulta',
+      price: toNumber(raw.price ?? raw.valor ?? raw.amount ?? raw.sessionValue ?? 0),
+      amountPaid: toNumber(raw.amountPaid ?? raw.valorPago ?? raw.paidAmount ?? raw.paid ?? 0),
+      paymentMethod: String(raw.paymentMethod || raw.formaPagamento || raw.payment || 'Pix').trim() || 'Pix',
+      status: this.normalizeAppointmentStatus(raw.status || raw.appointmentStatus || raw.situacao || 'Agendado'),
+      paymentStatus: this.normalizeAppointmentPaymentStatus(raw.paymentStatus || raw.pagamentoStatus || raw.financeStatus || 'Pendente'),
+      notes: String(raw.notes || raw.observacoes || raw.observacao || '').trim(),
+      color: normalizeHexColor(raw.color || raw.cor || DEFAULT_APPOINTMENT_COLOR)
+    };
+
+    if (!normalized.date || !normalizedTime) {
+      this.logSyncAudit('warning', `Consulta ${id} veio com data/hora fora do padrão (${sourceTag || 'sync'}). Hora aplicada automaticamente: ${time}.`);
+    }
+
+    return normalized;
+  }
+
+  normalizeAppointmentsCollection(rawAppointments = [], source = 'unknown') {
+    const sourceList = Array.isArray(rawAppointments) ? rawAppointments : [];
+    const seen = new Set();
+    const normalized = [];
+
+    sourceList.forEach((item) => {
+      const record = this.normalizeSingleAppointmentRecord(item, source);
+      if (!record || !record.id) return;
+      if (seen.has(record.id)) return;
+      seen.add(record.id);
+      normalized.push(record);
+    });
+
+    return normalized;
   }
 
   resolveAppointmentClientLink(appointment) {
@@ -3924,6 +4146,7 @@ class ConsultorioApp {
     const saveGoogleCalendarBtn = document.getElementById('btn-save-google-calendar');
     const connectGoogleCalendarBtn = document.getElementById('btn-connect-google-calendar');
     const listGoogleCalendarEventsBtn = document.getElementById('btn-list-google-calendar-events');
+    const importGoogleCalendarEventsBtn = document.getElementById('btn-import-google-calendar-events');
     const disconnectGoogleCalendarBtn = document.getElementById('btn-disconnect-google-calendar');
     const exportSyncAuditBtn = document.getElementById('btn-export-sync-audit');
     const copySyncDiagnosticBtn = document.getElementById('btn-copy-sync-diagnostic');
@@ -3978,6 +4201,7 @@ class ConsultorioApp {
         setActiveLoginUser(isDefaultRecovery ? LOGIN_DEFAULT_USERNAME : matchedUser.username);
         this.localLoginUnlocked = true;
         this.showAppShell();
+        this.restoreAgendaFiltersForLoadedAppointments();
         this.render();
         this.applyPendingReminderRoute();
         this.showToast('Login realizado com sucesso!', 'success');
@@ -4104,7 +4328,13 @@ class ConsultorioApp {
 
     if (listGoogleCalendarEventsBtn) {
       listGoogleCalendarEventsBtn.addEventListener('click', () => {
-        void this.listGoogleCalendarEvents();
+        void this.syncAppointmentsToGoogleCalendar();
+      });
+    }
+
+    if (importGoogleCalendarEventsBtn) {
+      importGoogleCalendarEventsBtn.addEventListener('click', () => {
+        void this.importGoogleCalendarIntoLocalAgenda();
       });
     }
 
@@ -5428,8 +5658,8 @@ class ConsultorioApp {
     const looksLikeSecret = /^GOCSPX-/i.test(safeClientId) || /client_secret/i.test(safeClientId);
 
     if (looksLikeSecret) {
-      this.updateGoogleCalendarStatus('error', 'Nao salve o client_secret no navegador. Use apenas o Client ID do tipo Web.');
-      this.showToast('Client secret bloqueado. Use apenas o Client ID do Google Calendar.', 'warning');
+      this.updateGoogleCalendarStatus('error', 'Nao salve segredos no navegador. Use apenas o Client ID do tipo Web.');
+      this.showToast('Valor bloqueado. Use apenas o Client ID do Google Calendar.', 'warning');
       return false;
     }
 
@@ -5513,6 +5743,499 @@ class ConsultorioApp {
       </ul>
     `;
     panel.dataset.count = String(items.length);
+  }
+
+  buildGoogleCalendarEventPayload(appointment) {
+    const appt = appointment && typeof appointment === 'object' ? appointment : {};
+    const id = String(appt.id || '').trim();
+    const date = String(appt.date || '').trim();
+    const rawTime = String(appt.time || '').trim();
+    const time = /^\d{2}:\d{2}$/.test(rawTime) ? rawTime : '08:00';
+
+    if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+
+    const startLocal = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(startLocal.getTime())) return null;
+
+    const endLocal = new Date(startLocal.getTime() + (50 * 60 * 1000));
+    const endDate = `${endLocal.getFullYear()}-${String(endLocal.getMonth() + 1).padStart(2, '0')}-${String(endLocal.getDate()).padStart(2, '0')}`;
+    const endTime = `${String(endLocal.getHours()).padStart(2, '0')}:${String(endLocal.getMinutes()).padStart(2, '0')}`;
+
+    const clientName = String(appt.clientName || 'Cliente').trim() || 'Cliente';
+    const procedure = String(appt.procedure || 'Consulta').trim() || 'Consulta';
+    const status = String(appt.status || 'Agendado').trim() || 'Agendado';
+    const paymentStatus = String(appt.paymentStatus || 'Pendente').trim() || 'Pendente';
+    const value = formatCurrency(appt.price || 0);
+    const notes = String(appt.notes || '').trim();
+
+    const fingerprint = [
+      date,
+      time,
+      clientName,
+      procedure,
+      status,
+      paymentStatus,
+      toNumber(appt.price || 0).toFixed(2),
+      notes
+    ].join('|');
+
+    const descriptionLines = [
+      `Paciente: ${clientName}`,
+      `Procedimento: ${procedure}`,
+      `Status: ${status}`,
+      `Pagamento: ${paymentStatus}`,
+      `Valor: ${value}`
+    ];
+
+    if (notes) {
+      descriptionLines.push('', `Observações: ${notes}`);
+    }
+
+    descriptionLines.push('', `ID Consulta (Consultório Control): ${id}`);
+
+    return {
+      appointmentId: id,
+      fingerprint,
+      resource: {
+        summary: `${clientName} · ${procedure}`,
+        description: descriptionLines.join('\n'),
+        start: {
+          dateTime: `${date}T${time}:00`,
+          timeZone: 'America/Sao_Paulo'
+        },
+        end: {
+          dateTime: `${endDate}T${endTime}:00`,
+          timeZone: 'America/Sao_Paulo'
+        },
+        extendedProperties: {
+          private: {
+            consultorioSource: 'consultorio-control',
+            consultorioAppointmentId: id,
+            consultorioFingerprint: fingerprint
+          }
+        }
+      }
+    };
+  }
+
+  async listGoogleManagedCalendarEvents() {
+    const now = new Date();
+    const timeMin = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString();
+    const timeMax = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate()).toISOString();
+
+    const response = await window.gapi.client.calendar.events.list({
+      calendarId: 'primary',
+      timeMin,
+      timeMax,
+      showDeleted: false,
+      singleEvents: true,
+      maxResults: 2500,
+      privateExtendedProperty: ['consultorioSource=consultorio-control'],
+      orderBy: 'startTime'
+    });
+
+    return Array.isArray(response && response.result && response.result.items)
+      ? response.result.items
+      : [];
+  }
+
+  parseGoogleCalendarEventToLocalAppointmentRaw(event) {
+    const sourceEvent = event && typeof event === 'object' ? event : {};
+    const eventId = String(sourceEvent.id || '').trim();
+    if (!eventId) return null;
+
+    const start = sourceEvent.start || {};
+    const rawDateTime = String(start.dateTime || '').trim();
+    const rawDate = String(start.date || '').trim();
+
+    let date = '';
+    let time = '08:00';
+
+    if (rawDateTime) {
+      const parsed = new Date(rawDateTime);
+      if (Number.isNaN(parsed.getTime())) return null;
+      date = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+      time = `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+      date = rawDate;
+    } else {
+      return null;
+    }
+
+    const summary = String(sourceEvent.summary || '').trim() || 'Cliente';
+    const description = String(sourceEvent.description || '').trim();
+    const location = String(sourceEvent.location || '').trim();
+
+    const descriptionClientMatch = description.match(/(?:^|\n)\s*Paciente\s*:\s*(.+)\s*(?:\n|$)/i);
+    const descriptionProcedureMatch = description.match(/(?:^|\n)\s*Procedimento\s*:\s*(.+)\s*(?:\n|$)/i);
+
+    const summaryParts = summary.split('·').map((part) => String(part || '').trim()).filter(Boolean);
+    const clientName = String(
+      (descriptionClientMatch && descriptionClientMatch[1])
+      || summaryParts[0]
+      || summary
+      || 'Cliente'
+    ).trim() || 'Cliente';
+    const procedure = String(
+      (descriptionProcedureMatch && descriptionProcedureMatch[1])
+      || (summaryParts.length > 1 ? summaryParts.slice(1).join(' · ') : '')
+      || 'Consulta'
+    ).trim() || 'Consulta';
+
+    const notesParts = [];
+    if (description) notesParts.push(description);
+    if (location) notesParts.push(`Local: ${location}`);
+    if (sourceEvent.htmlLink) notesParts.push(`Google: ${sourceEvent.htmlLink}`);
+
+    return {
+      id: `gcal-${eventId}`,
+      googleEventId: eventId,
+      googleCalendarUpdatedAt: String(sourceEvent.updated || '').trim(),
+      source: 'google-calendar',
+      clientName,
+      date,
+      time,
+      procedure,
+      price: 0,
+      amountPaid: 0,
+      paymentMethod: 'Pix',
+      status: 'Agendado',
+      paymentStatus: 'Pendente',
+      notes: notesParts.join('\n\n').trim(),
+      color: '#3b82f6'
+    };
+  }
+
+  ensureClientForGoogleCalendarName(clientName) {
+    const normalizedName = this.normalizeIdentityName(clientName || '');
+    if (!normalizedName) return null;
+
+    const existing = this.clients.find((client) => this.normalizeIdentityName((client && client.name) || '') === normalizedName) || null;
+    if (existing) return existing;
+
+    const generatedId = `client-gcal-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const created = {
+      id: generatedId,
+      name: String(clientName || 'Cliente').trim() || 'Cliente',
+      phone: '',
+      email: '',
+      cpf: '',
+      rg: '',
+      dob: '',
+      group: 'Google Calendar',
+      cep: '',
+      street: '',
+      number: '',
+      complement: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      notes: 'Criado automaticamente a partir de evento importado do Google Calendar.',
+      emergencyName: '',
+      emergencyPhone: '',
+      emergencyRelation: '',
+      referralSource: 'Google Calendar',
+      referralNotes: '',
+      anamnese: null,
+      createdAt: getTodayStr(),
+      registrationNumber: this.getNextClientRegistrationNumber()
+    };
+
+    this.clients.push(created);
+    this.rememberClientGroup('Google Calendar');
+    return created;
+  }
+
+  findExistingAppointmentForGoogleEvent(rawRecord = {}) {
+    const googleEventId = String(rawRecord.googleEventId || '').trim();
+    const idByGoogle = googleEventId ? `gcal-${googleEventId}` : '';
+    const date = String(rawRecord.date || '').trim();
+    const time = this.normalizeAppointmentTime(rawRecord.time || '') || '08:00';
+    const clientNameKey = this.normalizeIdentityName(rawRecord.clientName || '');
+
+    const byGoogleEventId = googleEventId
+      ? this.appointments.find((appointment) => String((appointment && appointment.googleEventId) || '').trim() === googleEventId) || null
+      : null;
+    if (byGoogleEventId) return byGoogleEventId;
+
+    const byId = idByGoogle
+      ? this.appointments.find((appointment) => String((appointment && appointment.id) || '').trim() === idByGoogle) || null
+      : null;
+    if (byId) return byId;
+
+    if (!date || !clientNameKey) return null;
+
+    return this.appointments.find((appointment) => {
+      if (!appointment || typeof appointment !== 'object') return false;
+      const sameDate = String(appointment.date || '').trim() === date;
+      const sameTime = (this.normalizeAppointmentTime(appointment.time || '') || '08:00') === time;
+      const sameClient = this.normalizeIdentityName(appointment.clientName || '') === clientNameKey;
+      return sameDate && sameTime && sameClient;
+    }) || null;
+  }
+
+  async importGoogleCalendarEventsToAppointments() {
+    const now = new Date();
+    const timeMin = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString();
+    const timeMax = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate()).toISOString();
+
+    const response = await window.gapi.client.calendar.events.list({
+      calendarId: 'primary',
+      timeMin,
+      timeMax,
+      showDeleted: false,
+      singleEvents: true,
+      maxResults: 2500,
+      orderBy: 'startTime'
+    });
+
+    const events = Array.isArray(response && response.result && response.result.items)
+      ? response.result.items
+      : [];
+
+    let createdClients = 0;
+    let insertedAppointments = 0;
+    let updatedAppointments = 0;
+    let touched = false;
+
+    events.forEach((event) => {
+      const status = String((event && event.status) || '').toLowerCase();
+      if (status === 'cancelled') return;
+
+      const raw = this.parseGoogleCalendarEventToLocalAppointmentRaw(event);
+      if (!raw) return;
+
+      const existingClientBefore = this.clients.length;
+      const client = this.ensureClientForGoogleCalendarName(raw.clientName);
+      if (!client) return;
+      if (this.clients.length > existingClientBefore) createdClients += 1;
+
+      raw.clientId = String(client.id || '').trim();
+      raw.clientName = String(client.name || raw.clientName || 'Cliente').trim() || 'Cliente';
+
+      const existingAppointment = this.findExistingAppointmentForGoogleEvent(raw);
+      const normalizedIncoming = this.normalizeSingleAppointmentRecord(raw, 'google-calendar-import');
+
+      if (!existingAppointment) {
+        this.appointments.push(normalizedIncoming);
+        insertedAppointments += 1;
+        touched = true;
+        return;
+      }
+
+      const existingIsGoogleManaged = String((existingAppointment.source || '')).toLowerCase() === 'google-calendar'
+        || String(existingAppointment.id || '').startsWith('gcal-')
+        || String(existingAppointment.googleEventId || '').trim() === String(raw.googleEventId || '').trim();
+
+      if (!existingIsGoogleManaged && !String(existingAppointment.googleEventId || '').trim()) {
+        existingAppointment.googleEventId = String(raw.googleEventId || '').trim();
+        existingAppointment.googleCalendarUpdatedAt = String(raw.googleCalendarUpdatedAt || '').trim();
+        existingAppointment.source = existingAppointment.source || 'local';
+        updatedAppointments += 1;
+        touched = true;
+        return;
+      }
+
+      const fieldsToUpdate = [
+        'clientId',
+        'clientName',
+        'date',
+        'time',
+        'procedure',
+        'notes',
+        'status',
+        'color',
+        'googleEventId',
+        'googleCalendarUpdatedAt',
+        'source'
+      ];
+
+      let hasDiff = false;
+      fieldsToUpdate.forEach((field) => {
+        const nextValue = normalizedIncoming[field];
+        if (String(existingAppointment[field] ?? '') === String(nextValue ?? '')) return;
+        existingAppointment[field] = nextValue;
+        hasDiff = true;
+      });
+
+      if (hasDiff) {
+        updatedAppointments += 1;
+        touched = true;
+      }
+    });
+
+    if (touched) {
+      this.reconcileAppointmentsClientLinks();
+      this.saveData();
+      this.restoreAgendaFiltersForLoadedAppointments();
+      this.render();
+    }
+
+    return {
+      totalGoogleEvents: events.length,
+      createdClients,
+      insertedAppointments,
+      updatedAppointments
+    };
+  }
+
+  async importGoogleCalendarIntoLocalAgenda(options = {}) {
+    const initialized = await this.initGoogleCalendarClient();
+    if (!initialized) return;
+
+    if (!this.googleCalendarAuthorized) {
+      this.updateGoogleCalendarStatus('ready', 'Conecte o Google Calendar para importar eventos para a Agenda.');
+      return;
+    }
+
+    const showToast = options && options.showToast === false ? false : true;
+    this.updateGoogleCalendarStatus('pending', 'Importando eventos do Google para a Agenda...');
+
+    try {
+      const stats = await this.importGoogleCalendarEventsToAppointments();
+      await this.listGoogleCalendarEvents();
+
+      const message = `Importação concluída. Eventos Google: ${stats.totalGoogleEvents} | Novos na Agenda: ${stats.insertedAppointments} | Atualizados na Agenda: ${stats.updatedAppointments} | Clientes criados: ${stats.createdClients}.`;
+      this.updateGoogleCalendarStatus('ok', message);
+      this.logSyncAudit('info', `Google -> Agenda: total=${stats.totalGoogleEvents}, inserted=${stats.insertedAppointments}, updated=${stats.updatedAppointments}, clientsCreated=${stats.createdClients}.`);
+      if (showToast) this.showToast(message, 'success');
+    } catch (err) {
+      const apiError = err && err.result && err.result.error ? err.result.error : null;
+      const message = String((apiError && apiError.message) || (err && err.message) || 'Erro desconhecido').trim();
+      this.updateGoogleCalendarStatus('error', `Falha ao importar para Agenda: ${message}`);
+      this.logSyncAudit('error', `Falha Google -> Agenda: ${message}`);
+      if (showToast) this.showToast(`Falha ao importar Google para Agenda: ${message}`, 'warning');
+    }
+  }
+
+  async syncAppointmentsToGoogleCalendar(options = {}) {
+    const initialized = await this.initGoogleCalendarClient();
+    if (!initialized) return;
+
+    if (!this.googleCalendarAuthorized) {
+      this.updateGoogleCalendarStatus('ready', 'Conecte o Google Calendar para enviar sua agenda.');
+      return;
+    }
+
+    const showToast = options && options.showToast === false ? false : true;
+    const importFromGoogle = !(options && options.importFromGoogle === false);
+    this.updateGoogleCalendarStatus('pending', 'Enviando agenda para o Google Calendar...');
+
+    try {
+      const managedEvents = await this.listGoogleManagedCalendarEvents();
+      const managedByAppointmentId = new Map();
+
+      managedEvents.forEach((event) => {
+        const privateProps = event && event.extendedProperties && event.extendedProperties.private
+          ? event.extendedProperties.private
+          : {};
+        const apptId = String(privateProps.consultorioAppointmentId || '').trim();
+        if (apptId) managedByAppointmentId.set(apptId, event);
+      });
+
+      const validAppointments = this.appointments
+        .filter((appointment) => {
+          const status = String((appointment && appointment.status) || '').toLowerCase();
+          if (status.includes('cancel')) return false;
+          return /^\d{4}-\d{2}-\d{2}$/.test(String((appointment && appointment.date) || '').trim());
+        })
+        .sort((a, b) => {
+          const aKey = `${String(a.date || '')} ${String(a.time || '')}`;
+          const bKey = `${String(b.date || '')} ${String(b.time || '')}`;
+          return aKey.localeCompare(bKey);
+        });
+
+      let inserted = 0;
+      let updated = 0;
+      let removed = 0;
+      let unchanged = 0;
+      const activeAppointmentIds = new Set();
+
+      for (const appointment of validAppointments) {
+        const payload = this.buildGoogleCalendarEventPayload(appointment);
+        if (!payload) continue;
+
+        activeAppointmentIds.add(payload.appointmentId);
+        const existing = managedByAppointmentId.get(payload.appointmentId);
+
+        if (!existing) {
+          await window.gapi.client.calendar.events.insert({
+            calendarId: 'primary',
+            resource: payload.resource
+          });
+          inserted += 1;
+          continue;
+        }
+
+        const existingFingerprint = String(
+          (existing.extendedProperties
+            && existing.extendedProperties.private
+            && existing.extendedProperties.private.consultorioFingerprint) || ''
+        ).trim();
+
+        if (existingFingerprint === payload.fingerprint) {
+          unchanged += 1;
+          continue;
+        }
+
+        await window.gapi.client.calendar.events.patch({
+          calendarId: 'primary',
+          eventId: existing.id,
+          resource: payload.resource
+        });
+        updated += 1;
+      }
+
+      for (const event of managedEvents) {
+        const privateProps = event && event.extendedProperties && event.extendedProperties.private
+          ? event.extendedProperties.private
+          : {};
+        const apptId = String(privateProps.consultorioAppointmentId || '').trim();
+        if (!apptId || activeAppointmentIds.has(apptId)) continue;
+
+        await window.gapi.client.calendar.events.delete({
+          calendarId: 'primary',
+          eventId: event.id
+        });
+        removed += 1;
+      }
+
+      let importStats = null;
+      if (importFromGoogle) {
+        importStats = await this.importGoogleCalendarEventsToAppointments();
+      }
+
+      await this.listGoogleCalendarEvents();
+
+      const importLabel = importStats
+        ? ` | Importados: ${importStats.insertedAppointments} | Atualizados local: ${importStats.updatedAppointments}`
+        : '';
+
+      this.updateGoogleCalendarStatus('ok', `Agenda enviada. Inseridos: ${inserted} | Atualizados: ${updated} | Removidos: ${removed} | Sem mudança: ${unchanged}.${importLabel}`);
+      this.logSyncAudit('info', `Google Calendar sync: insert=${inserted}, update=${updated}, delete=${removed}, same=${unchanged}${importStats ? `, imported=${importStats.insertedAppointments}, localUpdated=${importStats.updatedAppointments}, clientsCreated=${importStats.createdClients}` : ''}.`);
+      if (showToast) {
+        if (importStats) {
+          this.showToast(`Google sincronizado. Agenda local importou ${importStats.insertedAppointments} novo(s) e atualizou ${importStats.updatedAppointments}.`, 'success');
+        } else {
+          this.showToast(`Agenda enviada ao Google Calendar (${inserted} novos, ${updated} atualizados).`, 'success');
+        }
+      }
+    } catch (err) {
+      const apiError = err && err.result && err.result.error ? err.result.error : null;
+      const message = String((apiError && apiError.message) || (err && err.message) || 'Erro desconhecido').trim();
+      const lowered = message.toLowerCase();
+
+      if (lowered.includes('insufficient authentication scopes') || lowered.includes('insufficient permissions')) {
+        this.googleCalendarAuthorized = false;
+        this.updateGoogleCalendarStatus('error', 'Permissão insuficiente para enviar eventos. Clique em Conectar Google Calendar e autorize novamente.');
+        this.showToast('Reautorize o Google Calendar para liberar escrita de eventos.', 'warning');
+        return;
+      }
+
+      this.updateGoogleCalendarStatus('error', `Falha ao enviar agenda: ${message}`);
+      this.showToast(`Falha ao enviar agenda ao Google Calendar: ${message}`, 'warning');
+      this.logSyncAudit('error', `Falha no sync do Google Calendar: ${message}`);
+    }
   }
 
   async waitForGoogleCalendarLibraries(timeoutMs = 10000) {
@@ -5607,7 +6330,7 @@ class ConsultorioApp {
       }
       this.updateGoogleCalendarStatus('ok', 'Google Calendar conectado e autorizado.');
       this.showToast('Google Calendar conectado com sucesso.', 'success');
-      void this.listGoogleCalendarEvents();
+      void this.syncAppointmentsToGoogleCalendar({ showToast: false });
     };
 
     if (!window.gapi || !window.gapi.client || typeof window.gapi.client.getToken !== 'function' || window.gapi.client.getToken() === null) {
@@ -6125,7 +6848,8 @@ class ConsultorioApp {
 
         if (item.name === 'clients') this.clients = remoteData;
         if (item.name === 'appointments') {
-          const filteredResult = this.filterRemoteAppointmentsByTombstones(remoteData);
+          const normalizedRemoteAppointments = this.normalizeAppointmentsCollection(remoteData, 'firebase-pull');
+          const filteredResult = this.filterRemoteAppointmentsByTombstones(normalizedRemoteAppointments);
           this.appointments = filteredResult.filtered;
           if (filteredResult.blockedIds.length) {
             this.logSyncAudit('warning', `Consultas bloqueadas no pull por tombstone local: ${filteredResult.blockedIds.join(', ')}.`);
@@ -6147,6 +6871,7 @@ class ConsultorioApp {
 
       this.applyStableDataOrdering();
       this.saveStore();
+      this.restoreAgendaFiltersForLoadedAppointments();
       this.render();
       this.rebuildFirebasePushShadowFromCurrentState();
       if (!silent) this.logSyncAudit('pull', 'Pull concluído e interface atualizada.');
@@ -9144,7 +9869,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260801-5', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260801-7', 'app-root')
       ]);
     }
   } catch (err) {
@@ -9152,6 +9877,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   window.app.initDOM();
+  await window.app.seedStoreFromBackupIfEmpty();
+  window.app.restoreAgendaFiltersForLoadedAppointments();
   window.app.updateFirebaseAuthStatus('offline', 'Auth Firebase: Desconectado');
   window.app.initEvents();
   window.app.render();
@@ -9163,7 +9890,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-32')
+    navigator.serviceWorker.register('./sw.js?v=20260801-36')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

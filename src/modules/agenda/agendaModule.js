@@ -1,4 +1,26 @@
 const agendaModule = {
+  scheduleGoogleCalendarAutoSync(app, reason = 'agenda-change') {
+    if (!app || typeof app !== 'object') return;
+    if (!app.googleCalendarAuthorized) return;
+    if (typeof app.syncAppointmentsToGoogleCalendar !== 'function') return;
+
+    const timerKey = '__googleCalendarAutoSyncTimerId';
+    if (app[timerKey]) {
+      window.clearTimeout(app[timerKey]);
+      app[timerKey] = null;
+    }
+
+    app[timerKey] = window.setTimeout(() => {
+      app[timerKey] = null;
+      void app.syncAppointmentsToGoogleCalendar({ showToast: false, importFromGoogle: false }).catch((err) => {
+        if (typeof app.logSyncAudit === 'function') {
+          const message = String((err && err.message) || err || 'erro desconhecido');
+          app.logSyncAudit('warning', `Google Calendar auto-sync falhou (${reason}): ${message}`);
+        }
+      });
+    }, 700);
+  },
+
   init(app) {
     return this;
   },
@@ -40,6 +62,7 @@ const agendaModule = {
     app.saveData();
     app.render();
     app.closeAppointmentModal();
+    this.scheduleGoogleCalendarAutoSync(app, existing ? 'appointment-update' : 'appointment-create');
   },
 
   async deleteAppointment(app, appointmentId) {
@@ -69,6 +92,7 @@ const agendaModule = {
     }
     app.render();
     app.showToast('Consulta excluída com sucesso.', 'success');
+    this.scheduleGoogleCalendarAutoSync(app, 'appointment-delete');
 
     window.setTimeout(() => {
       const revived = app.appointments.some((a) => String(a.id || '') === String(appointmentId || ''));

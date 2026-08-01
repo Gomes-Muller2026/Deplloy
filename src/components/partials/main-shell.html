@@ -603,7 +603,7 @@
             <div class="card" style="margin-top:1rem;">
               <div class="card-header"><h3><i data-lucide="calendar-heart"></i> Google Calendar</h3></div>
               <div class="card-body">
-                <p>Use um Client ID OAuth do tipo Web com origem JavaScript autorizada (por exemplo http://127.0.0.1:8000 ou https://...). Não cole o client_secret no navegador.</p>
+                <p>Use um Client ID OAuth do tipo Web com origem JavaScript autorizada (por exemplo http://127.0.0.1:8000 ou https://...).</p>
                 <div class="form-group">
                   <label for="cfg-google-calendar-client-id">Google Client ID</label>
                   <input type="text" id="cfg-google-calendar-client-id" class="form-control" placeholder="xxx.apps.googleusercontent.com">
@@ -611,7 +611,8 @@
                 <div class="config-actions">
                   <button class="btn btn-primary" id="btn-save-google-calendar">Salvar Client ID</button>
                   <button class="btn btn-secondary" id="btn-connect-google-calendar">Conectar Google Calendar</button>
-                  <button class="btn btn-secondary" id="btn-list-google-calendar-events">Atualizar Eventos</button>
+                  <button class="btn btn-secondary" id="btn-list-google-calendar-events">Enviar Agenda + Atualizar</button>
+                  <button class="btn btn-secondary" id="btn-import-google-calendar-events">Importar Google para Agenda</button>
                   <button class="btn btn-secondary" id="btn-disconnect-google-calendar">Desconectar</button>
                 </div>
                 <div id="google-calendar-status" class="firebase-validation-panel" style="margin-top:0.9rem;">

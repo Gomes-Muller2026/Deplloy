@@ -585,6 +585,20 @@ img {
   flex-shrink: 0;
 }
 
+.header-client-pill {
+  cursor: pointer;
+  font-family: inherit;
+  border-color: rgba(167, 139, 250, 0.38);
+  background: linear-gradient(145deg, rgba(167, 139, 250, 0.2), rgba(15, 23, 42, 0.76));
+  color: #ede9fe;
+}
+
+.header-client-pill:hover,
+.header-client-pill:focus-visible {
+  border-color: rgba(196, 181, 253, 0.72);
+  outline: none;
+}
+
 #header-current-user-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1639,6 +1653,15 @@ input[type="date"]:focus {
 .card-amber::after { background: radial-gradient(circle, rgba(251,191,36,0.9), transparent 65%); }
 .card-amber .stat-icon { background: rgba(245,158,11,0.24); color: #fcd34d; }
 
+.card-red {
+  background: linear-gradient(145deg,
+    rgba(248, 113, 113, 0.38) 0%,
+    rgba(127, 29, 29, 0.26) 55%,
+    rgba(7, 17, 31, 0.62) 100%);
+}
+.card-red::after { background: radial-gradient(circle, rgba(248,113,113,0.9), transparent 65%); }
+.card-red .stat-icon { background: rgba(239,68,68,0.22); color: #fca5a5; }
+
 .card-purple {
   background: linear-gradient(145deg,
     rgba(167, 139, 250, 0.38) 0%,
@@ -2524,10 +2547,16 @@ input[type="date"]:focus {
 }
 
 .agenda-calendar-card {
-  max-height: calc(100vh - 290px);
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   overflow-x: auto;
   border-radius: 16px;
+}
+
+#tab-agenda .agenda-calendar-card {
+  max-height: none;
+  overflow-y: visible;
+  overflow-x: auto;
 }
 
 .agenda-calendar-grid {

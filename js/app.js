@@ -509,6 +509,7 @@ class ConsultorioApp {
     this.dashboardCardByTab = {
       agenda: 'dash-card-consultas',
       financeiro: 'dash-card-resultado',
+      despesas: 'dash-card-despesas',
       clientes: 'dash-card-clientes'
     };
     this.whatsAppConfirmTemplate = DEFAULT_WHATSAPP_CONFIRM_TEMPLATE;
@@ -525,6 +526,8 @@ class ConsultorioApp {
     this.selectedClientReportIds = new Set();
     this.clientSortField = 'registrationNumber';
     this.clientSortDirection = 'asc';
+    this.financeSortField = 'latestDate';
+    this.financeSortDirection = 'desc';
     this.selectedFinanceReportClientIds = new Set();
     this.lastFinanceiroRows = [];
     this.reminderIntervalId = null;
@@ -4722,6 +4725,7 @@ class ConsultorioApp {
         'dash-card-recebido': 'financeiro',
         'dash-card-pendente': 'financeiro',
         'dash-card-resultado': 'financeiro',
+        'dash-card-despesas': 'despesas',
         'dash-card-clientes': 'clientes'
       };
       return map[cardId] || null;
@@ -5332,12 +5336,18 @@ class ConsultorioApp {
       });
       agendaStart.addEventListener('blur', () => {
         const iso = this.normalizeAgendaDateToIso(agendaStart.value);
-        if (iso) agendaStart.value = iso;
+        if (iso) {
+          agendaStart.value = iso;
+          if (this.agendaViewMode === 'list' && agendaEnd) agendaEnd.value = iso;
+        }
         this.renderAgendaTable();
       });
       agendaStart.addEventListener('change', () => {
         const iso = this.normalizeAgendaDateToIso(agendaStart.value);
-        if (iso) agendaStart.value = iso;
+        if (iso) {
+          agendaStart.value = iso;
+          if (this.agendaViewMode === 'list' && agendaEnd) agendaEnd.value = iso;
+        }
         this.renderAgendaTable();
       });
     }
@@ -5531,6 +5541,7 @@ class ConsultorioApp {
       'dash-card-recebido': 'financeiro',
       'dash-card-pendente': 'financeiro',
       'dash-card-resultado': 'financeiro',
+      'dash-card-despesas': 'despesas',
       'dash-card-clientes': 'clientes'
     };
 
@@ -8160,11 +8171,11 @@ class ConsultorioApp {
     const todayApps = this.appointments.filter((a) => a.date === today);
     const doneToday = todayApps.filter((a) => String(a.status || '').toLowerCase() === 'concluido').length;
 
-    const received = this.appointments.reduce((sum, a) => sum + toNumber(a.amountPaid), 0);
     const periodAppointments = this.filterItemsByTopRange(this.appointments, 'date');
     const periodExpenses = this.filterItemsByTopRange(this.expenses, 'date');
-    const periodPendingAppointments = periodAppointments.filter((appointment) => toNumber(appointment.price) - toNumber(appointment.amountPaid) > 0);
-    const pending = periodPendingAppointments.reduce((sum, appointment) => sum + Math.max(0, toNumber(appointment.price) - toNumber(appointment.amountPaid)), 0);
+    const periodPendingAppointments = periodAppointments.filter((appointment) => this.getEffectiveAppointmentPrice(appointment) - toNumber(appointment.amountPaid) > 0);
+    const periodPendingClients = new Set(periodPendingAppointments.map((appointment) => this.getFinanceGroupingKey(appointment))).size;
+    const pending = periodPendingAppointments.reduce((sum, appointment) => sum + Math.max(0, this.getEffectiveAppointmentPrice(appointment) - toNumber(appointment.amountPaid)), 0);
     const periodReceived = periodAppointments.reduce((sum, appointment) => sum + toNumber(appointment.amountPaid), 0);
     const periodExpensesTotal = periodExpenses.reduce((sum, expense) => sum + toNumber(expense.amount), 0);
     const result = periodReceived - periodExpensesTotal;
@@ -8186,16 +8197,16 @@ class ConsultorioApp {
 
     setText('dash-consultas-hoje', todayApps.length);
     setText('dash-consultas-hoje-sub', `${doneToday} concluídas`);
-    setText('dash-received-month', formatCurrency(received));
+    setText('dash-received-month', formatCurrency(periodReceived));
     setText('dash-pending-total', formatCurrency(pending));
     setText('dash-pending-count', `${periodPendingAppointments.length} cobranças pendentes`);
+    setText('dash-expenses-total', formatCurrency(periodExpensesTotal));
+    setText('dash-expenses-count', `${periodExpenses.length} despesas no período`);
     setText('dash-result-total', formatCurrency(result));
-    setText('dash-result-sub', result > 0 ? `Superávit de ${formatCurrency(result)}` : (result < 0 ? `Déficit de ${formatCurrency(Math.abs(result))}` : 'Equilíbrio no período'));
-    setText('dash-total-clients', this.getPatientClients().length);
-    setText('dash-current-user', currentUserName);
-    setText('dash-current-user-sub', 'Usuário da sessão atual');
-    setText('header-current-user-name', `Olá, ${currentUserName}`);
-    setText('nav-pending-badge', this.appointments.filter((a) => toNumber(a.price) - toNumber(a.amountPaid) > 0).length);
+    setText('dash-result-sub', `Recebido ${formatCurrency(periodReceived)} / Despesas ${formatCurrency(periodExpensesTotal)}`);
+    setText('header-total-clients', this.getPatientClients().length);
+    setText('header-current-user-name', `Usuário: ${currentUserName}`);
+    setText('nav-pending-badge', periodPendingClients);
 
     const dashToday = document.getElementById('dash-today-list');
     if (dashToday) {
@@ -8236,7 +8247,7 @@ class ConsultorioApp {
               <strong>${safeText(a.clientName || '-')}</strong>
               <p>${formatDateBR(a.date)} - Em aberto</p>
             </div>
-            <span class="dash-amount-chip">${formatCurrency(Math.max(0, toNumber(a.price) - toNumber(a.amountPaid)))}</span>
+            <span class="dash-amount-chip">${formatCurrency(Math.max(0, this.getEffectiveAppointmentPrice(a) - toNumber(a.amountPaid)))}</span>
           </div>
         `).join('');
       }
@@ -8353,7 +8364,8 @@ class ConsultorioApp {
       const isReminderTarget = String(this.agendaAttentionAppointmentId || '') === String(a.id || '');
       const payment = String(a.paymentStatus || 'Pendente');
       const status = String(a.status || 'Agendado');
-      const pendingBalance = Math.max(0, toNumber(a.price) - toNumber(a.amountPaid));
+      const effectivePrice = this.getEffectiveAppointmentPrice(a);
+      const pendingBalance = Math.max(0, effectivePrice - toNumber(a.amountPaid));
       const paymentAction = pendingBalance > 0
         ? `app.openPaymentModal('${a.id}')`
         : `app.openAppointmentModal('${a.id}')`;
@@ -8371,7 +8383,7 @@ class ConsultorioApp {
           <td><strong>${formatDateBR(a.date)}</strong><br><span style="color:var(--text-muted);font-size:0.82rem;">${safeText(a.time || '--:--')} hs</span></td>
           <td>${safeText(a.clientName || '-')}</td>
           <td>${safeText(a.procedure || '-')}</td>
-          <td><strong>${formatCurrency(a.price || 0)}</strong></td>
+          <td><strong>${formatCurrency(effectivePrice)}</strong></td>
           <td><button type="button" class="badge ${statusClass}" onclick="app.cycleAppointmentStatus('${a.id}')" title="Clique para alterar status">${safeText(status)}</button></td>
           <td><button type="button" class="badge ${paymentClass}" onclick="${paymentAction}" title="${paymentTitle}">${safeText(payment)}</button></td>
           <td class="agenda-actions-cell">
@@ -8689,8 +8701,72 @@ class ConsultorioApp {
     return `appt:${String((appointment && appointment.id) || '').trim() || 'sem-cliente'}`;
   }
 
+  getEffectiveAppointmentPrice(appointment) {
+    const storedPrice = toNumber((appointment && appointment.price) || 0);
+    if (storedPrice > 0) return storedPrice;
+
+    const financeKey = this.getFinanceGroupingKey(appointment);
+    const knownAppointment = (this.appointments || [])
+      .filter((item) => item !== appointment && this.getFinanceGroupingKey(item) === financeKey && toNumber(item.price) > 0)
+      .sort((firstItem, secondItem) => `${String(secondItem.date || '')} ${String(secondItem.time || '')}`.localeCompare(`${String(firstItem.date || '')} ${String(firstItem.time || '')}`))[0];
+
+    return knownAppointment ? toNumber(knownAppointment.price) : storedPrice;
+  }
+
   getFinanceScopeAppointments() {
     return this.filterItemsByTopRange(this.appointments || [], 'date');
+  }
+
+  setFinanceSort(field) {
+    const allowedFields = ['total', 'pending', 'paid', 'status'];
+    if (!allowedFields.includes(field)) return;
+
+    if (this.financeSortField === field) {
+      this.financeSortDirection = this.financeSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.financeSortField = field;
+      this.financeSortDirection = 'asc';
+    }
+
+    this.renderFinanceiroTable();
+  }
+
+  sortFinanceRows(rows) {
+    const direction = this.financeSortDirection === 'desc' ? -1 : 1;
+    const field = this.financeSortField;
+
+    return rows.sort((firstRow, secondRow) => {
+      let comparison = 0;
+      if (['total', 'pending', 'paid'].includes(field)) {
+        comparison = toNumber(firstRow[field]) - toNumber(secondRow[field]);
+      } else if (field === 'status') {
+        const firstStatus = firstRow.pending > 0 ? (firstRow.paid > 0 ? 'Parcial' : 'Pendente') : 'Pago';
+        const secondStatus = secondRow.pending > 0 ? (secondRow.paid > 0 ? 'Parcial' : 'Pendente') : 'Pago';
+        comparison = firstStatus.localeCompare(secondStatus, 'pt-BR', { sensitivity: 'base' });
+      } else {
+        const firstLatest = `${String(firstRow.latestDate || '')} ${String(firstRow.latestTime || '')}`;
+        const secondLatest = `${String(secondRow.latestDate || '')} ${String(secondRow.latestTime || '')}`;
+        comparison = firstLatest.localeCompare(secondLatest);
+      }
+
+      if (comparison === 0) {
+        comparison = String(firstRow.clientName || '').localeCompare(String(secondRow.clientName || ''), 'pt-BR', { sensitivity: 'base', numeric: true });
+      }
+      return comparison * direction;
+    });
+  }
+
+  updateFinanceSortHeaders() {
+    document.querySelectorAll('[data-finance-sort]').forEach((button) => {
+      const field = button.getAttribute('data-finance-sort');
+      const isActive = field === this.financeSortField;
+      const icon = isActive && this.financeSortDirection === 'desc' ? 'arrow-down' : 'arrow-up';
+      const header = button.closest('th');
+
+      button.classList.toggle('is-active', isActive);
+      button.innerHTML = `<span>${safeText(button.getAttribute('data-sort-label') || '')}</span><i data-lucide="${icon}"></i>`;
+      if (header) header.setAttribute('aria-sort', isActive ? (this.financeSortDirection === 'asc' ? 'ascending' : 'descending') : 'none');
+    });
   }
 
   renderFinanceiroTable() {
@@ -8725,14 +8801,15 @@ class ConsultorioApp {
       const visibleRecent = recentItems
         .filter((a) => !search || String(a.clientName || '').toLowerCase().includes(search) || String(a.procedure || '').toLowerCase().includes(search))
         .filter((a) => {
-          if (this.financeViewFilter === 'pending') return Math.max(0, toNumber(a.price) - toNumber(a.amountPaid)) > 0;
+          if (this.financeViewFilter === 'pending') return Math.max(0, this.getEffectiveAppointmentPrice(a) - toNumber(a.amountPaid)) > 0;
           if (this.financeViewFilter === 'paid') return toNumber(a.amountPaid) > 0;
           return true;
         })
         .slice(0, this.financeViewMode === 'consulta' ? recentItems.length : 6);
 
       recentContainer.innerHTML = visibleRecent.length ? visibleRecent.map((appt) => {
-        const pending = Math.max(0, toNumber(appt.price) - toNumber(appt.amountPaid));
+        const effectivePrice = this.getEffectiveAppointmentPrice(appt);
+        const pending = Math.max(0, effectivePrice - toNumber(appt.amountPaid));
         const paymentStatus = String(appt.paymentStatus || (pending > 0 ? (toNumber(appt.amountPaid) > 0 ? 'Parcial' : 'Pendente') : 'Pago'));
         const action = pending > 0 ? `app.openPaymentModal('${safeText(appt.id || '')}')` : `app.openAppointmentModal('${safeText(appt.id || '')}')`;
         return `
@@ -8743,7 +8820,7 @@ class ConsultorioApp {
             </div>
             <div class="finance-recent-meta">
               <span>${safeText(formatDateBR(appt.date || ''))} ${safeText(appt.time || '--:--')}</span>
-              <span>${safeText(formatCurrency(appt.price || 0))}</span>
+              <span>${safeText(formatCurrency(effectivePrice))}</span>
               <span>${safeText(paymentStatus)}</span>
             </div>
           </button>
@@ -8774,10 +8851,11 @@ class ConsultorioApp {
         row.clientName = a.clientName || row.clientName;
         row.clientCpf = String(a.clientCpf || row.clientCpf || '').trim();
       }
+      const effectivePrice = this.getEffectiveAppointmentPrice(a);
       grouped[key].qty += 1;
-      grouped[key].total += toNumber(a.price);
+      grouped[key].total += effectivePrice;
       grouped[key].paid += toNumber(a.amountPaid);
-      grouped[key].pending += Math.max(0, toNumber(a.price) - toNumber(a.amountPaid));
+      grouped[key].pending += Math.max(0, effectivePrice - toNumber(a.amountPaid));
     });
 
     let rows = Object.keys(grouped).map((k) => grouped[k]);
@@ -8791,12 +8869,8 @@ class ConsultorioApp {
       rows = rows.filter((r) => r.paid > 0);
     }
 
-    rows.sort((a, b) => {
-      const aLatest = `${String(a.latestDate || '')} ${String(a.latestTime || '')}`;
-      const bLatest = `${String(b.latestDate || '')} ${String(b.latestTime || '')}`;
-      if (aLatest !== bLatest) return bLatest.localeCompare(aLatest);
-      return b.pending - a.pending;
-    });
+    this.sortFinanceRows(rows);
+    this.updateFinanceSortHeaders();
     this.lastFinanceiroRows = rows.slice();
 
     if (!rows.length) {
@@ -8951,7 +9025,7 @@ class ConsultorioApp {
         .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
 
       appointmentDetails.forEach((appt) => {
-        const price = toNumber(appt.price);
+        const price = this.getEffectiveAppointmentPrice(appt);
         const paid = toNumber(appt.amountPaid);
         const open = Math.max(0, price - paid);
         lines.push(`  • ${formatDateBR(appt.date)} ${appt.time || ''} | ${appt.procedure || '-'} | Total: ${formatCurrency(price)} | Pago: ${formatCurrency(paid)} | Aberto: ${formatCurrency(open)} | ${appt.status || '-'}`);
@@ -9014,7 +9088,7 @@ class ConsultorioApp {
 
     const pendingMatches = this.getFinanceScopeAppointments()
       .filter((a) => this.getFinanceGroupingKey(a) === key)
-      .filter((a) => Math.max(0, toNumber(a.price) - toNumber(a.amountPaid)) > 0)
+      .filter((a) => Math.max(0, this.getEffectiveAppointmentPrice(a) - toNumber(a.amountPaid)) > 0)
       .sort((a, b) => `${b.date || ''} ${b.time || ''}`.localeCompare(`${a.date || ''} ${a.time || ''}`));
 
     if (!pendingMatches.length) {
@@ -9659,7 +9733,7 @@ class ConsultorioApp {
         set('appt-date', this.formatDobForInput(a.date));
         set('appt-time', a.time);
         set('appt-procedure', a.procedure);
-        set('appt-price', a.price);
+        set('appt-price', this.getEffectiveAppointmentPrice(a));
         set('appt-payment-method', a.paymentMethod || 'Pix');
         set('appt-status', a.status || 'Agendado');
         set('appt-payment-status', a.paymentStatus || 'Pendente');
@@ -9701,7 +9775,7 @@ class ConsultorioApp {
     setText('pay-date-time', `${formatDateBR(appt.date)} às ${appt.time || '--:--'}`);
     setText('pay-procedure', appt.procedure || '-');
 
-    const total = toNumber(appt.price);
+    const total = this.getEffectiveAppointmentPrice(appt);
     const paid = toNumber(appt.amountPaid);
     const balance = Math.max(0, total - paid);
     setText('pay-total', formatCurrency(total));
@@ -9754,7 +9828,8 @@ class ConsultorioApp {
     const amountLegacyField = document.getElementById('pay-amount-input');
     const amountNow = toNumber((amountNowField || amountLegacyField || {}).value);
     const method = String((document.getElementById('pay-method') || {}).value || appt.paymentMethod || 'Pix');
-    const total = toNumber(appt.price);
+    const total = this.getEffectiveAppointmentPrice(appt);
+    if (toNumber(appt.price) <= 0 && total > 0) appt.price = total;
     const currentPaid = toNumber(appt.amountPaid);
     const balance = Math.max(0, total - currentPaid);
 
@@ -9988,7 +10063,7 @@ class ConsultorioApp {
 
   generateReceitasReport() {
     const rangeAppointments = this.filterItemsByTopRange(this.appointments, 'date');
-    const total = rangeAppointments.reduce((sum, a) => sum + toNumber(a.price), 0);
+    const total = rangeAppointments.reduce((sum, a) => sum + this.getEffectiveAppointmentPrice(a), 0);
     const paid = rangeAppointments.reduce((sum, a) => sum + toNumber(a.amountPaid), 0);
     const pending = Math.max(0, total - paid);
     const lines = [
@@ -10008,9 +10083,10 @@ class ConsultorioApp {
     rangeAppointments.forEach((a) => {
       const key = a.clientId || 'sem-cliente';
       grouped[key] = grouped[key] || { name: a.clientName || 'Sem cliente', total: 0, paid: 0, pending: 0 };
-      grouped[key].total += toNumber(a.price);
+      const effectivePrice = this.getEffectiveAppointmentPrice(a);
+      grouped[key].total += effectivePrice;
       grouped[key].paid += toNumber(a.amountPaid);
-      grouped[key].pending += Math.max(0, toNumber(a.price) - toNumber(a.amountPaid));
+      grouped[key].pending += Math.max(0, effectivePrice - toNumber(a.amountPaid));
     });
 
     const lines = ['RELATÓRIO FINANCEIRO', ''];

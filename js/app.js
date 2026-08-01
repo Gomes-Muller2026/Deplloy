@@ -2508,7 +2508,7 @@ class ConsultorioApp {
       : clientName.toLowerCase() === resolvedClientName.toLowerCase();
     const procedure = String((appointment && appointment.procedure) || 'Consulta').trim() || 'Consulta';
     const date = formatDateBR((appointment && appointment.date) || '');
-    const total = toNumber((appointment && appointment.price) || 0);
+    const total = this.getEffectiveAppointmentPrice(appointment);
     const paidBefore = toNumber((appointment && appointment.amountPaid) || 0);
     const paidNow = Math.max(0, toNumber(amountNow || 0));
     const paidAfter = Math.min(total, paidBefore + paidNow);
@@ -2552,7 +2552,7 @@ class ConsultorioApp {
     const date = formatDateBR((appointment && appointment.date) || '');
     const time = String((appointment && appointment.time) || '--:--').trim() || '--:--';
     const paymentMethod = String((document.getElementById('pay-method') || {}).value || appointment.paymentMethod || 'Pix');
-    const total = toNumber((appointment && appointment.price) || 0);
+    const total = this.getEffectiveAppointmentPrice(appointment);
     const paidBefore = toNumber((appointment && appointment.amountPaid) || 0);
     const paidNow = Math.max(0, toNumber(amountNow || 0));
     const paidAfter = Math.min(total, paidBefore + paidNow);
@@ -2622,17 +2622,65 @@ class ConsultorioApp {
 
   buildPaymentReceiptDocument(appointment, amountNow = 0) {
     const vars = this.buildPaymentReceiptVars(appointment, amountNow);
-    return this.applyTemplateVars(this.getPaymentReceiptTemplate(), vars).trim();
+    const template = this.getPaymentReceiptTemplate();
+    const receipt = this.applyTemplateVars(template, vars).trim();
+    const hasPaymentSummary = template.includes('{{total_pago}}') && template.includes('{{saldo_aberto}}');
+    if (hasPaymentSummary || toNumber(amountNow) <= 0) return receipt;
+
+    return [
+      receipt,
+      '',
+      'RESUMO DO PAGAMENTO',
+      `Valor recebido agora: ${vars.valor_pago_agora}`,
+      `Total pago: ${vars.total_pago}`,
+      `Saldo em aberto: ${vars.saldo_aberto}`
+    ].join('\n');
   }
 
   fillPaymentAmountFromBalance() {
-    const balanceEl = document.getElementById('pay-balance');
+    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
+    const appointment = this.appointments.find((item) => item.id === id);
     const input = document.getElementById('pay-amount-now');
-    if (input && balanceEl) {
-      const raw = String(balanceEl.textContent || '').replace(/[^\d,\.]/g, '').replace(',', '.');
-      input.value = parseFloat(raw) || 0;
+    if (input && appointment) {
+      const total = this.getEffectiveAppointmentPrice(appointment);
+      input.value = Math.max(0, total - toNumber(appointment.amountPaid));
     }
     this.generatePaymentReceipt();
+  }
+
+  updatePaymentSummaryPreview() {
+    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
+    const appointment = this.appointments.find((item) => item.id === id);
+    if (!appointment) return;
+
+    const total = this.getEffectiveAppointmentPrice(appointment);
+    const paidBefore = Math.min(total, Math.max(0, toNumber(appointment.amountPaid)));
+    const balanceBefore = Math.max(0, total - paidBefore);
+    const amountNow = Math.min(balanceBefore, Math.max(0, toNumber((document.getElementById('pay-amount-now') || {}).value || 0)));
+    const paidAfter = paidBefore + amountNow;
+    const paidEl = document.getElementById('pay-paid');
+    const balanceEl = document.getElementById('pay-balance');
+
+    if (paidEl) paidEl.textContent = formatCurrency(paidAfter);
+    if (balanceEl) balanceEl.textContent = formatCurrency(Math.max(0, total - paidAfter));
+  }
+
+  setPaymentEntryMode(mode) {
+    const normalizedMode = mode === 'full' ? 'full' : 'partial';
+    const partialButton = document.getElementById('btn-pay-partial');
+    const fullButton = document.getElementById('btn-pay-quitar');
+    const amountInput = document.getElementById('pay-amount-now');
+
+    if (partialButton) partialButton.classList.toggle('is-active', normalizedMode === 'partial');
+    if (fullButton) fullButton.classList.toggle('is-active', normalizedMode === 'full');
+
+    if (normalizedMode === 'full') {
+      this.fillPaymentAmountFromBalance();
+    } else if (amountInput) {
+      amountInput.value = '';
+      amountInput.focus();
+      this.generatePaymentReceipt();
+    }
   }
 
   normalizePaymentReceiptText(rawText) {
@@ -4755,12 +4803,7 @@ class ConsultorioApp {
       if (paymentQuitarTrigger) {
         event.preventDefault();
         event.stopPropagation();
-        const balanceEl = document.getElementById('pay-balance');
-        const input = document.getElementById('pay-amount-now');
-        if (input && balanceEl) {
-          const raw = String(balanceEl.textContent || '').replace(/[^\d,\.]/g, '').replace(',', '.');
-          input.value = parseFloat(raw) || 0;
-        }
+        this.setPaymentEntryMode('full');
         return;
       }
 
@@ -5231,10 +5274,8 @@ class ConsultorioApp {
         this.savePaymentForm();
       });
     }
-    const btnPayQuitar = document.getElementById('btn-pay-quitar');
-    if (btnPayQuitar) btnPayQuitar.addEventListener('click', () => {
-      this.fillPaymentAmountFromBalance();
-    });
+    const amountNowInput = document.getElementById('pay-amount-now');
+    if (amountNowInput) amountNowInput.addEventListener('input', () => this.generatePaymentReceipt());
 
     const btnGeneratePaymentReceipt = document.getElementById('btn-generate-payment-receipt');
     if (btnGeneratePaymentReceipt) {
@@ -7895,6 +7936,7 @@ class ConsultorioApp {
     }
 
     const amountNow = toNumber((document.getElementById('pay-amount-now') || {}).value || 0);
+    this.updatePaymentSummaryPreview();
     const receiptText = this.buildPaymentReceiptText(appt, amountNow);
     const receiptEl = document.getElementById('pay-receipt-text');
     if (receiptEl) receiptEl.value = receiptText;
@@ -7963,6 +8005,16 @@ class ConsultorioApp {
     }
 
     const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
+    const client = this.getClientByAppointment(appt);
+    const phone = this.normalizeWhatsAppPhone((client && client.phone) || '');
+    if (!phone) {
+      this.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
+      return;
+    }
+
+    const canTryNativeShare = typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
+    const whatsappWindow = canTryNativeShare ? null : window.open('about:blank', '_blank');
+    if (whatsappWindow) whatsappWindow.opener = null;
 
     try {
       const shared = await this.sharePaymentReceiptPdf(appt, content);
@@ -7971,15 +8023,23 @@ class ConsultorioApp {
         return;
       }
 
-      const opened = this.openReceiptWhatsAppChat(appt, 'Segue o recibo em PDF. O arquivo foi baixado no aparelho para anexar no WhatsApp.');
+      const opened = this.openReceiptWhatsAppChat(
+        appt,
+        'Segue o recibo em PDF. O arquivo foi baixado no aparelho para anexar no WhatsApp.',
+        whatsappWindow
+      );
       if (opened) {
         this.showToast('Conversa do WhatsApp aberta. Anexe o PDF baixado para concluir o envio.', 'info');
       } else {
-        this.showToast('PDF do recibo baixado para envio no WhatsApp.', 'info');
+        this.showToast('PDF baixado. Permita pop-ups para abrir a conversa do WhatsApp.', 'warning');
       }
     } catch (err) {
       console.log('Falha ao compartilhar PDF do recibo:', err);
-      const opened = this.openReceiptWhatsAppChat(appt, 'Não foi possível compartilhar o PDF automaticamente. Segue mensagem para envio do recibo.');
+      const opened = this.openReceiptWhatsAppChat(
+        appt,
+        'Não foi possível compartilhar o PDF automaticamente. Segue mensagem para envio do recibo.',
+        whatsappWindow
+      );
       if (opened) {
         this.showToast('Conversa do WhatsApp aberta. Envie o PDF manualmente.', 'warning');
       } else {
@@ -8022,7 +8082,7 @@ class ConsultorioApp {
     }
   }
 
-  openReceiptWhatsAppChat(appointment, customMessage = '') {
+  openReceiptWhatsAppChat(appointment, customMessage = '', targetWindow = null) {
     const client = this.getClientByAppointment(appointment);
     const phone = this.normalizeWhatsAppPhone((client && client.phone) || '');
     if (!phone) return false;
@@ -8038,8 +8098,14 @@ class ConsultorioApp {
     ].join('\n');
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(defaultMessage)}`;
-    window.open(url, '_blank', 'noopener');
-    return true;
+    if (targetWindow && !targetWindow.closed) {
+      targetWindow.location.replace(url);
+      return true;
+    }
+
+    const openedWindow = window.open(url, '_blank');
+    if (openedWindow) openedWindow.opener = null;
+    return Boolean(openedWindow);
   }
 
   printPaymentReceipt() {
@@ -9075,7 +9141,6 @@ class ConsultorioApp {
       return;
     }
 
-    this.switchTab('agenda');
     this.openAppointmentModal(matches[0].id);
   }
 
@@ -9786,7 +9851,7 @@ class ConsultorioApp {
     const methodEl = document.getElementById('pay-method');
     if (methodEl) methodEl.value = appt.paymentMethod || 'Pix';
     const amountNowEl = document.getElementById('pay-amount-now');
-    if (amountNowEl) amountNowEl.value = balance > 0 ? balance : '';
+    if (amountNowEl) amountNowEl.value = '';
     const amountInputLegacy = document.getElementById('pay-amount-input');
     if (amountInputLegacy) amountInputLegacy.value = paid;
 
@@ -9795,7 +9860,7 @@ class ConsultorioApp {
       statusSelect.value = balance <= 0 ? 'Pago' : (paid > 0 ? 'Parcial' : 'Pendente');
     }
 
-    const previewAmount = balance > 0 ? balance : 0;
+    const previewAmount = 0;
     this.populatePaymentReceiptEditableFields(appt, previewAmount);
     const receiptDatePicker = document.getElementById('pay-receipt-date-picker');
     if (receiptDatePicker) receiptDatePicker.value = String(appt.date || '');
@@ -9807,6 +9872,7 @@ class ConsultorioApp {
     }
 
     this.togglePaymentReceiptProfessionalEditor(false);
+    this.setPaymentEntryMode('partial');
 
     modal.classList.add('active');
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
@@ -9870,6 +9936,7 @@ class ConsultorioApp {
     }
 
     const newPaid = currentPaid + amountNow;
+    this.generatePaymentReceipt();
     appt.amountPaid = newPaid;
     appt.paymentMethod = method;
     appt.paymentStatus = newPaid >= total ? 'Pago' : (newPaid > 0 ? 'Parcial' : 'Pendente');

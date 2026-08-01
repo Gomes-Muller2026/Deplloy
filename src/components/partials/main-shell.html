@@ -853,12 +853,19 @@
           <option value="Transferência">Transferência</option>
         </select>
       </div>
+        <div class="payment-mode-grid" aria-label="Tipo de pagamento">
+          <button type="button" class="payment-mode-card is-active" id="btn-pay-partial" onclick="app.setPaymentEntryMode('partial')">
+            <i data-lucide="circle-dollar-sign"></i>
+            <span><strong>Pagamento Parcial</strong><small>Registrar parte do saldo</small></span>
+          </button>
+          <button type="button" class="payment-mode-card" id="btn-pay-quitar" onclick="app.setPaymentEntryMode('full')">
+            <i data-lucide="badge-check"></i>
+            <span><strong>Quitar Total</strong><small>Registrar todo o saldo</small></span>
+          </button>
+        </div>
       <div class="form-group">
         <label for="pay-amount-now">Valor a registrar (R$)</label>
-        <div class="pay-input-row">
-          <input type="number" id="pay-amount-now" class="form-control" step="0.01" min="0" placeholder="0,00">
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-pay-quitar" onclick="app.fillPaymentAmountFromBalance()">Quitar total</button>
-        </div>
+          <input type="number" id="pay-amount-now" class="form-control" step="0.01" min="0" placeholder="Informe o valor parcial">
       </div>
 
       <div class="payment-receipt-card" id="payment-receipt-card">

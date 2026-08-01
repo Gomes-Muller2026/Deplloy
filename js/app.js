@@ -17,6 +17,7 @@ const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const FIREBASE_DEVICE_ID_STORAGE_KEY = 'consultorio_firebase_device_id';
 const FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY = 'consultorio_firebase_last_push_millis';
+const FIREBASE_FORCE_LONG_POLLING = true;
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
 const APP_RELEASE_VERSION = 'v31.07.2026-2';
 const LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY = 'consultorio_landscape_sidebar_collapsed';
@@ -482,6 +483,7 @@ class ConsultorioApp {
     this.firebaseCollectionRealtimeUnsubscribes = [];
     this.firebaseRealtimeSyncTimerId = null;
     this.firebaseRealtimeSyncDelayMs = 120;
+    this.firebaseRealtimeRecoverTimerId = null;
     this.firebasePushInFlight = false;
     this.firebasePushQueued = false;
     this.firebasePushRetryTimerId = null;
@@ -939,6 +941,9 @@ class ConsultorioApp {
       }, (err) => {
         console.log('Falha no listener de sincronização em tempo real:', err);
         this.logSyncAudit('error', `Falha no listener metadata: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
+        if (this.isRecoverableFirebaseNetworkError(err)) {
+          this.scheduleFirebaseRealtimeRecovery('metadata-listener');
+        }
       });
   }
 
@@ -1015,10 +1020,46 @@ class ConsultorioApp {
       }, (err) => {
         console.log(`Falha no listener da coleção ${collectionName}:`, err);
         this.logSyncAudit('error', `Falha no listener da coleção ${collectionName}: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
+        if (this.isRecoverableFirebaseNetworkError(err)) {
+          this.scheduleFirebaseRealtimeRecovery(`collection-${collectionName}`);
+        }
       });
 
       this.firebaseCollectionRealtimeUnsubscribes.push(unsubscribe);
     });
+  }
+
+  isRecoverableFirebaseNetworkError(err) {
+    const code = String((err && err.code) || '').toLowerCase();
+    const message = String((err && err.message) || err || '').toLowerCase();
+    return code.includes('unavailable')
+      || code.includes('aborted')
+      || code.includes('deadline-exceeded')
+      || message.includes('err_aborted')
+      || message.includes('quic')
+      || message.includes('network')
+      || message.includes('transport');
+  }
+
+  scheduleFirebaseRealtimeRecovery(reason = 'network') {
+    if (!this.firebaseConnected || !this.firebaseDb) return;
+    if (this.firebaseRealtimeRecoverTimerId) return;
+
+    this.logSyncAudit('warning', `Canal realtime instável (${reason}). Tentando recuperar...`);
+    this.firebaseRealtimeRecoverTimerId = window.setTimeout(async () => {
+      this.firebaseRealtimeRecoverTimerId = null;
+      if (!this.firebaseConnected || !this.firebaseDb) return;
+
+      try {
+        await this.syncDataWithFirebase({ skipDirtyPush: true, silent: true });
+        this.startFirebaseRealtimeSyncWatcher();
+        this.startFirebaseCollectionRealtimeWatchers();
+        this.logSyncAudit('realtime', 'Canal realtime recuperado automaticamente.');
+      } catch (err) {
+        const details = String((err && (err.code || err.message)) || 'erro desconhecido');
+        this.logSyncAudit('error', `Falha ao recuperar canal realtime: ${details}`);
+      }
+    }, 2200);
   }
 
   createWhatsAppTemplateId(prefix) {
@@ -3322,31 +3363,53 @@ class ConsultorioApp {
   }
 
   async forceAppUpdate() {
-    if (!('serviceWorker' in navigator)) {
-      this.showToast('Service Worker não suportado neste navegador.', 'warning');
-      return;
-    }
+    const reloadWithCacheBust = () => {
+      try {
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set('update', String(Date.now()));
+        window.location.replace(nextUrl.toString());
+      } catch (err) {
+        window.location.reload();
+      }
+    };
+
+    this.showToast('Forçando atualização completa do aplicativo...', 'info');
 
     try {
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (!registration) {
-        this.showToast('Atualização acionada. Recarregando...', 'info');
-        window.location.reload();
-        return;
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+
+        await Promise.all(registrations.map(async (registration) => {
+          try {
+            if (typeof registration.update === 'function') {
+              await registration.update();
+            }
+          } catch (updateErr) {
+            console.log('Falha ao atualizar registration do SW:', updateErr);
+          }
+
+          try {
+            if (registration.waiting) {
+              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          } catch (waitingErr) {
+            console.log('Falha ao sinalizar skipWaiting:', waitingErr);
+          }
+        }));
       }
 
-      await registration.update();
-
-      if (registration.waiting) {
-        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      if ('caches' in window) {
+        const names = await caches.keys();
+        await Promise.all(names.map((name) => caches.delete(name)));
       }
 
-      this.showToast('Buscando versão mais recente do app...', 'info');
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 450);
+      this.logSyncAudit('info', 'Atualização forçada executada (cache limpo e reload com cache-bust).');
+      window.setTimeout(reloadWithCacheBust, 260);
     } catch (err) {
-      this.showToast('Não foi possível forçar atualização agora.', 'warning');
+      console.log('Falha no fluxo de atualização forçada:', err);
+      this.logSyncAudit('error', `Falha em atualização forçada: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
+      this.showToast('Atualização com limpeza parcial. Recarregando página...', 'warning');
+      window.setTimeout(reloadWithCacheBust, 260);
     }
   }
 
@@ -4969,6 +5032,11 @@ class ConsultorioApp {
 
     this.stopFirebaseCollectionRealtimeWatchers();
 
+    if (this.firebaseRealtimeRecoverTimerId) {
+      window.clearTimeout(this.firebaseRealtimeRecoverTimerId);
+      this.firebaseRealtimeRecoverTimerId = null;
+    }
+
     if (this.firebasePushRetryTimerId) {
       window.clearTimeout(this.firebasePushRetryTimerId);
       this.firebasePushRetryTimerId = null;
@@ -5041,6 +5109,18 @@ class ConsultorioApp {
       }
 
       this.firebaseDb = window.firebase.firestore(this.firebaseApp);
+      try {
+        if (FIREBASE_FORCE_LONG_POLLING && this.firebaseDb && typeof this.firebaseDb.settings === 'function') {
+          this.firebaseDb.settings({
+            experimentalForceLongPolling: true,
+            useFetchStreams: false,
+            ignoreUndefinedProperties: true
+          });
+          this.logSyncAudit('info', 'Firestore em long-polling para maior estabilidade de sync.');
+        }
+      } catch (settingsErr) {
+        console.log('Falha ao aplicar settings do Firestore:', settingsErr);
+      }
       this.firebaseConnected = true;
       this.logSyncAudit('info', 'Firebase conectado; iniciando listeners e pull inicial.');
       this.setFirebaseStatus(true, 'Conectado ao Firebase', 'live');
@@ -7952,7 +8032,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-7')
+    navigator.serviceWorker.register('./sw.js?v=20260801-9')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

@@ -21,6 +21,11 @@ const FIREBASE_PUSH_SHADOW_STORAGE_KEY = 'consultorio_firebase_push_shadow';
 const GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY = 'consultorio_google_calendar_client_id';
 const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 const GOOGLE_CALENDAR_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+const GOOGLE_CALENDAR_ALLOWED_ORIGINS = [
+  'http://127.0.0.1:8000',
+  'http://localhost:8000',
+  'https://gomes-muller2026.github.io'
+];
 const FIREBASE_FORCE_LONG_POLLING = true;
 const LOCAL_BACKUP_DATA_URL = './data/backup_consultorio_2026-07-26%20(1).json';
 const APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY = 'consultorio_deleted_appointment_tombstones';
@@ -511,6 +516,9 @@ class ConsultorioApp {
     this.googleCalendarAuthorized = false;
     this.googleCalendarAccessToken = '';
     this.googleCalendarApiReady = false;
+    this.googleCalendarAutoSyncIntervalId = null;
+    this.googleCalendarAutoSyncEveryMs = 6 * 60 * 60 * 1000;
+    this.googleCalendarAutoSyncInFlight = false;
     this.syncAuditLogLimit = 18;
     this.syncAuditEvents = [];
     this.deletedAppointmentTombstones = {};
@@ -5713,6 +5721,66 @@ class ConsultorioApp {
     }
 
     summary.textContent = message || 'Google Calendar desconectado.';
+    this.updateGoogleCalendarOriginHint();
+  }
+
+  updateGoogleCalendarOriginHint() {
+    const hint = document.getElementById('google-calendar-origin-hint');
+    if (!hint) return;
+
+    const origin = window.location && window.location.origin ? window.location.origin : 'origem desconhecida';
+    const path = window.location && window.location.pathname ? window.location.pathname : '';
+    const isAllowed = GOOGLE_CALENDAR_ALLOWED_ORIGINS.includes(origin);
+    const suffix = path ? ` ${path}` : '';
+    hint.textContent = isAllowed
+      ? `Origem atual autorizada: ${origin}${suffix}`
+      : `Atenção: origem não autorizada no Google OAuth. Atual: ${origin}${suffix}`;
+    hint.style.color = isAllowed ? '' : '#f97316';
+    hint.style.fontWeight = isAllowed ? '' : '700';
+  }
+
+  clearGoogleCalendarAutoSyncSchedule() {
+    if (this.googleCalendarAutoSyncIntervalId) {
+      window.clearInterval(this.googleCalendarAutoSyncIntervalId);
+      this.googleCalendarAutoSyncIntervalId = null;
+    }
+    this.googleCalendarAutoSyncInFlight = false;
+  }
+
+  scheduleGoogleCalendarAutoSync() {
+    this.clearGoogleCalendarAutoSyncSchedule();
+
+    if (!this.googleCalendarAuthorized) return;
+    if (typeof this.syncAppointmentsToGoogleCalendar !== 'function') return;
+    if (typeof this.importGoogleCalendarIntoLocalAgenda !== 'function') return;
+
+    const runAutoSync = async () => {
+      if (!this.googleCalendarAuthorized) return;
+      if (this.googleCalendarAutoSyncInFlight) return;
+
+      this.googleCalendarAutoSyncInFlight = true;
+      try {
+        await this.syncAppointmentsToGoogleCalendar({ showToast: false, importFromGoogle: false });
+        if (!this.googleCalendarAuthorized) return;
+        await this.importGoogleCalendarIntoLocalAgenda({ showToast: false });
+        this.updateGoogleCalendarStatus('ok', 'Sincronização automática executada.');
+        this.logSyncAudit('info', 'Sincronização automática Google Calendar executada a cada 6h.');
+      } catch (err) {
+        const message = String((err && err.message) || err || 'erro desconhecido');
+        this.logSyncAudit('warning', `Falha na sincronização automática do Google Calendar: ${message}`);
+      } finally {
+        this.googleCalendarAutoSyncInFlight = false;
+      }
+    };
+
+    this.googleCalendarAutoSyncIntervalId = window.setInterval(() => {
+      void runAutoSync();
+    }, this.googleCalendarAutoSyncEveryMs);
+  }
+
+  isGoogleCalendarOriginAllowed() {
+    const origin = window.location && window.location.origin ? window.location.origin : '';
+    return GOOGLE_CALENDAR_ALLOWED_ORIGINS.includes(origin);
   }
 
   renderGoogleCalendarEventsList(events = []) {
@@ -6257,6 +6325,15 @@ class ConsultorioApp {
       return false;
     }
 
+    if (!this.isGoogleCalendarOriginAllowed()) {
+      const origin = window.location && window.location.origin ? window.location.origin : 'origem desconhecida';
+      this.updateGoogleCalendarStatus(
+        'error',
+        `Origem não autorizada para Google OAuth: ${origin}. Cadastre esta URL no Client ID do Google Cloud.`
+      );
+      return false;
+    }
+
     const input = document.getElementById('cfg-google-calendar-client-id');
     const clientId = String((input && input.value) || this.loadGoogleCalendarClientId() || '').trim();
     if (!clientId) {
@@ -6330,6 +6407,7 @@ class ConsultorioApp {
       }
       this.updateGoogleCalendarStatus('ok', 'Google Calendar conectado e autorizado.');
       this.showToast('Google Calendar conectado com sucesso.', 'success');
+      this.scheduleGoogleCalendarAutoSync();
       void this.syncAppointmentsToGoogleCalendar({ showToast: false });
     };
 
@@ -6359,6 +6437,7 @@ class ConsultorioApp {
 
     this.googleCalendarAuthorized = false;
     this.googleCalendarAccessToken = '';
+    this.clearGoogleCalendarAutoSyncSchedule();
     this.updateGoogleCalendarStatus(this.googleCalendarClientId ? 'ready' : 'offline', this.googleCalendarClientId
       ? 'Client ID salvo. Clique em Conectar para autorizar acesso ao calendário.'
       : 'Google Calendar desconectado.');
@@ -7286,6 +7365,8 @@ class ConsultorioApp {
     const panelText = document.getElementById('header-sync-note-text');
     if (!info) return;
 
+    this.updateFirebaseOriginHint();
+
     const shouldBlink = Boolean((options && options.highlight) || mode === 'live' || mode === 'remote');
     info.classList.remove('live', 'local', 'remote', 'cloud-sync-meta-pulse', 'cloud-sync-dot-blink');
     if (mode === 'live') info.classList.add('live');
@@ -7325,6 +7406,15 @@ class ConsultorioApp {
       void info.offsetWidth;
       info.classList.add('cloud-sync-dot-blink');
     }
+  }
+
+  updateFirebaseOriginHint() {
+    const hint = document.getElementById('firebase-origin-hint');
+    if (!hint) return;
+
+    const origin = window.location && window.location.origin ? window.location.origin : 'origem desconhecida';
+    const path = window.location && window.location.pathname ? window.location.pathname : '';
+    hint.textContent = `Origem atual: ${origin}${path ? ` ${path}` : ''}`;
   }
 
   syncTopDatesToAgendaFilters() {
@@ -9869,7 +9959,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260801-7', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260801-10', 'app-root')
       ]);
     }
   } catch (err) {

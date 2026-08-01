@@ -206,6 +206,18 @@ const getTodayStr = () => {
   return `${y}-${m}-${day}`;
 };
 
+const getCurrentMonthRange = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const monthLabel = String(month + 1).padStart(2, '0');
+  const lastDay = String(new Date(year, month + 1, 0).getDate()).padStart(2, '0');
+  return {
+    start: `${year}-${monthLabel}-01`,
+    end: `${year}-${monthLabel}-${lastDay}`
+  };
+};
+
 const parseIsoDate = (isoDate) => {
   if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate))) return null;
   const [y, m, d] = String(isoDate).split('-').map((v) => Number(v));
@@ -520,6 +532,8 @@ class ConsultorioApp {
     this.whatsAppSelectedBirthdayTemplateId = '';
     this.paymentReceiptTemplate = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
     this.paymentReceiptProfile = { ...DEFAULT_PAYMENT_RECEIPT_PROFILE };
+    this.paymentReceiptLogoDataUrl = '';
+    this.paymentReceiptLogoPromise = null;
     this.lastDashboardCardAction = '';
     this.lastDashboardCardActionAt = 0;
     this.lastAnamneseIndividualCepLookup = '';
@@ -711,8 +725,7 @@ class ConsultorioApp {
           .map((item) => String(item && item.date || '').trim())
           .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
           .sort();
-        const startDate = dates[0] || getTodayStr();
-        const endDate = dates[dates.length - 1] || startDate;
+        const { start: startDate, end: endDate } = getCurrentMonthRange();
         const topStart = document.getElementById('top-date-start');
         const topEnd = document.getElementById('top-date-end');
         const agendaStart = document.getElementById('agenda-filter-start');
@@ -746,6 +759,7 @@ class ConsultorioApp {
 
     const currentStart = this.normalizeAgendaDateToIso((agendaStart || {}).value || '');
     const currentEnd = this.normalizeAgendaDateToIso((agendaEnd || {}).value || '');
+    if (currentStart && currentEnd) return false;
     const visibleAppointments = this.appointments.filter((item) => {
       const date = String(item && item.date || '').trim();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
@@ -2712,7 +2726,72 @@ class ConsultorioApp {
       .replace(/\)/g, '\\)');
   }
 
+  async getPaymentReceiptLogoDataUrl() {
+    if (this.paymentReceiptLogoDataUrl) return this.paymentReceiptLogoDataUrl;
+    const embeddedLogo = [
+      '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAA8KCw0LCQ8NDA0REA8RFiUYFhQUFi0gIhslNS84NzQvNDM7QlVIOz9QPzM0SmRLUFdaX2BfOUdob2dcblVdX1v/',
+      '2wBDARARERYTFisYGCtbPTQ9W1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1v/wAARCAAgACADASIAAhEBAxEB/8QA',
+      'HwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkK',
+      'FhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXG',
+      'x8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAEC',
+      'AxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOE',
+      'hYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDmJpbtry4E',
+      'UszbGZjhjwAeTVi1l+6zXgeNo8yiSRlMZz0Ujv3FWY4ZrW/uvIjgmvYpC/lNu3hcZ+XBweDyOtRagI54pIbbbGyYuHiRSA/HJAPII9PrispVeaXKtu/9fgyl',
+      'GyuTKk13L5ImdIlhUxXHmFUAzyz+5549RVXUre5ti8kN4ZrYMFDi4Vm+pAPApJiVtLQGWMpBGrrC/PmsxJxj0x3qSys/MSdpYRBHK5RI1j3zMR1VM9AO7HpT',
+      'hJxV29P6/wCHBpMt6nqFwbpfJRnjnQhUiyuZB8rbscsRjpnuKr6ffO1xBbyGSZwW80z4OwAHO09Rx7/hVZL1Y7m4hmMnkPIx3RnDxt03L+HBHcVai010sZDp',
+      'rpeyTjazoQpjT02k5ye9YThCmnCSt2f/AAfL8Sk23dEELWwt7K8neQeSfK2xqCcqcg5PHQirzXUt1tewtrS7RQI9rIxkQE/xDPQk8kcVVtNKvFjlgu4DFBIM',
+      'l2YAIw6N1/D8ailvVtPmieN7vy/KM0Q2qF6fixHGatcspe67/kJ3S10P/9k='
+    ].join('');
+    this.paymentReceiptLogoDataUrl = `data:image/jpeg;base64,${embeddedLogo}`;
+    return this.paymentReceiptLogoDataUrl;
+  }
+
   async buildReceiptPdfBlob(title, content) {
+    if (window.jspdf && window.jspdf.jsPDF) {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      let logoAdded = false;
+      try {
+        const logoDataUrl = await this.getPaymentReceiptLogoDataUrl();
+        if (logoDataUrl) {
+          pdf.addImage(logoDataUrl, 'JPEG', 28, 28, 36, 36, undefined, 'FAST');
+          logoAdded = true;
+        }
+      } catch (err) {
+        console.log('Logo ignorada na geração do PDF:', err);
+      }
+      const headerX = logoAdded ? 76 : 28;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(15);
+      pdf.text(this.sanitizeReceiptPdfLine(title || 'Recibo de Pagamento'), headerX, 43);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.text(this.sanitizeReceiptPdfLine(`Emitido em: ${new Date().toLocaleString('pt-BR')}`), headerX, 58);
+      pdf.setDrawColor(209, 213, 219);
+      pdf.line(28, 78, 567, 78);
+
+      pdf.setFontSize(10.5);
+      const contentLines = [];
+      String(content || '').replace(/\r/g, '').split('\n').forEach((line) => {
+        if (!line) {
+          contentLines.push('');
+          return;
+        }
+        contentLines.push(...pdf.splitTextToSize(this.sanitizeReceiptPdfLine(line), 539));
+      });
+
+      let y = 112;
+      contentLines.forEach((line) => {
+        if (y > 798) {
+          pdf.addPage();
+          y = 42;
+        }
+        if (line) pdf.text(line, 28, y);
+        y += 15;
+      });
+      return pdf.output('blob');
+    }
+
     const pageWidth = 595.28;
     const pageHeight = 841.89;
     const marginLeft = 42;
@@ -2726,7 +2805,15 @@ class ConsultorioApp {
 
     const loadLogoAsJpegBytes = () => new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeoutId);
+        resolve(value);
+      };
+      const timeoutId = window.setTimeout(() => finish(null), 1500);
+      if (window.location.protocol !== 'file:') img.crossOrigin = 'anonymous';
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
@@ -2735,7 +2822,7 @@ class ConsultorioApp {
           canvas.height = size;
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            resolve(null);
+            finish(null);
             return;
           }
           ctx.fillStyle = '#ffffff';
@@ -2745,12 +2832,12 @@ class ConsultorioApp {
           ctx.drawImage(img, 0, 0, size, size);
           const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
           const base64 = String(dataUrl.split(',')[1] || '');
-          resolve(base64 ? Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)) : null);
+          finish(base64 ? Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)) : null);
         } catch (err) {
-          resolve(null);
+          finish(null);
         }
       };
-      img.onerror = () => resolve(null);
+      img.onerror = () => finish(null);
       img.src = logoUrl;
     });
 
@@ -2774,9 +2861,9 @@ class ConsultorioApp {
 
     if (!lines.length) lines.push('');
 
-    const textStartX = logoBytes ? 94 : marginLeft;
-    const textStartY = pageHeight - 60;
-    const linesPerPage = Math.max(1, Math.floor((pageHeight - (marginTop * 2) - 46) / lineHeight));
+    const textStartX = marginLeft;
+    const textStartY = pageHeight - 132;
+    const linesPerPage = Math.max(1, Math.floor((textStartY - marginTop) / lineHeight));
     const pages = [];
     for (let index = 0; index < lines.length; index += linesPerPage) {
       pages.push(lines.slice(index, index + linesPerPage));
@@ -2789,6 +2876,7 @@ class ConsultorioApp {
     };
 
     const fontId = addObject(['<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']);
+    const boldFontId = addObject(['<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>']);
     let imageId = 0;
     if (logoBytes && logoBytes.length) {
       imageId = addObject([
@@ -2802,8 +2890,28 @@ class ConsultorioApp {
       const streamLines = [];
       if (pageIndex === 0 && imageId) {
         streamLines.push('q');
-        streamLines.push('40 0 0 40 42 748 cm');
+        streamLines.push('40 0 0 40 42 754 cm');
         streamLines.push('/Im1 Do');
+        streamLines.push('Q');
+      }
+      if (pageIndex === 0) {
+        const headerTextX = imageId ? 94 : marginLeft;
+        streamLines.push('BT');
+        streamLines.push('/F2 16 Tf');
+        streamLines.push(`${headerTextX} 776 Td`);
+        streamLines.push(`(${this.escapePdfText(title || 'Recibo de Pagamento')}) Tj`);
+        streamLines.push('ET');
+        streamLines.push('BT');
+        streamLines.push('/F1 9 Tf');
+        streamLines.push(`${headerTextX} 758 Td`);
+        streamLines.push(`(${this.escapePdfText(`Emitido em: ${new Date().toLocaleString('pt-BR')}`)}) Tj`);
+        streamLines.push('ET');
+        streamLines.push('q');
+        streamLines.push('0.82 G');
+        streamLines.push('0.8 w');
+        streamLines.push('42 742 m');
+        streamLines.push('553 742 l');
+        streamLines.push('S');
         streamLines.push('Q');
       }
       streamLines.push('BT');
@@ -2837,7 +2945,7 @@ class ConsultorioApp {
     objects[pagesObjectIndex - 1] = [`<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`];
     pageIds.forEach((pageId, index) => {
       const xObjectPart = imageId && index === 0 ? ` /XObject << /Im1 ${imageId} 0 R >>` : '';
-      objects[pageId - 1] = [`<< /Type /Page /Parent ${pagesObjectIndex} 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /Font << /F1 ${fontId} 0 R >>${xObjectPart} >> /Contents ${contentIds[index]} 0 R >>`];
+      objects[pageId - 1] = [`<< /Type /Page /Parent ${pagesObjectIndex} 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R >>${xObjectPart} >> /Contents ${contentIds[index]} 0 R >>`];
     });
     objects[catalogId - 1] = [`<< /Type /Catalog /Pages ${pagesObjectIndex} 0 R >>`];
 
@@ -2872,7 +2980,7 @@ class ConsultorioApp {
     const fileName = `recibo-pagamento-${String(appointment && appointment.id ? appointment.id : Date.now())}.pdf`;
     const title = 'Recibo de Pagamento';
 
-    if (!window.html2canvas || !window.jspdf || !window.jspdf.jsPDF) {
+    if (window.location.protocol === 'file:' || !window.html2canvas || !window.jspdf || !window.jspdf.jsPDF) {
       const blob = await this.buildReceiptPdfBlob(title, content);
       const file = new File([blob], fileName, { type: 'application/pdf' });
 
@@ -2885,8 +2993,6 @@ class ConsultorioApp {
       const fallbackLink = document.createElement('a');
       fallbackLink.href = fallbackUrl;
       fallbackLink.download = fileName;
-      fallbackLink.target = '_blank';
-      fallbackLink.rel = 'noopener';
       document.body.appendChild(fallbackLink);
       fallbackLink.click();
       fallbackLink.remove();
@@ -2962,8 +3068,6 @@ class ConsultorioApp {
       const fallbackLink = document.createElement('a');
       fallbackLink.href = fallbackUrl;
       fallbackLink.download = fileName;
-      fallbackLink.target = '_blank';
-      fallbackLink.rel = 'noopener';
       document.body.appendChild(fallbackLink);
       fallbackLink.click();
       fallbackLink.remove();
@@ -2971,6 +3075,16 @@ class ConsultorioApp {
       return false;
     } finally {
       container.remove();
+    }
+  }
+
+  canSharePaymentReceiptFile() {
+    if (typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function' || typeof File !== 'function') return false;
+    try {
+      const probeFile = new File([new Blob(['PDF'], { type: 'application/pdf' })], 'recibo.pdf', { type: 'application/pdf' });
+      return navigator.canShare({ files: [probeFile] });
+    } catch (err) {
+      return false;
     }
   }
 
@@ -4092,9 +4206,9 @@ class ConsultorioApp {
 
     const startDateInput = document.getElementById('top-date-start');
     const endDateInput = document.getElementById('top-date-end');
-    const today = getTodayStr();
-    if (startDateInput && !startDateInput.value) startDateInput.value = this.formatTopDateForInput(today);
-    if (endDateInput && !endDateInput.value) endDateInput.value = this.formatTopDateForInput(today);
+    const currentMonth = getCurrentMonthRange();
+    if (startDateInput && !startDateInput.value) startDateInput.value = this.formatTopDateForInput(currentMonth.start);
+    if (endDateInput && !endDateInput.value) endDateInput.value = this.formatTopDateForInput(currentMonth.end);
 
     this.syncTopDatesToAgendaFilters();
     this.ensureAppointmentProcedureOptions();
@@ -5043,11 +5157,11 @@ class ConsultorioApp {
     if (resetDatesBtn) {
       resetDatesBtn.addEventListener('click', () => {
         this.topDateRangeUserSelected = true;
-        const today = getTodayStr();
+        const currentMonth = getCurrentMonthRange();
         const startDateInput = document.getElementById('top-date-start');
         const endDateInput = document.getElementById('top-date-end');
-        if (startDateInput) startDateInput.value = this.formatTopDateForInput(today);
-        if (endDateInput) endDateInput.value = this.formatTopDateForInput(today);
+        if (startDateInput) startDateInput.value = this.formatTopDateForInput(currentMonth.start);
+        if (endDateInput) endDateInput.value = this.formatTopDateForInput(currentMonth.end);
         this.syncTopDatesToAgendaFilters();
         this.render();
       });
@@ -5348,19 +5462,13 @@ class ConsultorioApp {
       btnResetPaymentReceiptTemplate.addEventListener('click', () => this.resetPaymentReceiptTemplateFromUI());
     }
 
-    const btnSendPaymentReceiptWhatsApp = document.getElementById('btn-send-payment-receipt-whatsapp');
-    if (btnSendPaymentReceiptWhatsApp) {
-      btnSendPaymentReceiptWhatsApp.addEventListener('click', () => this.sendPaymentReceiptWhatsApp());
-    }
-
-    const btnSendPaymentReceiptPdfWhatsApp = document.getElementById('btn-send-payment-receipt-pdf-whatsapp');
-    if (btnSendPaymentReceiptPdfWhatsApp) {
-      btnSendPaymentReceiptPdfWhatsApp.addEventListener('click', () => this.sendPaymentReceiptPdfWhatsApp());
-    }
-
     const btnPrintPaymentReceipt = document.getElementById('btn-print-payment-receipt');
     if (btnPrintPaymentReceipt) {
       btnPrintPaymentReceipt.addEventListener('click', () => this.printPaymentReceipt());
+    }
+    const btnDownloadPaymentReceiptPdf = document.getElementById('btn-download-payment-receipt-pdf');
+    if (btnDownloadPaymentReceiptPdf) {
+      btnDownloadPaymentReceiptPdf.addEventListener('click', () => this.downloadPaymentReceiptPdf());
     }
 
     const btnNewExpense = document.getElementById('btn-new-expense');
@@ -7996,118 +8104,6 @@ class ConsultorioApp {
     this.generatePaymentReceipt();
   }
 
-  async sendPaymentReceiptWhatsApp() {
-    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
-    const appt = this.appointments.find((a) => a.id === id);
-    if (!appt) {
-      this.showToast('Consulta não encontrada para envio.', 'warning');
-      return;
-    }
-
-    const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
-    const client = this.getClientByAppointment(appt);
-    const phone = this.normalizeWhatsAppPhone((client && client.phone) || '');
-    if (!phone) {
-      this.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
-      return;
-    }
-
-    const canTryNativeShare = typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
-    const whatsappWindow = canTryNativeShare ? null : window.open('about:blank', '_blank');
-    if (whatsappWindow) whatsappWindow.opener = null;
-
-    try {
-      const shared = await this.sharePaymentReceiptPdf(appt, content);
-      if (shared) {
-        this.showToast('PDF do recibo preparado para compartilhamento.', 'success');
-        return;
-      }
-
-      const opened = this.openReceiptWhatsAppChat(
-        appt,
-        'Segue o recibo em PDF. O arquivo foi baixado no aparelho para anexar no WhatsApp.',
-        whatsappWindow
-      );
-      if (opened) {
-        this.showToast('Conversa do WhatsApp aberta. Anexe o PDF baixado para concluir o envio.', 'info');
-      } else {
-        this.showToast('PDF baixado. Permita pop-ups para abrir a conversa do WhatsApp.', 'warning');
-      }
-    } catch (err) {
-      console.log('Falha ao compartilhar PDF do recibo:', err);
-      const opened = this.openReceiptWhatsAppChat(
-        appt,
-        'Não foi possível compartilhar o PDF automaticamente. Segue mensagem para envio do recibo.',
-        whatsappWindow
-      );
-      if (opened) {
-        this.showToast('Conversa do WhatsApp aberta. Envie o PDF manualmente.', 'warning');
-      } else {
-        this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
-      }
-    }
-  }
-
-  async sendPaymentReceiptPdfWhatsApp() {
-    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
-    const appt = this.appointments.find((a) => a.id === id);
-    if (!appt) {
-      this.showToast('Consulta não encontrada para envio em PDF.', 'warning');
-      return;
-    }
-
-    const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
-
-    try {
-      const shared = await this.sharePaymentReceiptPdf(appt, content);
-      if (shared) {
-        this.showToast('PDF do recibo preparado para compartilhamento.', 'success');
-        return;
-      }
-
-      const opened = this.openReceiptWhatsAppChat(appt, 'Segue o recibo em PDF. O arquivo foi baixado no aparelho para anexar no WhatsApp.');
-      if (opened) {
-        this.showToast('Conversa do WhatsApp aberta. Anexe o PDF baixado para concluir o envio.', 'info');
-      } else {
-        this.showToast('PDF do recibo baixado para envio no WhatsApp.', 'info');
-      }
-    } catch (err) {
-      console.log('Falha ao compartilhar PDF do recibo:', err);
-      const opened = this.openReceiptWhatsAppChat(appt, 'Não foi possível compartilhar o PDF automaticamente. Segue mensagem para envio do recibo.');
-      if (opened) {
-        this.showToast('Conversa do WhatsApp aberta. Envie o PDF manualmente.', 'warning');
-      } else {
-        this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
-      }
-    }
-  }
-
-  openReceiptWhatsAppChat(appointment, customMessage = '', targetWindow = null) {
-    const client = this.getClientByAppointment(appointment);
-    const phone = this.normalizeWhatsAppPhone((client && client.phone) || '');
-    if (!phone) return false;
-
-    const patientName = String((appointment && appointment.clientName) || (client && client.name) || 'paciente').trim();
-    const dateLabel = formatDateBR((appointment && appointment.date) || '');
-    const timeLabel = String((appointment && appointment.time) || '').trim();
-    const defaultMessage = [
-      `Olá, ${patientName}!`,
-      '',
-      customMessage || 'Segue o recibo da sua consulta.',
-      `Atendimento: ${dateLabel}${timeLabel ? ` às ${timeLabel}` : ''}`
-    ].join('\n');
-
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(defaultMessage)}`;
-    if (targetWindow && !targetWindow.closed) {
-      targetWindow.location.replace(url);
-      return true;
-    }
-
-    const openedWindow = window.open(url, '_blank');
-    if (openedWindow) openedWindow.opener = null;
-    return Boolean(openedWindow);
-  }
-
   printPaymentReceipt() {
     const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
     const appt = this.appointments.find((a) => a.id === id);
@@ -8116,8 +8112,74 @@ class ConsultorioApp {
       return;
     }
 
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      this.showToast('Permita pop-ups para imprimir o recibo.', 'warning');
+      return;
+    }
+
     const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
-    this.openReportWindow('Recibo de Pagamento', content, true);
+    this.openReportWindow('Recibo de Pagamento', content, true, '', printWindow);
+  }
+
+  async downloadPaymentReceiptPdf() {
+    const id = (document.getElementById('pay-appointment-id') || {}).value || (document.getElementById('pay-appt-id') || {}).value || '';
+    const appt = this.appointments.find((item) => item.id === id);
+    if (!appt) {
+      this.showToast('Consulta não encontrada para gerar o PDF.', 'warning');
+      return;
+    }
+
+    const client = this.getClientByAppointment(appt);
+    const phone = this.normalizeWhatsAppPhone((client && client.phone) || '');
+    const useNativeShare = this.canSharePaymentReceiptFile();
+    if (!useNativeShare && !phone) {
+      this.showToast('Cliente sem telefone válido para abrir o WhatsApp Web.', 'warning');
+      return;
+    }
+
+    const whatsappWindow = useNativeShare ? null : window.open(`https://wa.me/${phone}`, '_blank', 'noopener');
+    const button = document.getElementById('btn-download-payment-receipt-pdf');
+    if (button) button.disabled = true;
+
+    try {
+      const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
+      const blob = await this.buildReceiptPdfBlob('Recibo de Pagamento', content);
+      const receiptNumber = String((document.getElementById('pay-receipt-number') || {}).value || 'recibo').replace(/[^a-zA-Z0-9_-]/g, '-');
+      const generatedAt = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, '');
+      const fileName = `recibo-${receiptNumber}-${generatedAt}.pdf`;
+
+      if (useNativeShare) {
+        const file = new File([blob], fileName, { type: 'application/pdf' });
+        await navigator.share({
+          title: 'Recibo de Pagamento',
+          files: [file]
+        });
+        this.showToast('Escolha o WhatsApp para enviar o PDF anexado.', 'success');
+        return;
+      }
+
+      const downloadUrl = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = fileName;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 3000);
+      const popupMessage = whatsappWindow ? '' : ' Permita pop-ups para abrir o WhatsApp.';
+      this.showToast(`PDF baixado. No WhatsApp, anexe ${fileName} como Documento.${popupMessage}`, whatsappWindow ? 'success' : 'warning');
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        this.showToast('Compartilhamento cancelado.', 'info');
+        return;
+      }
+      console.log('Falha ao baixar PDF do recibo:', err);
+      const errorMessage = err && err.message ? ` ${err.message}` : '';
+      this.showToast(`Não foi possível baixar o PDF.${errorMessage}`, 'warning');
+    } finally {
+      if (button) button.disabled = false;
+    }
   }
 
   getBirthdaysFromWindow(windowDays = 30) {
@@ -9875,6 +9937,7 @@ class ConsultorioApp {
     this.setPaymentEntryMode('partial');
 
     modal.classList.add('active');
+    void this.getPaymentReceiptLogoDataUrl();
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
   }
 
@@ -10048,14 +10111,14 @@ class ConsultorioApp {
     });
   }
 
-  openReportWindow(title, content, autoPrint = false) {
-    const popup = window.open('', '_blank');
+  openReportWindow(title, content, autoPrint = false, embeddedLogoUrl = '', reservedWindow = null) {
+    const popup = reservedWindow || window.open('', '_blank');
     if (!popup) {
       this.showToast('Permita pop-ups para gerar o PDF do relatório.', 'warning');
       return;
     }
 
-    const logoUrl = new URL('./assets/icons/icon-512.png', window.location.href).href;
+    const logoUrl = embeddedLogoUrl || new URL('./assets/icons/icon-512.png', window.location.href).href;
 
     const html = `
       <!doctype html>
@@ -10104,9 +10167,13 @@ class ConsultorioApp {
         }
       };
 
-      // Some browsers need a small delay after document render.
-      popup.addEventListener('load', () => setTimeout(triggerPrint, 120), { once: true });
-      setTimeout(triggerPrint, 300);
+      const reportLogo = popup.document.querySelector('.report-logo');
+      if (reportLogo && !reportLogo.complete) {
+        reportLogo.addEventListener('load', () => setTimeout(triggerPrint, 120), { once: true });
+        reportLogo.addEventListener('error', () => setTimeout(triggerPrint, 120), { once: true });
+      } else {
+        setTimeout(triggerPrint, 120);
+      }
     }
   }
 
@@ -10837,7 +10904,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-42')
+    navigator.serviceWorker.register('./sw.js?v=20260801-45')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

@@ -92,7 +92,7 @@
           </button>
           <input type="date" id="top-date-start-native" class="visually-hidden" tabindex="-1" aria-hidden="true">
           <input type="date" id="top-date-end-native" class="visually-hidden" tabindex="-1" aria-hidden="true">
-          <button class="btn-clear-date" id="btn-reset-top-dates" title="Resetar período">
+          <button class="btn-clear-date" id="btn-reset-top-dates" title="Voltar para o mês atual">
             <i data-lucide="rotate-ccw"></i>
           </button>
         </div>
@@ -953,16 +953,15 @@
           <textarea id="pay-receipt-text" class="form-control" rows="8" placeholder="Clique em Gerar Recibo para preencher."></textarea>
         </div>
             <div class="form-group" style="margin-top:0.6rem;">
-              <label for="pay-receipt-send-source">Ao enviar, usar</label>
+              <label for="pay-receipt-send-source">Conteúdo usado no PDF</label>
               <select id="pay-receipt-send-source" class="form-control">
-                <option value="edited">Texto editado do recibo</option>
-                <option value="generated">Gerar agora pelo modelo salvo</option>
+                <option value="edited">Texto editado acima</option>
+                <option value="generated">Gerar PDF pelo modelo salvo</option>
               </select>
             </div>
         <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
           <button type="button" class="btn btn-secondary" id="btn-print-payment-receipt"><i data-lucide="printer"></i> Imprimir Recibo</button>
-              <button type="button" class="btn btn-secondary" id="btn-send-payment-receipt-whatsapp"><i data-lucide="message-circle"></i> Enviar PDF no WhatsApp</button>
-              <button type="button" class="btn btn-secondary" id="btn-send-payment-receipt-pdf-whatsapp"><i data-lucide="file-text"></i> Baixar PDF do Recibo</button>
+          <button type="button" class="btn btn-secondary" id="btn-download-payment-receipt-pdf"><i data-lucide="share-2"></i> Compartilhar PDF no WhatsApp</button>
         </div>
             <div class="payment-receipt-template-panel" id="payment-receipt-template-panel">
         <div class="payment-receipt-head">

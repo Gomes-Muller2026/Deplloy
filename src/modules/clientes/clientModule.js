@@ -51,6 +51,30 @@ const clientModule = {
     app.saveData();
     app.render();
     app.showToast('Cliente excluído com sucesso.', 'success');
+  },
+
+  async deleteClients(app, clientIds) {
+    const ids = new Set((clientIds || []).filter(Boolean));
+    if (!ids.size) return;
+
+    const label = ids.size === 1 ? 'este paciente' : `estes ${ids.size} pacientes`;
+    let confirmed = false;
+    if (typeof app.askConfirmation === 'function') {
+      confirmed = await app.askConfirmation(`Deseja realmente excluir ${label}? Todas as consultas vinculadas também serão removidas.`, {
+        title: ids.size === 1 ? 'Excluir paciente' : 'Excluir pacientes selecionados',
+        confirmLabel: 'Excluir'
+      });
+    } else {
+      confirmed = confirm(`Deseja realmente excluir ${label}?`);
+    }
+    if (!confirmed) return;
+
+    app.clients = app.clients.filter((client) => !ids.has(client.id));
+    app.appointments = app.appointments.filter((appointment) => !ids.has(appointment.clientId));
+    ids.forEach((id) => app.selectedClientReportIds.delete(id));
+    app.saveData();
+    app.render();
+    app.showToast(ids.size === 1 ? 'Paciente excluído com sucesso.' : `${ids.size} pacientes excluídos com sucesso.`, 'success');
   }
 };
 

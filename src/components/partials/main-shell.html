@@ -279,6 +279,16 @@
           <button class="btn btn-primary" id="btn-new-client" type="button" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="plus"></i> Novo Paciente</button>
         </div>
       </div>
+      <div class="card client-selected-actions" id="client-selected-actions" aria-hidden="true">
+        <div class="client-selected-actions-info">
+          <i data-lucide="list-checks"></i>
+          <strong id="client-selected-count">0 pacientes selecionados</strong>
+        </div>
+        <div class="client-selected-actions-buttons">
+          <button class="btn btn-secondary" id="btn-edit-selected-client" type="button" onclick="app.editSelectedClient()" disabled><i data-lucide="pencil"></i> Editar</button>
+          <button class="btn btn-ghost client-selected-delete" id="btn-delete-selected-clients" type="button" onclick="app.deleteSelectedClients()" disabled><i data-lucide="trash-2"></i> Excluir</button>
+        </div>
+      </div>
       <div class="card">
         <div class="card-body">
           <div class="table-responsive">
@@ -286,12 +296,12 @@
               <thead>
                 <tr>
                   <th style="width:52px;text-align:center;"><input type="checkbox" id="clientes-select-all-print" title="Selecionar todos visíveis" onchange="app.toggleAllVisibleClientReports(this.checked)"></th>
-                  <th>ID</th>
-                  <th>Nome</th>
-                  <th>Categoria</th>
+                  <th aria-sort="ascending"><button class="client-sort-button is-active" type="button" data-client-sort="registrationNumber" data-sort-label="ID" onclick="app.setClientSort('registrationNumber')"><span>ID</span><i data-lucide="arrow-up"></i></button></th>
+                  <th aria-sort="none"><button class="client-sort-button" type="button" data-client-sort="name" data-sort-label="Nome" onclick="app.setClientSort('name')"><span>Nome</span><i data-lucide="arrow-up"></i></button></th>
+                  <th aria-sort="none"><button class="client-sort-button" type="button" data-client-sort="category" data-sort-label="Categoria" onclick="app.setClientSort('category')"><span>Categoria</span><i data-lucide="arrow-up"></i></button></th>
                   <th>Telefone</th>
                   <th>E-mail</th>
-                  <th>Cadastro</th>
+                  <th aria-sort="none"><button class="client-sort-button" type="button" data-client-sort="createdAt" data-sort-label="Cadastro" onclick="app.setClientSort('createdAt')"><span>Cadastro</span><i data-lucide="arrow-up"></i></button></th>
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -661,7 +671,7 @@
         <div class="form-group grid-col-span-2"><label for="client-name">Nome *</label><input type="text" id="client-name" class="form-control" required></div>
         <div class="form-group"><label for="client-phone">Telefone *</label><input type="tel" id="client-phone" class="form-control" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000" required></div>
         <div class="form-group"><label for="client-email">E-mail</label><input type="email" id="client-email" class="form-control"></div>
-        <div class="form-group"><label for="client-category">Categoria</label><input type="text" id="client-category" class="form-control" list="client-category-options" placeholder="Digite ou selecione uma categoria"><datalist id="client-category-options"></datalist><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-categories">Gerenciar categorias</button></div></div>
+        <div class="form-group"><label for="client-category">Categoria</label><select id="client-category" class="form-control"></select><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-categories">Gerenciar categorias</button></div></div>
         <div class="form-group"><label for="client-cpf">CPF</label><input type="text" id="client-cpf" class="form-control" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
         <div class="form-group"><label for="client-rg">RG</label><input type="text" id="client-rg" class="form-control"></div>
         <div class="form-group"><label for="client-dob">Data de Nascimento</label><input type="date" id="client-dob" class="form-control date-input"></div>

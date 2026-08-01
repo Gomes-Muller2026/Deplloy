@@ -522,6 +522,8 @@ class ConsultorioApp {
     this.lastDashboardCardActionAt = 0;
     this.lastAnamneseIndividualCepLookup = '';
     this.selectedClientReportIds = new Set();
+    this.clientSortField = 'registrationNumber';
+    this.clientSortDirection = 'asc';
     this.selectedFinanceReportClientIds = new Set();
     this.lastFinanceiroRows = [];
     this.reminderIntervalId = null;
@@ -3360,19 +3362,20 @@ class ConsultorioApp {
   }
 
   populateClientCategoryOptions(preferredCategory = '') {
-    const datalist = document.getElementById('client-category-options');
-    if (!datalist) return;
+    const select = document.getElementById('client-category');
+    if (!select) return;
 
     const categories = this.clientCategories.slice();
-    const preferred = this.normalizeClientCategory(preferredCategory);
+    const preferred = this.normalizeClientCategory(preferredCategory || select.value);
     const preferredKey = this.normalizeClientCategoryKey(preferred);
     if (preferred && !categories.some((item) => this.normalizeClientCategoryKey(item) === preferredKey)) {
       categories.unshift(preferred);
     }
 
-    datalist.innerHTML = categories
-      .map((category) => `<option value="${safeText(category)}"></option>`)
+    select.innerHTML = categories
+      .map((category) => `<option value="${safeText(category)}">${safeText(category)}</option>`)
       .join('');
+    if (preferred) select.value = preferred;
   }
 
   populateClientCategoryFilterOptions() {
@@ -8533,6 +8536,60 @@ class ConsultorioApp {
     if (btnCalendar) btnCalendar.classList.toggle('active', isCalendar);
   }
 
+  setClientSort(field) {
+    const allowedFields = ['registrationNumber', 'name', 'category', 'createdAt'];
+    if (!allowedFields.includes(field)) return;
+
+    if (this.clientSortField === field) {
+      this.clientSortDirection = this.clientSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.clientSortField = field;
+      this.clientSortDirection = 'asc';
+    }
+
+    this.renderClientsTable();
+  }
+
+  sortClientRows(clients) {
+    const direction = this.clientSortDirection === 'desc' ? -1 : 1;
+    const field = this.clientSortField;
+
+    return clients.sort((firstClient, secondClient) => {
+      let comparison = 0;
+      if (field === 'registrationNumber') {
+        comparison = Number(firstClient.registrationNumber || 0) - Number(secondClient.registrationNumber || 0);
+      } else if (field === 'createdAt') {
+        comparison = String(firstClient.createdAt || '').localeCompare(String(secondClient.createdAt || ''));
+      } else {
+        const firstValue = field === 'category'
+          ? this.normalizeClientCategory(firstClient.category)
+          : String(firstClient[field] || '');
+        const secondValue = field === 'category'
+          ? this.normalizeClientCategory(secondClient.category)
+          : String(secondClient[field] || '');
+        comparison = firstValue.localeCompare(secondValue, 'pt-BR', { sensitivity: 'base', numeric: true });
+      }
+
+      if (comparison === 0) {
+        comparison = Number(firstClient.registrationNumber || 0) - Number(secondClient.registrationNumber || 0);
+      }
+      return comparison * direction;
+    });
+  }
+
+  updateClientSortHeaders() {
+    document.querySelectorAll('[data-client-sort]').forEach((button) => {
+      const field = button.getAttribute('data-client-sort');
+      const isActive = field === this.clientSortField;
+      const icon = isActive && this.clientSortDirection === 'desc' ? 'arrow-down' : 'arrow-up';
+      const header = button.closest('th');
+
+      button.classList.toggle('is-active', isActive);
+      button.innerHTML = `<span>${safeText(button.getAttribute('data-sort-label') || '')}</span><i data-lucide="${icon}"></i>`;
+      if (header) header.setAttribute('aria-sort', isActive ? (this.clientSortDirection === 'asc' ? 'ascending' : 'descending') : 'none');
+    });
+  }
+
   renderClientsTable() {
     const tbody = document.getElementById('clientes-table-body');
     if (!tbody) return;
@@ -8566,7 +8623,8 @@ class ConsultorioApp {
       filtered = filtered.filter((c) => !this.normalizeWhatsAppPhone(c.phone || ''));
     }
 
-    filtered.sort((a, b) => Number(a.registrationNumber || 0) - Number(b.registrationNumber || 0));
+    this.sortClientRows(filtered);
+    this.updateClientSortHeaders();
 
     if (!filtered.length) {
       tbody.innerHTML = `
@@ -10084,15 +10142,59 @@ class ConsultorioApp {
     this.updateClientPrintSelectionUI();
   }
 
+  getSelectedClients() {
+    return this.clients.filter((client) => this.selectedClientReportIds.has(client.id));
+  }
+
+  editSelectedClient() {
+    const selectedClients = this.getSelectedClients();
+    if (selectedClients.length !== 1) {
+      this.showToast('Selecione apenas um paciente para editar.', 'warning');
+      return;
+    }
+
+    this.openClientModal(selectedClients[0].id);
+  }
+
+  deleteSelectedClients() {
+    const selectedClientIds = this.getSelectedClients().map((client) => client.id);
+    if (!selectedClientIds.length) {
+      this.showToast('Selecione ao menos um paciente para excluir.', 'warning');
+      return;
+    }
+
+    if (window.clientModule && typeof window.clientModule.deleteClients === 'function') {
+      window.clientModule.deleteClients(this, selectedClientIds);
+    } else {
+      this.showToast('Módulo de clientes não carregado.', 'warning');
+    }
+  }
+
   updateClientPrintSelectionUI() {
-    const selectedCount = Array.from(this.selectedClientReportIds)
-      .filter((id) => this.clients.some((c) => c.id === id)).length;
+    const selectedCount = this.getSelectedClients().length;
 
     const btnPrintSelected = document.getElementById('btn-print-selected-clients');
     if (btnPrintSelected) {
       btnPrintSelected.disabled = selectedCount === 0;
       btnPrintSelected.innerHTML = `<i data-lucide="printer"></i> Imprimir Selecionados (${selectedCount})`;
     }
+
+    const selectedActions = document.getElementById('client-selected-actions');
+    if (selectedActions) {
+      selectedActions.classList.toggle('is-visible', selectedCount > 0);
+      selectedActions.setAttribute('aria-hidden', selectedCount > 0 ? 'false' : 'true');
+    }
+
+    const selectedCountLabel = document.getElementById('client-selected-count');
+    if (selectedCountLabel) {
+      selectedCountLabel.textContent = `${selectedCount} ${selectedCount === 1 ? 'paciente selecionado' : 'pacientes selecionados'}`;
+    }
+
+    const btnEditSelected = document.getElementById('btn-edit-selected-client');
+    if (btnEditSelected) btnEditSelected.disabled = selectedCount !== 1;
+
+    const btnDeleteSelected = document.getElementById('btn-delete-selected-clients');
+    if (btnDeleteSelected) btnDeleteSelected.disabled = selectedCount === 0;
 
     const selectAll = document.getElementById('clientes-select-all-print');
     if (selectAll) {

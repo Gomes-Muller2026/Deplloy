@@ -2164,6 +2164,42 @@ input[type="date"]:focus {
   border-bottom: 1px solid var(--border-color);
 }
 
+.client-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.client-sort-button svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.35;
+}
+
+.client-sort-button:hover,
+.client-sort-button:focus-visible,
+.client-sort-button.is-active {
+  color: var(--text-primary);
+}
+
+.client-sort-button.is-active svg {
+  color: var(--primary);
+  opacity: 1;
+}
+
+.client-sort-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
 .data-table td {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border-color);
@@ -2821,6 +2857,51 @@ input[type="date"]:focus {
 
 #clientes-table-body td:first-child {
   text-align: center;
+}
+
+.client-selected-actions {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-color: rgba(132, 169, 78, 0.55);
+  background: rgba(28, 46, 37, 0.92);
+}
+
+.client-selected-actions.is-visible {
+  display: flex;
+}
+
+.client-selected-actions-info,
+.client-selected-actions-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.client-selected-actions-info svg {
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
+}
+
+.client-selected-delete {
+  color: var(--danger) !important;
+  border-color: rgba(251, 113, 133, 0.45);
+}
+
+@media (max-width: 640px) {
+  .client-selected-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .client-selected-actions-buttons .btn {
+    flex: 1;
+  }
 }
 
 #financeiro-select-all-print,

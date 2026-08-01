@@ -130,7 +130,7 @@
               <span id="cloud-status-text">Modo Local</span>
             </div>
             <span id="app-version-badge" class="cloud-sync-meta local">Versão: v00.00/00000000</span>
-            <span id="cloud-sync-last" class="cloud-sync-meta">Sem atualização</span>
+            <span id="cloud-sync-last" class="cloud-sync-meta" title="Sem atualização" aria-label="Sem atualização"></span>
             <span id="firebase-auth-status" class="firebase-auth-meta auth-offline" role="button" tabindex="0" title="Clique para ver diagnóstico de autenticação Firebase">Auth Firebase: Desconectado</span>
 
             <div class="top-date-picker">
@@ -644,6 +644,7 @@
                     <h4>Auditoria de Sincronização</h4>
                     <p>Últimos eventos de push, pull e alterações remotas.</p>
                     <button class="btn btn-secondary btn-sm" type="button" id="btn-export-sync-audit">Exportar Log Sync</button>
+                    <button class="btn btn-secondary btn-sm" type="button" id="btn-copy-sync-diagnostic">Copiar Diagnóstico</button>
                   </div>
                   <div id="sync-audit-panel" class="sync-audit-panel">
                     <p class="sync-audit-empty">Sem eventos ainda. Execute uma ação para registrar push/pull.</p>
@@ -1159,8 +1160,8 @@
   <div class="toast-container" id="toast-container"></div>
 
   <script src="src/modules/clientes/clientModule.js?v=20260801-1"></script>
-  <script src="src/modules/agenda/agendaModule.js?v=20260801-1"></script>
+  <script src="src/modules/agenda/agendaModule.js?v=20260801-2"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260801-10"></script>
+  <script src="js/app.js?v=20260801-17"></script>
 </body>
 </html>

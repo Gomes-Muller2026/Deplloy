@@ -18,6 +18,7 @@ const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const FIREBASE_DEVICE_ID_STORAGE_KEY = 'consultorio_firebase_device_id';
 const FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY = 'consultorio_firebase_last_push_millis';
 const FIREBASE_FORCE_LONG_POLLING = true;
+const APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY = 'consultorio_deleted_appointment_tombstones';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
 const APP_RELEASE_VERSION = 'v31.07.2026-2';
 const LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY = 'consultorio_landscape_sidebar_collapsed';
@@ -484,11 +485,13 @@ class ConsultorioApp {
     this.firebaseRealtimeSyncTimerId = null;
     this.firebaseRealtimeSyncDelayMs = 120;
     this.firebaseRealtimeRecoverTimerId = null;
+    this.firebaseSettingsApplied = false;
     this.firebasePushInFlight = false;
     this.firebasePushQueued = false;
     this.firebasePushRetryTimerId = null;
     this.syncAuditLogLimit = 18;
     this.syncAuditEvents = [];
+    this.deletedAppointmentTombstones = {};
     this.firebaseDeviceId = this.getOrCreateFirebaseDeviceId();
     this.lastRealtimeSyncMillis = 0;
     this.versionInfo = { dateKey: getTodayStr(), seq: 0, label: 'v00.00/000000' };
@@ -548,10 +551,14 @@ class ConsultorioApp {
       const a = JSON.parse(localStorage.getItem('consultorio_appointments') || '[]');
       const e = JSON.parse(localStorage.getItem('consultorio_expenses') || '[]');
       const g = JSON.parse(localStorage.getItem(CLIENT_GROUPS_STORAGE_KEY) || '[]');
+      const t = JSON.parse(localStorage.getItem(APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY) || '{}');
       this.clients = Array.isArray(c) ? c : [];
       this.appointments = Array.isArray(a) ? a : [];
       this.expenses = Array.isArray(e) ? e : [];
       this.clientGroups = Array.isArray(g) ? g.filter((item) => String(item || '').trim()) : [];
+      this.deletedAppointmentTombstones = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
+      this.pruneDeletedAppointmentTombstones();
+      this.applyStableDataOrdering();
       if (!this.clientGroups.length) {
         this.clientGroups = this.collectClientGroupsFromClients();
       }
@@ -563,6 +570,7 @@ class ConsultorioApp {
       this.appointments = [];
       this.expenses = [];
       this.clientGroups = [];
+      this.deletedAppointmentTombstones = {};
     }
   }
 
@@ -646,9 +654,140 @@ class ConsultorioApp {
     localStorage.setItem('consultorio_appointments', JSON.stringify(this.appointments));
     localStorage.setItem('consultorio_expenses', JSON.stringify(this.expenses));
     localStorage.setItem(CLIENT_GROUPS_STORAGE_KEY, JSON.stringify(this.clientGroups));
+    localStorage.setItem(APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY, JSON.stringify(this.deletedAppointmentTombstones || {}));
+  }
+
+  pruneDeletedAppointmentTombstones(ttlMs = 6 * 60 * 60 * 1000) {
+    const now = Date.now();
+    const tombstones = this.deletedAppointmentTombstones && typeof this.deletedAppointmentTombstones === 'object'
+      ? this.deletedAppointmentTombstones
+      : {};
+
+    let changed = false;
+    Object.keys(tombstones).forEach((id) => {
+      const at = Number(tombstones[id] || 0);
+      if (!at || (now - at) > ttlMs) {
+        delete tombstones[id];
+        changed = true;
+      }
+    });
+
+    this.deletedAppointmentTombstones = tombstones;
+    return changed;
+  }
+
+  registerAppointmentDeletionTombstone(appointmentId) {
+    const id = String(appointmentId || '').trim();
+    if (!id) return;
+    this.pruneDeletedAppointmentTombstones();
+    this.deletedAppointmentTombstones[id] = Date.now();
+    this.saveStore();
+  }
+
+  clearAppointmentDeletionTombstone(appointmentId) {
+    const id = String(appointmentId || '').trim();
+    if (!id) return;
+    if (!this.deletedAppointmentTombstones || typeof this.deletedAppointmentTombstones !== 'object') return;
+    if (!this.deletedAppointmentTombstones[id]) return;
+    delete this.deletedAppointmentTombstones[id];
+    this.saveStore();
+  }
+
+  filterRemoteAppointmentsByTombstones(remoteAppointments) {
+    const source = Array.isArray(remoteAppointments) ? remoteAppointments : [];
+    this.pruneDeletedAppointmentTombstones();
+    const tombstones = this.deletedAppointmentTombstones || {};
+    const blockedIds = [];
+
+    const filtered = source.filter((item) => {
+      const id = String((item && item.id) || '').trim();
+      if (!id) return true;
+      if (!tombstones[id]) return true;
+      blockedIds.push(id);
+      return false;
+    });
+
+    return { filtered, blockedIds };
+  }
+
+  sortAppointmentsStable(items = []) {
+    const source = Array.isArray(items) ? items.slice() : [];
+    return source.sort((a, b) => {
+      const aStamp = `${String((a && a.date) || '')} ${String((a && a.time) || '')}`.trim();
+      const bStamp = `${String((b && b.date) || '')} ${String((b && b.time) || '')}`.trim();
+      const byStamp = aStamp.localeCompare(bStamp);
+      if (byStamp !== 0) return byStamp;
+      const aClient = String((a && a.clientName) || '').trim();
+      const bClient = String((b && b.clientName) || '').trim();
+      const byClient = aClient.localeCompare(bClient);
+      if (byClient !== 0) return byClient;
+      return String((a && a.id) || '').localeCompare(String((b && b.id) || ''));
+    });
+  }
+
+  sortClientsStable(items = []) {
+    const source = Array.isArray(items) ? items.slice() : [];
+    return source.sort((a, b) => {
+      const aReg = Number((a && a.registrationNumber) || 0);
+      const bReg = Number((b && b.registrationNumber) || 0);
+      if (aReg !== bReg) return aReg - bReg;
+      const byName = String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
+      if (byName !== 0) return byName;
+      return String((a && a.id) || '').localeCompare(String((b && b.id) || ''));
+    });
+  }
+
+  sortExpensesStable(items = []) {
+    const source = Array.isArray(items) ? items.slice() : [];
+    return source.sort((a, b) => {
+      const byDate = String((b && b.date) || '').localeCompare(String((a && a.date) || ''));
+      if (byDate !== 0) return byDate;
+      return String((a && a.id) || '').localeCompare(String((b && b.id) || ''));
+    });
+  }
+
+  applyStableDataOrdering() {
+    this.clients = this.sortClientsStable(this.clients);
+    this.appointments = this.sortAppointmentsStable(this.appointments);
+    this.expenses = this.sortExpensesStable(this.expenses);
+  }
+
+  async enforceAppointmentDeletesInFirebase(appointmentIds = []) {
+    if (!this.firebaseDb) return;
+    const ids = Array.from(new Set((Array.isArray(appointmentIds) ? appointmentIds : [])
+      .map((id) => String(id || '').trim())
+      .filter(Boolean)));
+    if (!ids.length) return;
+
+    const batch = this.firebaseDb.batch();
+    ids.forEach((id) => {
+      const ref = this.firebaseDb.collection('appointments').doc(id);
+      batch.delete(ref);
+    });
+
+    await batch.commit();
+  }
+
+  async deleteAppointmentInFirebaseNow(appointmentId) {
+    if (!this.firebaseConnected || !this.firebaseDb) return false;
+
+    const id = String(appointmentId || '').trim();
+    if (!id) return false;
+
+    try {
+      await this.firebaseDb.collection('appointments').doc(id).delete();
+      await this.updateRemoteSyncState();
+      this.setLocalLastPushMillis(Date.now());
+      this.logSyncAudit('push', `Exclusão remota imediata aplicada para consulta ${id}.`);
+      return true;
+    } catch (err) {
+      this.logSyncAudit('error', `Falha na exclusão remota imediata (${id}): ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
+      return false;
+    }
   }
 
   saveData() {
+    this.applyStableDataOrdering();
     this.saveStore();
     this.bumpVersion();
     this.updateCloudSyncMeta();
@@ -818,6 +957,66 @@ class ConsultorioApp {
     } catch (err) {
       this.showToast('Falha ao exportar o log de sincronização.', 'warning');
       this.logSyncAudit('error', `Falha ao exportar log: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
+    }
+  }
+
+  buildSyncDiagnosticReport() {
+    const now = new Date();
+    const recentEvents = Array.isArray(this.syncAuditEvents) ? this.syncAuditEvents.slice(0, 20) : [];
+    const lines = [];
+
+    lines.push('DIAGNOSTICO DE SINCRONIZACAO - CONSULTORIO CONTROL');
+    lines.push(`Gerado em: ${now.toLocaleString('pt-BR')}`);
+    lines.push(`Pagina: ${window.location.href}`);
+    lines.push(`Firebase conectado: ${this.firebaseConnected ? 'sim' : 'nao'}`);
+    lines.push(`UID: ${this.firebaseAuthUid || '-'}`);
+    lines.push(`DeviceId: ${this.firebaseDeviceId || '-'}`);
+    lines.push(`Dirty local: ${this.isFirebaseSyncDirty() ? 'sim' : 'nao'}`);
+    lines.push(`Ultimo erro Firebase (code): ${this.firebaseLastErrorCode || '-'}`);
+    lines.push(`Ultimo erro Firebase (message): ${this.firebaseLastErrorMessage || '-'}`);
+    lines.push(`Clientes locais: ${Array.isArray(this.clients) ? this.clients.length : 0}`);
+    lines.push(`Consultas locais: ${Array.isArray(this.appointments) ? this.appointments.length : 0}`);
+    lines.push(`Despesas locais: ${Array.isArray(this.expenses) ? this.expenses.length : 0}`);
+    lines.push(`Tombstones de exclusao (consultas): ${Object.keys(this.deletedAppointmentTombstones || {}).length}`);
+    lines.push('');
+    lines.push('ULTIMOS EVENTOS:');
+
+    if (!recentEvents.length) {
+      lines.push('- Sem eventos registrados.');
+    } else {
+      recentEvents.slice().reverse().forEach((entry) => {
+        const at = new Date(Number(entry.at) || Date.now()).toLocaleString('pt-BR');
+        const kind = String(entry.kind || 'info').toUpperCase();
+        const msg = String(entry.message || '').trim() || '-';
+        lines.push(`[${at}] [${kind}] ${msg}`);
+      });
+    }
+
+    return `${lines.join('\n')}\n`;
+  }
+
+  async copySyncDiagnosticReport() {
+    try {
+      const report = this.buildSyncDiagnosticReport();
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(report);
+      } else {
+        const area = document.createElement('textarea');
+        area.value = report;
+        area.setAttribute('readonly', 'readonly');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        document.body.removeChild(area);
+      }
+
+      this.showToast('Diagnóstico copiado para a área de transferência.', 'success');
+      this.logSyncAudit('info', 'Diagnóstico de sincronização copiado para compartilhamento.');
+    } catch (err) {
+      this.showToast('Falha ao copiar diagnóstico. Use Exportar Log Sync.', 'warning');
+      this.logSyncAudit('error', `Falha ao copiar diagnóstico: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
     }
   }
 
@@ -2521,7 +2720,7 @@ class ConsultorioApp {
       if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
       const backdrop = document.createElement('div');
-      backdrop.className = 'modal-backdrop';
+      backdrop.className = 'modal-backdrop active';
       backdrop.id = 'modal-confirm-action';
 
       backdrop.innerHTML = `
@@ -3488,6 +3687,7 @@ class ConsultorioApp {
     const validateFirebaseBtn = document.getElementById('btn-validate-firebase');
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
     const exportSyncAuditBtn = document.getElementById('btn-export-sync-audit');
+    const copySyncDiagnosticBtn = document.getElementById('btn-copy-sync-diagnostic');
     const firebaseConfigInput = document.getElementById('cfg-firebase-json');
     const loginUserInput = document.getElementById('login-username');
     const loginPassInput = document.getElementById('login-password');
@@ -3652,6 +3852,12 @@ class ConsultorioApp {
     if (exportSyncAuditBtn) {
       exportSyncAuditBtn.addEventListener('click', () => {
         void this.exportSyncAuditLog();
+      });
+    }
+
+    if (copySyncDiagnosticBtn) {
+      copySyncDiagnosticBtn.addEventListener('click', () => {
+        void this.copySyncDiagnosticReport();
       });
     }
 
@@ -5174,16 +5380,23 @@ class ConsultorioApp {
 
       this.firebaseDb = window.firebase.firestore(this.firebaseApp);
       try {
-        if (FIREBASE_FORCE_LONG_POLLING && this.firebaseDb && typeof this.firebaseDb.settings === 'function') {
+        if (FIREBASE_FORCE_LONG_POLLING && !this.firebaseSettingsApplied && this.firebaseDb && typeof this.firebaseDb.settings === 'function') {
           this.firebaseDb.settings({
             experimentalForceLongPolling: true,
             useFetchStreams: false,
-            ignoreUndefinedProperties: true
+            ignoreUndefinedProperties: true,
+            merge: true
           });
+          this.firebaseSettingsApplied = true;
           this.logSyncAudit('info', 'Firestore em long-polling para maior estabilidade de sync.');
         }
       } catch (settingsErr) {
         console.log('Falha ao aplicar settings do Firestore:', settingsErr);
+        const details = String((settingsErr && (settingsErr.code || settingsErr.message)) || '').toLowerCase();
+        if (details.includes('already') || details.includes('started') || details.includes('settings')) {
+          // Avoid retrying settings repeatedly after Firestore is already initialized.
+          this.firebaseSettingsApplied = true;
+        }
       }
       this.firebaseConnected = true;
       this.logSyncAudit('info', 'Firebase conectado; iniciando listeners e pull inicial.');
@@ -5245,6 +5458,16 @@ class ConsultorioApp {
     const skipDirtyPush = Boolean(options.skipDirtyPush);
     const silent = Boolean(options.silent);
     if (!silent) this.logSyncAudit('pull', 'Pull iniciado para atualizar dados locais.');
+
+    if (skipDirtyPush && this.isFirebaseSyncDirty()) {
+      // Never replace unsynced local edits/deletions with remote snapshots.
+      this.requestFirebasePushSync();
+      this.logSyncAudit('warning', 'Pull remoto adiado: há alterações locais pendentes de envio.');
+      if (!silent) {
+        this.updateCloudSyncMeta('Aguardando envio local para sincronizar com segurança', 'local');
+      }
+      return;
+    }
 
     try {
       if (this.isFirebaseSyncDirty() && !skipDirtyPush) {
@@ -5314,7 +5537,19 @@ class ConsultorioApp {
         }
 
         if (item.name === 'clients') this.clients = remoteData;
-        if (item.name === 'appointments') this.appointments = remoteData;
+        if (item.name === 'appointments') {
+          const filteredResult = this.filterRemoteAppointmentsByTombstones(remoteData);
+          this.appointments = filteredResult.filtered;
+          if (filteredResult.blockedIds.length) {
+            this.logSyncAudit('warning', `Consultas bloqueadas no pull por tombstone local: ${filteredResult.blockedIds.join(', ')}.`);
+            try {
+              await this.enforceAppointmentDeletesInFirebase(filteredResult.blockedIds);
+              this.logSyncAudit('push', `Reexclusão remota aplicada para consultas: ${filteredResult.blockedIds.join(', ')}.`);
+            } catch (deleteErr) {
+              this.logSyncAudit('error', `Falha na reexclusão remota: ${String((deleteErr && (deleteErr.code || deleteErr.message)) || 'erro desconhecido')}`);
+            }
+          }
+        }
         if (item.name === 'expenses') this.expenses = remoteData;
       }
 
@@ -5323,6 +5558,7 @@ class ConsultorioApp {
         this.logSyncAudit('push', 'Remote vazio detectado; base local enviada para semear dados.');
       }
 
+      this.applyStableDataOrdering();
       this.saveStore();
       this.render();
       if (!silent) this.logSyncAudit('pull', 'Pull concluído e interface atualizada.');
@@ -5366,6 +5602,12 @@ class ConsultorioApp {
         operations.push({ type: 'set', collection: 'appointments', id, data: appt });
       });
 
+      Object.keys(this.deletedAppointmentTombstones || {}).forEach((id) => {
+        const normalizedId = String(id || '').trim();
+        if (!normalizedId) return;
+        localIdsByCollection.appointments.delete(normalizedId);
+      });
+
       this.expenses.forEach((expense) => {
         if (!expense.id) return;
         const id = String(expense.id);
@@ -5385,6 +5627,12 @@ class ConsultorioApp {
           if (localIdsByCollection[collectionName].has(doc.id)) return;
           operations.push({ type: 'delete', collection: collectionName, id: doc.id });
         });
+      });
+
+      Object.keys(this.deletedAppointmentTombstones || {}).forEach((id) => {
+        const normalizedId = String(id || '').trim();
+        if (!normalizedId) return;
+        operations.push({ type: 'delete', collection: 'appointments', id: normalizedId });
       });
 
       const maxBatchSize = 450;
@@ -5635,23 +5883,29 @@ class ConsultorioApp {
     const info = document.getElementById('cloud-sync-last');
     if (!info) return;
 
-    info.classList.remove('live', 'local', 'remote', 'cloud-sync-meta-pulse');
+    info.classList.remove('live', 'local', 'remote', 'cloud-sync-meta-pulse', 'cloud-sync-dot-blink');
     if (mode === 'live') info.classList.add('live');
     else if (mode === 'remote') info.classList.add('remote');
     else info.classList.add('local');
 
     if (customText) {
-      info.textContent = customText;
+      const fullText = String(customText || '').trim();
+      info.textContent = '';
+      info.title = fullText;
+      info.setAttribute('aria-label', fullText);
       if (options && options.highlight) {
-        // Retrigger pulse animation each time a remote sync arrives.
+        // Retrigger dot blink each time a remote sync arrives.
         void info.offsetWidth;
-        info.classList.add('cloud-sync-meta-pulse');
+        info.classList.add('cloud-sync-dot-blink');
       }
       return;
     }
 
     const now = new Date();
-    info.textContent = `Atualizado ${now.toLocaleTimeString('pt-BR')}`;
+    const defaultText = `Atualizado ${now.toLocaleTimeString('pt-BR')}`;
+    info.textContent = '';
+    info.title = defaultText;
+    info.setAttribute('aria-label', defaultText);
   }
 
   syncTopDatesToAgendaFilters() {
@@ -8077,7 +8331,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260801-3', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260801-4', 'app-root')
       ]);
     }
   } catch (err) {
@@ -8096,7 +8350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-10')
+    navigator.serviceWorker.register('./sw.js?v=20260801-17')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

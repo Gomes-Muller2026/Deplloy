@@ -24,6 +24,10 @@ const agendaModule = {
       amountPaid: toNumber(payload.amountPaid)
     };
 
+    if (typeof app.clearAppointmentDeletionTombstone === 'function' && normalized.id) {
+      app.clearAppointmentDeletionTombstone(normalized.id);
+    }
+
     const existing = app.appointments.find((a) => a.id === appointmentId);
     if (existing) {
       app.appointments = app.appointments.map((a) => (a.id === appointmentId ? normalized : a));
@@ -51,9 +55,27 @@ const agendaModule = {
     if (!confirmed) return;
 
     app.appointments = app.appointments.filter((a) => a.id !== appointmentId);
+    if (typeof app.registerAppointmentDeletionTombstone === 'function') {
+      app.registerAppointmentDeletionTombstone(appointmentId);
+    }
+    app.logSyncAudit('info', `Exclusão solicitada para consulta ${appointmentId}.`);
     app.saveData();
+    if (typeof app.deleteAppointmentInFirebaseNow === 'function') {
+      void app.deleteAppointmentInFirebaseNow(appointmentId).then((ok) => {
+        if (!ok && typeof app.requestFirebasePushSync === 'function') {
+          app.requestFirebasePushSync();
+        }
+      });
+    }
     app.render();
     app.showToast('Consulta excluída com sucesso.', 'success');
+
+    window.setTimeout(() => {
+      const revived = app.appointments.some((a) => String(a.id || '') === String(appointmentId || ''));
+      if (!revived) return;
+      app.logSyncAudit('error', `Consulta ${appointmentId} reapareceu após exclusão (possível rollback de sync).`);
+      app.showToast('A consulta reapareceu após excluir. Copie o diagnóstico em Configurações > Auditoria.', 'warning');
+    }, 2600);
   },
 
   sendAppointmentWhatsApp(app, appointmentId) {

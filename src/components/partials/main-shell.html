@@ -307,6 +307,9 @@
           <button class="btn btn-secondary btn-sm" type="button" data-finance-view="all" onclick="app.financeViewFilter='all';app.renderFinanceiroTable()">Todos</button>
           <button class="btn btn-secondary btn-sm" type="button" data-finance-view="pending" onclick="app.financeViewFilter='pending';app.renderFinanceiroTable()">Pendentes</button>
           <button class="btn btn-secondary btn-sm" type="button" data-finance-view="paid" onclick="app.financeViewFilter='paid';app.renderFinanceiroTable()">Recebidos</button>
+          <button class="btn btn-secondary btn-sm active" type="button" data-finance-mode="cliente" onclick="app.setFinanceViewMode('cliente')">Por Cliente</button>
+          <button class="btn btn-secondary btn-sm" type="button" data-finance-mode="consulta" onclick="app.setFinanceViewMode('consulta')">Por Consulta</button>
+          <button class="btn btn-secondary btn-sm" type="button" data-finance-mode="ambos" onclick="app.setFinanceViewMode('ambos')">Ambos</button>
         </div>
         <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
           <button class="btn btn-secondary" id="btn-finance-receipt-professional" type="button">Editar Profissional Recibo</button>
@@ -347,7 +350,18 @@
           </div>
         </div>
       </div>
-      <div class="card">
+      <div class="card" id="finance-recent-card" style="margin-top:1rem;">
+        <div class="card-body">
+          <div class="card-header" style="margin-bottom:0.65rem; padding-bottom:0; border-bottom:none;">
+            <div>
+              <h3 style="margin:0;">Consultas Agendadas</h3>
+              <p style="margin:0.25rem 0 0; color:var(--text-muted);">Mostra os agendamentos lançados para conferir o que entrou no financeiro.</p>
+            </div>
+          </div>
+          <div id="finance-recent-appointments" class="finance-recent-list"></div>
+        </div>
+      </div>
+      <div class="card" id="finance-grouped-card">
         <div class="card-body">
           <div class="table-responsive">
             <table class="data-table">

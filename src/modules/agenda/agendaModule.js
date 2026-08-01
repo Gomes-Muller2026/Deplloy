@@ -9,8 +9,14 @@ const agendaModule = {
       return;
     }
 
+    const matchedClient = payload.clientId
+      ? app.clients.find((client) => String(client.id || '') === String(payload.clientId || ''))
+      : app.clients.find((client) => String(client.name || '').trim().toLowerCase() === String(payload.clientName || '').trim().toLowerCase());
+
     const normalized = {
       ...payload,
+      clientId: String((matchedClient && matchedClient.id) || payload.clientId || '').trim(),
+      clientName: String((matchedClient && matchedClient.name) || payload.clientName || '').trim(),
       id: appointmentId || `app-${Date.now()}`,
       status: payload.status || 'Agendado',
       paymentStatus: payload.paymentStatus || 'Pendente',

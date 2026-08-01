@@ -432,6 +432,7 @@ class ConsultorioApp {
     this.currentTab = 'dashboard';
     this.localLoginUnlocked = false;
     this.financeViewFilter = 'all';
+    this.financeViewMode = 'cliente';
     this.soundEnabled = true;
     this.reminderMinutes = 15;
     this.reminderIntensity = 'strong';
@@ -5594,9 +5595,26 @@ class ConsultorioApp {
     this.updateClientPrintSelectionUI();
   }
 
+  getFinanceGroupingKey(appointment) {
+    const cpfDigits = String((appointment && (appointment.clientCpf || appointment.cpf)) || '').replace(/\D/g, '');
+    if (cpfDigits) return `cpf:${cpfDigits}`;
+
+    const name = String((appointment && appointment.clientName) || '').normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+    if (name) return `name:${name}`;
+
+    return `appt:${String((appointment && appointment.id) || '').trim() || 'sem-cliente'}`;
+  }
+
   renderFinanceiroTable() {
     const tbody = document.getElementById('financeiro-table-body');
     if (!tbody) return;
+    const recentContainer = document.getElementById('finance-recent-appointments');
+    this.updateFinanceViewModeUI();
 
     const filterIndicator = document.getElementById('finance-filter-indicator');
     const filterLabel = document.getElementById('finance-filter-label');
@@ -5617,17 +5635,61 @@ class ConsultorioApp {
 
     const search = String((document.getElementById('financeiro-search') || {}).value || '').toLowerCase().trim();
     const grouped = {};
+    const recentItems = this.appointments.slice().sort((a, b) => `${String(b.date || '')} ${String(b.time || '')}`.localeCompare(`${String(a.date || '')} ${String(a.time || '')}`));
+
+    if (recentContainer) {
+      const visibleRecent = recentItems
+        .filter((a) => !search || String(a.clientName || '').toLowerCase().includes(search) || String(a.procedure || '').toLowerCase().includes(search))
+        .filter((a) => {
+          if (this.financeViewFilter === 'pending') return Math.max(0, toNumber(a.price) - toNumber(a.amountPaid)) > 0;
+          if (this.financeViewFilter === 'paid') return toNumber(a.amountPaid) > 0;
+          return true;
+        })
+        .slice(0, this.financeViewMode === 'consulta' ? recentItems.length : 6);
+
+      recentContainer.innerHTML = visibleRecent.length ? visibleRecent.map((appt) => {
+        const pending = Math.max(0, toNumber(appt.price) - toNumber(appt.amountPaid));
+        const paymentStatus = String(appt.paymentStatus || (pending > 0 ? (toNumber(appt.amountPaid) > 0 ? 'Parcial' : 'Pendente') : 'Pago'));
+        const action = pending > 0 ? `app.openPaymentModal('${safeText(appt.id || '')}')` : `app.openAppointmentModal('${safeText(appt.id || '')}')`;
+        return `
+          <button type="button" class="finance-recent-item" onclick="${action}">
+            <div class="finance-recent-main">
+              <strong>${safeText(appt.clientName || '-')}</strong>
+              <span>${safeText(appt.procedure || '-')}</span>
+            </div>
+            <div class="finance-recent-meta">
+              <span>${safeText(formatDateBR(appt.date || ''))} ${safeText(appt.time || '--:--')}</span>
+              <span>${safeText(formatCurrency(appt.price || 0))}</span>
+              <span>${safeText(paymentStatus)}</span>
+            </div>
+          </button>
+        `;
+      }).join('') : '<div class="empty-state"><p>Nenhum agendamento recente encontrado.</p></div>';
+    }
 
     this.appointments.forEach((a) => {
-      const key = String(a.clientId || 'sem-cliente');
+      const key = this.getFinanceGroupingKey(a);
       grouped[key] = grouped[key] || {
         clientId: key,
+        financeKey: key,
         clientName: a.clientName || 'Sem cliente',
+        clientCpf: String(a.clientCpf || '').trim(),
         qty: 0,
         total: 0,
         paid: 0,
-        pending: 0
+        pending: 0,
+        latestDate: '',
+        latestTime: ''
       };
+      const row = grouped[key];
+      const currentStamp = `${String(a.date || '')} ${String(a.time || '')}`;
+      const latestStamp = `${String(row.latestDate || '')} ${String(row.latestTime || '')}`;
+      if (currentStamp > latestStamp) {
+        row.latestDate = String(a.date || '');
+        row.latestTime = String(a.time || '');
+        row.clientName = a.clientName || row.clientName;
+        row.clientCpf = String(a.clientCpf || row.clientCpf || '').trim();
+      }
       grouped[key].qty += 1;
       grouped[key].total += toNumber(a.price);
       grouped[key].paid += toNumber(a.amountPaid);
@@ -5645,7 +5707,12 @@ class ConsultorioApp {
       rows = rows.filter((r) => r.paid > 0);
     }
 
-    rows.sort((a, b) => b.pending - a.pending);
+    rows.sort((a, b) => {
+      const aLatest = `${String(a.latestDate || '')} ${String(a.latestTime || '')}`;
+      const bLatest = `${String(b.latestDate || '')} ${String(b.latestTime || '')}`;
+      if (aLatest !== bLatest) return bLatest.localeCompare(aLatest);
+      return b.pending - a.pending;
+    });
     this.lastFinanceiroRows = rows.slice();
 
     if (!rows.length) {
@@ -5677,6 +5744,7 @@ class ConsultorioApp {
           </td>
           <td>
             <button class="finance-client-link" type="button" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')">${safeText(r.clientName)}</button>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;">Último: ${safeText(formatDateBR(r.latestDate || ''))}${r.latestTime ? ` ${safeText(r.latestTime)}` : ''}</div>
           </td>
           <td>${r.qty}</td>
           <td><button type="button" class="money-pill money-pill-total" onclick="app.openLatestAppointmentByClient('${safeText(r.clientId)}')" title="Clique para editar">${formatCurrency(r.total)}</button></td>
@@ -5721,7 +5789,7 @@ class ConsultorioApp {
 
   updateFinancePrintSelectionUI() {
     const rows = Array.isArray(this.lastFinanceiroRows) ? this.lastFinanceiroRows : [];
-    const selectedCount = rows.filter((row) => this.selectedFinanceReportClientIds.has(String(row.clientId || ''))).length;
+    const selectedCount = rows.filter((row) => this.selectedFinanceReportClientIds.has(String(row.clientId || row.financeKey || ''))).length;
 
     const btnPrintSelected = document.getElementById('btn-print-selected-finance');
     if (btnPrintSelected) {
@@ -5748,6 +5816,30 @@ class ConsultorioApp {
     }
   }
 
+  setFinanceViewMode(mode) {
+    this.financeViewMode = ['consulta', 'ambos'].includes(mode) ? mode : 'cliente';
+    this.updateFinanceViewModeUI();
+    this.renderFinanceiroTable();
+  }
+
+  updateFinanceViewModeUI() {
+    const groupedCard = document.getElementById('finance-grouped-card');
+    const recentCard = document.getElementById('finance-recent-card');
+    const groupedBtn = document.querySelector('[data-finance-mode="cliente"]');
+    const recentBtn = document.querySelector('[data-finance-mode="consulta"]');
+    const bothBtn = document.querySelector('[data-finance-mode="ambos"]');
+
+    const isConsulta = this.financeViewMode === 'consulta';
+    const isAmbos = this.financeViewMode === 'ambos';
+    if (groupedCard) groupedCard.style.display = isConsulta && !isAmbos ? 'none' : 'block';
+    if (recentCard) recentCard.style.display = isConsulta && !isAmbos ? 'block' : (isAmbos ? 'block' : 'none');
+    if (recentCard) recentCard.classList.toggle('is-compact', isConsulta && !isAmbos);
+
+    if (groupedBtn) groupedBtn.classList.toggle('active', !isConsulta && !isAmbos);
+    if (recentBtn) recentBtn.classList.toggle('active', isConsulta);
+    if (bothBtn) bothBtn.classList.toggle('active', isAmbos);
+  }
+
   buildFinanceiroRowsReportLines(rows) {
     const safeRows = Array.isArray(rows) ? rows : [];
     const grandTotal = safeRows.reduce((sum, row) => sum + toNumber(row.total), 0);
@@ -5771,7 +5863,7 @@ class ConsultorioApp {
       lines.push(`- ${row.clientName || 'Sem cliente'} | Qtd: ${row.qty} | Total: ${formatCurrency(row.total)} | Pendente: ${formatCurrency(row.pending)} | Pago: ${formatCurrency(row.paid)} | Status: ${status}`);
 
       const appointmentDetails = this.appointments
-        .filter((appt) => String(appt.clientId || '') === String(row.clientId || ''))
+        .filter((appt) => this.getFinanceGroupingKey(appt) === String(row.clientId || ''))
         .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
 
       appointmentDetails.forEach((appt) => {
@@ -5788,7 +5880,7 @@ class ConsultorioApp {
   }
 
   printSelectedFinanceiroReports() {
-    const rows = (this.lastFinanceiroRows || []).filter((row) => this.selectedFinanceReportClientIds.has(String(row.clientId || '')));
+    const rows = (this.lastFinanceiroRows || []).filter((row) => this.selectedFinanceReportClientIds.has(String(row.clientId || row.financeKey || '')));
     if (!rows.length) {
       this.showToast('Marque ao menos um cliente no financeiro para imprimir.', 'warning');
       return;
@@ -5817,7 +5909,7 @@ class ConsultorioApp {
     }
 
     const matches = this.appointments
-      .filter((a) => String(a.clientId || '') === key)
+      .filter((a) => this.getFinanceGroupingKey(a) === key)
       .sort((a, b) => `${b.date || ''} ${b.time || ''}`.localeCompare(`${a.date || ''} ${a.time || ''}`));
 
     if (!matches.length) {
@@ -5837,7 +5929,7 @@ class ConsultorioApp {
     }
 
     const pendingMatches = this.appointments
-      .filter((a) => String(a.clientId || '') === key)
+      .filter((a) => this.getFinanceGroupingKey(a) === key)
       .filter((a) => Math.max(0, toNumber(a.price) - toNumber(a.amountPaid)) > 0)
       .sort((a, b) => `${b.date || ''} ${b.time || ''}`.localeCompare(`${a.date || ''} ${a.time || ''}`));
 
@@ -7256,7 +7348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260731-7')
+    navigator.serviceWorker.register('./sw.js?v=20260731-13')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

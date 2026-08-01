@@ -2709,6 +2709,122 @@ button.badge:active {
   margin: 0 auto;
 }
 
+#finance-recent-card .card-body {
+  padding-top: 1rem;
+}
+
+.finance-recent-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.finance-recent-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition), background var(--transition), box-shadow var(--transition);
+}
+
+.finance-recent-item:hover,
+.finance-recent-item:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(110, 143, 74, 0.35);
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.24);
+}
+
+.finance-recent-main {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.finance-recent-main strong,
+.finance-recent-main span,
+.finance-recent-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finance-recent-main strong {
+  font-size: 0.98rem;
+}
+
+.finance-recent-main span {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.finance-recent-meta {
+  display: grid;
+  justify-items: end;
+  gap: 0.18rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+#finance-recent-card.is-compact .card-body {
+  padding-top: 0.8rem;
+}
+
+#finance-recent-card.is-compact .card-header h3 {
+  font-size: 1rem;
+}
+
+#finance-recent-card.is-compact .card-header p {
+  font-size: 0.8rem;
+}
+
+#finance-recent-card.is-compact .finance-recent-list {
+  gap: 0.5rem;
+}
+
+#finance-recent-card.is-compact .finance-recent-item {
+  padding: 0.72rem 0.85rem;
+  gap: 0.65rem;
+}
+
+#finance-recent-card.is-compact .finance-recent-main strong {
+  font-size: 0.92rem;
+}
+
+#finance-recent-card.is-compact .finance-recent-main span,
+#finance-recent-card.is-compact .finance-recent-meta {
+  font-size: 0.76rem;
+}
+
+#finance-recent-card.is-compact .finance-recent-meta {
+  gap: 0.1rem;
+}
+
+@media (max-width: 760px) {
+  .finance-recent-item {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .finance-recent-meta {
+    justify-items: start;
+    text-align: left;
+  }
+
+  #finance-recent-card.is-compact .finance-recent-item {
+    gap: 0.45rem;
+  }
+}
+
 /* ── Group Manager ───────────────────────────── */
 .groups-add-row {
   display: flex;

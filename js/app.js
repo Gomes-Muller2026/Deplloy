@@ -479,7 +479,9 @@ class ConsultorioApp {
     this.agendaAttentionTimerId = null;
     this.reminderCheckIntervalMs = 30000;
     this.firebaseSyncIntervalId = null;
-    this.firebaseSyncIntervalMs = 5 * 60 * 1000;
+    this.firebaseSyncIntervalMs = 45 * 1000;
+    this.firebaseSyncStatePollIntervalId = null;
+    this.firebaseSyncStatePollIntervalMs = 12 * 1000;
     this.firebaseSyncRealtimeUnsubscribe = null;
     this.firebaseCollectionRealtimeUnsubscribes = [];
     this.firebaseRealtimeSyncTimerId = null;
@@ -494,9 +496,15 @@ class ConsultorioApp {
     this.deletedAppointmentTombstones = {};
     this.firebaseDeviceId = this.getOrCreateFirebaseDeviceId();
     this.lastRealtimeSyncMillis = 0;
+    this.lastRemoteStateSeenMillis = 0;
     this.versionInfo = { dateKey: getTodayStr(), seq: 0, label: 'v00.00/000000' };
     this.updateReady = false;
     this.landscapeSidebarCollapsed = false;
+    this.agendaQuickMenuElement = null;
+    this.agendaQuickMenuOutsideHandler = null;
+    this.agendaQuickMenuEscapeHandler = null;
+    this.agendaRowLongPressTimerId = null;
+    this.headerSyncNoticeTimerId = null;
     this.loadStore();
     this.loadWhatsAppTemplates();
     this.loadPaymentReceiptTemplate();
@@ -1111,6 +1119,7 @@ class ConsultorioApp {
     };
 
     await this.firebaseDb.collection('app_meta').doc('sync_state').set(payload, { merge: true });
+    this.lastRemoteStateSeenMillis = Math.max(Number(this.lastRemoteStateSeenMillis || 0), nowMillis);
   }
 
   startFirebaseRealtimeSyncWatcher() {
@@ -1135,6 +1144,7 @@ class ConsultorioApp {
         if (!remoteMillis || remoteMillis <= this.lastRealtimeSyncMillis) return;
 
         this.lastRealtimeSyncMillis = remoteMillis;
+        this.lastRemoteStateSeenMillis = Math.max(Number(this.lastRemoteStateSeenMillis || 0), remoteMillis);
         this.logSyncAudit('realtime', 'Alteração remota detectada via metadata.');
         this.scheduleFirebaseRealtimePullSync('meta', remoteMillis);
       }, (err) => {
@@ -3449,6 +3459,29 @@ class ConsultorioApp {
     this.updateNotificationPermissionUI();
   }
 
+  showHeaderSyncInlineNotice(message = 'Dados atualizados com sucesso.', type = 'success', timeoutMs = 2600) {
+    const note = document.getElementById('header-sync-inline-note');
+    if (!note) {
+      this.showToast(message, type === 'warning' ? 'warning' : 'success');
+      return;
+    }
+
+    if (this.headerSyncNoticeTimerId) {
+      window.clearTimeout(this.headerSyncNoticeTimerId);
+      this.headerSyncNoticeTimerId = null;
+    }
+
+    note.textContent = String(message || '').trim();
+    note.classList.add('is-visible');
+    note.classList.toggle('is-warning', String(type || '').toLowerCase() === 'warning');
+
+    this.headerSyncNoticeTimerId = window.setTimeout(() => {
+      note.classList.remove('is-visible', 'is-warning');
+      note.textContent = '';
+      this.headerSyncNoticeTimerId = null;
+    }, Math.max(1000, Number(timeoutMs) || 2600));
+  }
+
   getPendingReminderAppointments() {
     if (!Array.isArray(this.appointments) || !this.appointments.length) return [];
 
@@ -4870,6 +4903,11 @@ class ConsultorioApp {
     }
 
     this.render();
+    if (this.firebaseConnected && this.firebaseDb) {
+      void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true }).catch((err) => {
+        console.log('Falha ao sincronizar ao trocar de aba:', err);
+      });
+    }
     this.syncDashboardCardFromTab(this.currentTab, previousTab);
   }
 
@@ -5295,6 +5333,11 @@ class ConsultorioApp {
       this.firebaseSyncIntervalId = null;
     }
 
+    if (this.firebaseSyncStatePollIntervalId) {
+      window.clearInterval(this.firebaseSyncStatePollIntervalId);
+      this.firebaseSyncStatePollIntervalId = null;
+    }
+
     if (this.firebaseSyncRealtimeUnsubscribe) {
       this.firebaseSyncRealtimeUnsubscribe();
       this.firebaseSyncRealtimeUnsubscribe = null;
@@ -5402,6 +5445,7 @@ class ConsultorioApp {
       this.logSyncAudit('info', 'Firebase conectado; iniciando listeners e pull inicial.');
       this.setFirebaseStatus(true, 'Conectado ao Firebase', 'live');
       this.startFirebaseAutoRefresh();
+      this.startFirebaseSyncStatePolling();
       this.startFirebaseRealtimeSyncWatcher();
       this.startFirebaseCollectionRealtimeWatchers();
       this.showToast('Firebase conectado com sucesso.', 'success');
@@ -5720,11 +5764,11 @@ class ConsultorioApp {
     try {
       await this.syncDataWithFirebase({ skipDirtyPush: true });
       this.updateCloudSyncMeta('Dados atualizados do Firebase', 'live');
-      this.showToast('Dados atualizados com sucesso.', 'success');
+      this.showHeaderSyncInlineNotice('Dados atualizados com sucesso.', 'success', 2600);
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
       this.updateCloudSyncMeta('Falha ao atualizar dados do Firebase', 'local');
-      this.showToast(`Falha ao atualizar dados: ${message}`, 'warning');
+      this.showHeaderSyncInlineNotice(`Falha ao atualizar dados: ${message}`, 'warning', 3600);
     }
   }
 
@@ -5866,6 +5910,49 @@ class ConsultorioApp {
           console.log('Falha ao atualizar dados automaticamente do Firebase:', err);
         });
     }, this.firebaseSyncIntervalMs);
+  }
+
+  startFirebaseSyncStatePolling() {
+    if (this.firebaseSyncStatePollIntervalId) {
+      window.clearInterval(this.firebaseSyncStatePollIntervalId);
+      this.firebaseSyncStatePollIntervalId = null;
+    }
+
+    this.firebaseSyncStatePollIntervalId = window.setInterval(async () => {
+      if (!this.firebaseConnected || !this.firebaseDb) return;
+
+      try {
+        const remoteState = await this.getRemoteSyncState();
+        if (!remoteState) return;
+
+        const remoteMillis = Number(remoteState.updatedAtMillis || 0);
+        if (!remoteMillis) return;
+
+        const updatedByDeviceId = String(remoteState.updatedByDeviceId || '').trim();
+        if (updatedByDeviceId && updatedByDeviceId === this.firebaseDeviceId) {
+          this.lastRemoteStateSeenMillis = Math.max(Number(this.lastRemoteStateSeenMillis || 0), remoteMillis);
+          return;
+        }
+
+        const knownMillis = Math.max(
+          Number(this.lastRealtimeSyncMillis || 0),
+          Number(this.lastRemoteStateSeenMillis || 0),
+          Number(this.getLocalLastPushMillis() || 0)
+        );
+
+        if (remoteMillis <= knownMillis) return;
+
+        this.lastRemoteStateSeenMillis = remoteMillis;
+        this.logSyncAudit('realtime', 'Mudança remota detectada via polling de metadata.');
+
+        await this.syncDataWithFirebase({ skipDirtyPush: true, silent: true });
+        this.showRemoteSyncIndicator(remoteMillis);
+        this.logSyncAudit('pull', 'Pull aplicado por polling de metadata remota.');
+      } catch (err) {
+        const details = String((err && (err.code || err.message)) || 'erro desconhecido');
+        this.logSyncAudit('error', `Falha no polling de metadata: ${details}`);
+      }
+    }, this.firebaseSyncStatePollIntervalMs);
   }
 
   showRemoteSyncIndicator(remoteMillis = 0) {
@@ -6465,7 +6552,7 @@ class ConsultorioApp {
         ? 'badge-pago'
         : (String(payment).toLowerCase().includes('parcial') ? 'badge-parcial' : 'badge-pendente');
       return `
-        <tr data-appointment-id="${safeText(a.id || '')}" class="${isReminderTarget ? 'agenda-reminder-target-row' : ''}">
+        <tr data-appointment-id="${safeText(a.id || '')}" class="${isReminderTarget ? 'agenda-reminder-target-row' : ''}" oncontextmenu="app.openAgendaQuickActions(event, '${a.id}')" onpointerdown="app.startAgendaRowLongPress(event, '${a.id}')" onpointerup="app.clearAgendaRowLongPress()" onpointerleave="app.clearAgendaRowLongPress()" onpointercancel="app.clearAgendaRowLongPress()">
           <td><strong>${formatDateBR(a.date)}</strong><br><span style="color:var(--text-muted);font-size:0.82rem;">${safeText(a.time || '--:--')} hs</span></td>
           <td>${safeText(a.clientName || '-')}</td>
           <td>${safeText(a.procedure || '-')}</td>
@@ -6486,6 +6573,125 @@ class ConsultorioApp {
     }
 
     this.focusAgendaReminderTarget();
+  }
+
+  startAgendaRowLongPress(event, appointmentId) {
+    if (!event || event.pointerType !== 'touch') return;
+    this.clearAgendaRowLongPress();
+
+    const x = Number(event.clientX || 0);
+    const y = Number(event.clientY || 0);
+    const id = String(appointmentId || '').trim();
+    if (!id) return;
+
+    this.agendaRowLongPressTimerId = window.setTimeout(() => {
+      this.agendaRowLongPressTimerId = null;
+      this.openAgendaQuickActions({ clientX: x, clientY: y, preventDefault() {}, stopPropagation() {} }, id);
+    }, 520);
+  }
+
+  clearAgendaRowLongPress() {
+    if (!this.agendaRowLongPressTimerId) return;
+    window.clearTimeout(this.agendaRowLongPressTimerId);
+    this.agendaRowLongPressTimerId = null;
+  }
+
+  closeAgendaQuickActions() {
+    if (this.agendaQuickMenuOutsideHandler) {
+      document.removeEventListener('pointerdown', this.agendaQuickMenuOutsideHandler, true);
+      window.removeEventListener('scroll', this.agendaQuickMenuOutsideHandler, true);
+      window.removeEventListener('resize', this.agendaQuickMenuOutsideHandler, true);
+      this.agendaQuickMenuOutsideHandler = null;
+    }
+
+    if (this.agendaQuickMenuEscapeHandler) {
+      document.removeEventListener('keydown', this.agendaQuickMenuEscapeHandler, true);
+      this.agendaQuickMenuEscapeHandler = null;
+    }
+
+    if (this.agendaQuickMenuElement && this.agendaQuickMenuElement.parentNode) {
+      this.agendaQuickMenuElement.parentNode.removeChild(this.agendaQuickMenuElement);
+    }
+    this.agendaQuickMenuElement = null;
+  }
+
+  openAgendaQuickActions(event, appointmentId) {
+    const id = String(appointmentId || '').trim();
+    if (!id) return;
+
+    const appointment = this.appointments.find((item) => String((item && item.id) || '') === id);
+    if (!appointment) return;
+
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    this.clearAgendaRowLongPress();
+    this.closeAgendaQuickActions();
+
+    const menu = document.createElement('div');
+    menu.className = 'agenda-quick-actions-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', `Ações da consulta ${String(appointment.clientName || 'paciente')}`);
+
+    const buildActionButton = (label, icon, onClick, tone = 'secondary') => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `btn btn-sm ${tone === 'danger' ? 'btn-ghost agenda-quick-action-danger' : 'btn-secondary'} agenda-quick-action-btn`;
+      button.innerHTML = `<i data-lucide="${icon}"></i><span>${safeText(label)}</span>`;
+      button.addEventListener('click', () => {
+        this.closeAgendaQuickActions();
+        onClick();
+      });
+      return button;
+    };
+
+    menu.appendChild(buildActionButton('Editar', 'pencil', () => this.openAppointmentModal(id)));
+    menu.appendChild(buildActionButton('WhatsApp', 'message-circle', () => this.sendAppointmentWhatsApp(id)));
+    menu.appendChild(buildActionButton('Excluir', 'trash-2', () => this.deleteAppointment(id), 'danger'));
+
+    document.body.appendChild(menu);
+    this.agendaQuickMenuElement = menu;
+
+    const margin = 10;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1280;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 720;
+    const rect = menu.getBoundingClientRect();
+    const anchorX = Number((event && event.clientX) || 0);
+    const anchorY = Number((event && event.clientY) || 0);
+    let left = anchorX + 6;
+    let top = anchorY + 6;
+
+    if ((left + rect.width) > (viewportWidth - margin)) {
+      left = viewportWidth - rect.width - margin;
+    }
+    if ((top + rect.height) > (viewportHeight - margin)) {
+      top = viewportHeight - rect.height - margin;
+    }
+
+    menu.style.left = `${Math.max(margin, Math.round(left))}px`;
+    menu.style.top = `${Math.max(margin, Math.round(top))}px`;
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+
+    this.agendaQuickMenuOutsideHandler = (evt) => {
+      if (!this.agendaQuickMenuElement) return;
+      if (evt && evt.target && this.agendaQuickMenuElement.contains(evt.target)) return;
+      this.closeAgendaQuickActions();
+    };
+    this.agendaQuickMenuEscapeHandler = (evt) => {
+      if (!evt || evt.key !== 'Escape') return;
+      this.closeAgendaQuickActions();
+    };
+
+    // Delay pointerdown binding so the same opening pointer event doesn't instantly close the menu.
+    window.setTimeout(() => {
+      if (!this.agendaQuickMenuElement) return;
+      document.addEventListener('pointerdown', this.agendaQuickMenuOutsideHandler, true);
+      window.addEventListener('scroll', this.agendaQuickMenuOutsideHandler, true);
+      window.addEventListener('resize', this.agendaQuickMenuOutsideHandler, true);
+      document.addEventListener('keydown', this.agendaQuickMenuEscapeHandler, true);
+    }, 0);
   }
 
   cycleAppointmentStatus(id) {
@@ -8350,7 +8556,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-18')
+    navigator.serviceWorker.register('./sw.js?v=20260801-21')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

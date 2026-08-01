@@ -1261,6 +1261,30 @@ input[type="date"]:focus {
   color: #cbd5e1;
 }
 
+.header-sync-inline-note {
+  display: none;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.34rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 197, 94, 0.42);
+  background: rgba(34, 197, 94, 0.15);
+  color: #bbf7d0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.header-sync-inline-note.is-visible {
+  display: inline-flex;
+}
+
+.header-sync-inline-note.is-warning {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fde68a;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -2133,6 +2157,38 @@ input[type="date"]:focus {
   z-index: 7;
   pointer-events: auto !important;
   visibility: visible !important;
+}
+
+.agenda-quick-actions-menu {
+  position: fixed;
+  z-index: 13000;
+  min-width: 178px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(15, 23, 42, 0.96);
+  box-shadow: 0 16px 36px rgba(2, 6, 23, 0.48);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.agenda-quick-action-btn {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.48rem;
+}
+
+.agenda-quick-action-danger {
+  color: #fda4af !important;
+  border: 1px solid rgba(251, 113, 133, 0.42) !important;
+  background: rgba(251, 113, 133, 0.12) !important;
+}
+
+.agenda-quick-action-danger:hover {
+  background: rgba(251, 113, 133, 0.2) !important;
 }
 
 .data-table tbody tr {
@@ -4601,6 +4657,11 @@ textarea.form-control,
   .header-actions .cloud-status-badge,
   .header-actions .header-user-pill,
   .top-date-picker {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .header-sync-inline-note {
     width: 100%;
     justify-content: center;
   }

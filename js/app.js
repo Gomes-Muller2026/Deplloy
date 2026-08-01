@@ -19,6 +19,8 @@ const FIREBASE_DEVICE_ID_STORAGE_KEY = 'consultorio_firebase_device_id';
 const FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY = 'consultorio_firebase_last_push_millis';
 const FIREBASE_PUSH_SHADOW_STORAGE_KEY = 'consultorio_firebase_push_shadow';
 const GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY = 'consultorio_google_calendar_client_id';
+const GOOGLE_CALENDAR_LAST_SENT_STORAGE_KEY = 'consultorio_google_calendar_last_sent';
+const GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY = 'consultorio_google_calendar_last_imported';
 const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 const GOOGLE_CALENDAR_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 const GOOGLE_CALENDAR_ALLOWED_ORIGINS = [
@@ -6170,6 +6172,38 @@ class ConsultorioApp {
     input.value = storedClientId || '';
     this.googleCalendarClientId = String(storedClientId || '').trim();
     this.updateGoogleCalendarStatus(this.googleCalendarAuthorized ? 'ok' : (storedClientId ? 'ready' : 'offline'));
+    this.renderGoogleCalendarSyncTimes();
+  }
+
+  renderGoogleCalendarSyncTimes() {
+    const sentElement = document.getElementById('google-calendar-last-sent');
+    const importedElement = document.getElementById('google-calendar-last-imported');
+    const formatStoredTime = (storageKey, emptyLabel) => {
+      try {
+        const rawValue = String(localStorage.getItem(storageKey) || '').trim();
+        const date = rawValue ? new Date(rawValue) : null;
+        return date && !Number.isNaN(date.getTime())
+          ? date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+          : emptyLabel;
+      } catch (err) {
+        return emptyLabel;
+      }
+    };
+
+    if (sentElement) sentElement.textContent = formatStoredTime(GOOGLE_CALENDAR_LAST_SENT_STORAGE_KEY, 'Ainda não enviado');
+    if (importedElement) importedElement.textContent = formatStoredTime(GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY, 'Ainda não importado');
+  }
+
+  recordGoogleCalendarSyncTime(kind) {
+    const storageKey = kind === 'imported'
+      ? GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY
+      : GOOGLE_CALENDAR_LAST_SENT_STORAGE_KEY;
+    try {
+      localStorage.setItem(storageKey, new Date().toISOString());
+    } catch (err) {
+      console.log('Falha ao salvar horário da sincronização do Google Calendar:', err);
+    }
+    this.renderGoogleCalendarSyncTimes();
   }
 
   loadGoogleCalendarClientId() {
@@ -6687,6 +6721,7 @@ class ConsultorioApp {
       await this.listGoogleCalendarEvents();
 
       const message = `Importação concluída. Eventos Google: ${stats.totalGoogleEvents} | Novos na Agenda: ${stats.insertedAppointments} | Atualizados na Agenda: ${stats.updatedAppointments} | Clientes criados: ${stats.createdClients}.`;
+      this.recordGoogleCalendarSyncTime('imported');
       this.updateGoogleCalendarStatus('ok', message);
       this.logSyncAudit('info', `Google -> Agenda: total=${stats.totalGoogleEvents}, inserted=${stats.insertedAppointments}, updated=${stats.updatedAppointments}, clientsCreated=${stats.createdClients}.`);
       if (showToast) this.showToast(message, 'success');
@@ -6802,6 +6837,8 @@ class ConsultorioApp {
         ? ` | Importados: ${importStats.insertedAppointments} | Atualizados local: ${importStats.updatedAppointments}`
         : '';
 
+      this.recordGoogleCalendarSyncTime('sent');
+      if (importStats) this.recordGoogleCalendarSyncTime('imported');
       this.updateGoogleCalendarStatus('ok', `Agenda enviada. Inseridos: ${inserted} | Atualizados: ${updated} | Removidos: ${removed} | Sem mudança: ${unchanged}.${importLabel}`);
       this.logSyncAudit('info', `Google Calendar sync: insert=${inserted}, update=${updated}, delete=${removed}, same=${unchanged}${importStats ? `, imported=${importStats.insertedAppointments}, localUpdated=${importStats.updatedAppointments}, clientsCreated=${importStats.createdClients}` : ''}.`);
       if (showToast) {
@@ -10877,7 +10914,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260801-15', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260801-16', 'app-root')
       ]);
     }
   } catch (err) {

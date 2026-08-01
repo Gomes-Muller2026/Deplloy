@@ -4480,6 +4480,76 @@ textarea.form-control,
   flex-wrap: wrap;
 }
 
+.google-calendar-actions-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.google-calendar-actions-row .config-actions {
+  flex: 1 1 auto;
+}
+
+.google-calendar-sync-times {
+  flex: 0 0 220px;
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1.25rem;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.google-calendar-sync-times > div {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.google-calendar-sync-times svg {
+  width: 18px;
+  height: 18px;
+  color: #a3e635;
+  flex: 0 0 18px;
+}
+
+.google-calendar-sync-times span {
+  display: grid;
+  min-width: 0;
+}
+
+.google-calendar-sync-times strong {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.google-calendar-sync-times small {
+  font-size: 0.78rem;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .google-calendar-actions-row {
+    display: block;
+  }
+
+  .google-calendar-sync-times {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-left: 0;
+    padding-top: 0.8rem;
+    border-left: 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.28);
+  }
+}
+
+@media (max-width: 520px) {
+  .google-calendar-sync-times {
+    grid-template-columns: 1fr;
+  }
+}
+
 .users-cards-block {
   margin-top: 1rem;
   padding-top: 0.9rem;

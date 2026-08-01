@@ -18,7 +18,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260801-7">
+  <link rel="stylesheet" href="css/styles.css?v=20260801-8">
 </head>
 <body>
   <div id="login-root">
@@ -667,12 +667,18 @@
                       <label for="cfg-google-calendar-client-id">Google Client ID</label>
                       <input type="text" id="cfg-google-calendar-client-id" class="form-control" placeholder="xxx.apps.googleusercontent.com">
                     </div>
-                    <div class="config-actions">
-                      <button class="btn btn-primary" id="btn-save-google-calendar">Salvar Client ID</button>
-                      <button class="btn btn-secondary" id="btn-connect-google-calendar">Conectar Google Calendar</button>
-                      <button class="btn btn-secondary" id="btn-list-google-calendar-events">Enviar Agenda + Atualizar</button>
-                      <button class="btn btn-secondary" id="btn-import-google-calendar-events">Importar Google para Agenda</button>
-                      <button class="btn btn-secondary" id="btn-disconnect-google-calendar">Desconectar</button>
+                    <div class="google-calendar-actions-row">
+                      <div class="config-actions">
+                        <button class="btn btn-primary" id="btn-save-google-calendar">Salvar Client ID</button>
+                        <button class="btn btn-secondary" id="btn-connect-google-calendar">Conectar Google Calendar</button>
+                        <button class="btn btn-secondary" id="btn-list-google-calendar-events">Enviar Agenda + Atualizar</button>
+                        <button class="btn btn-secondary" id="btn-import-google-calendar-events">Importar Google para Agenda</button>
+                        <button class="btn btn-secondary" id="btn-disconnect-google-calendar">Desconectar</button>
+                      </div>
+                      <div class="google-calendar-sync-times" aria-label="Horários da sincronização">
+                        <div><i data-lucide="upload"></i><span><strong>Último envio</strong><small id="google-calendar-last-sent">Ainda não enviado</small></span></div>
+                        <div><i data-lucide="download"></i><span><strong>Última importação</strong><small id="google-calendar-last-imported">Ainda não importado</small></span></div>
+                      </div>
                     </div>
                     <div id="google-calendar-status" class="firebase-validation-panel" style="margin-top:0.9rem;">
                       <p class="firebase-validation-summary">Google Calendar desconectado.</p>
@@ -1243,6 +1249,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260801-3"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260801-101"></script>
+  <script src="js/app.js?v=20260801-102"></script>
 </body>
 </html>

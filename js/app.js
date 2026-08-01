@@ -15,6 +15,8 @@ const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
 const REMINDER_INTENSITY_STORAGE_KEY = 'consultorio_reminder_intensity';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
+const FIREBASE_DEVICE_ID_STORAGE_KEY = 'consultorio_firebase_device_id';
+const FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY = 'consultorio_firebase_last_push_millis';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
 const APP_RELEASE_VERSION = 'v31.07.2026-2';
 const LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY = 'consultorio_landscape_sidebar_collapsed';
@@ -476,6 +478,9 @@ class ConsultorioApp {
     this.reminderCheckIntervalMs = 30000;
     this.firebaseSyncIntervalId = null;
     this.firebaseSyncIntervalMs = 5 * 60 * 1000;
+    this.firebaseSyncRealtimeUnsubscribe = null;
+    this.firebaseDeviceId = this.getOrCreateFirebaseDeviceId();
+    this.lastRealtimeSyncMillis = 0;
     this.versionInfo = { dateKey: getTodayStr(), seq: 0, label: 'v00.00/000000' };
     this.updateReady = false;
     this.landscapeSidebarCollapsed = false;
@@ -665,6 +670,133 @@ class ConsultorioApp {
     } catch (err) {
       console.log('Falha ao atualizar estado de sincronização local:', err);
     }
+  }
+
+  getOrCreateFirebaseDeviceId() {
+    try {
+      const existing = String(localStorage.getItem(FIREBASE_DEVICE_ID_STORAGE_KEY) || '').trim();
+      if (existing) return existing;
+      const created = `device-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+      localStorage.setItem(FIREBASE_DEVICE_ID_STORAGE_KEY, created);
+      return created;
+    } catch (err) {
+      return `device-${Date.now()}`;
+    }
+  }
+
+  getLocalLastPushMillis() {
+    try {
+      const raw = Number(localStorage.getItem(FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY) || 0);
+      return Number.isFinite(raw) ? Math.max(0, raw) : 0;
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  setLocalLastPushMillis(value) {
+    try {
+      const safe = Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : Date.now();
+      localStorage.setItem(FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY, String(safe));
+    } catch (err) {
+      console.log('Falha ao salvar o timestamp de push local:', err);
+    }
+  }
+
+  parseFirebaseTimeToMillis(value) {
+    if (!value) return 0;
+
+    if (typeof value === 'string') {
+      const normalized = value.trim();
+      if (!normalized) return 0;
+      const asDate = new Date(normalized);
+      return Number.isNaN(asDate.getTime()) ? 0 : asDate.getTime();
+    }
+
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? 0 : value.getTime();
+    }
+
+    if (typeof value.toDate === 'function') {
+      const dateValue = value.toDate();
+      return dateValue instanceof Date && !Number.isNaN(dateValue.getTime()) ? dateValue.getTime() : 0;
+    }
+
+    if (typeof value.seconds === 'number') {
+      const milliseconds = (Number(value.seconds) * 1000) + Math.floor(Number(value.nanoseconds || 0) / 1e6);
+      return Number.isFinite(milliseconds) ? milliseconds : 0;
+    }
+
+    return 0;
+  }
+
+  async getRemoteSyncState() {
+    if (!this.firebaseDb) return null;
+
+    try {
+      const doc = await this.firebaseDb.collection('app_meta').doc('sync_state').get();
+      if (!doc || !doc.exists) return null;
+      const data = doc.data ? doc.data() : {};
+      const updatedAtMillis = this.parseFirebaseTimeToMillis(data.updatedAt) || Number(data.updatedAtMillis || 0);
+
+      return {
+        updatedAtMillis: Number.isFinite(updatedAtMillis) ? Math.max(0, updatedAtMillis) : 0,
+        updatedByDeviceId: String(data.updatedByDeviceId || '').trim(),
+        updatedByUid: String(data.updatedByUid || '').trim()
+      };
+    } catch (err) {
+      console.log('Falha ao ler estado de sincronização remota:', err);
+      return null;
+    }
+  }
+
+  async updateRemoteSyncState() {
+    if (!this.firebaseDb) return;
+
+    const nowMillis = Date.now();
+    const payload = {
+      updatedAt: (window.firebase && window.firebase.firestore && window.firebase.firestore.FieldValue)
+        ? window.firebase.firestore.FieldValue.serverTimestamp()
+        : new Date(nowMillis).toISOString(),
+      updatedAtMillis: nowMillis,
+      updatedByDeviceId: this.firebaseDeviceId || this.getOrCreateFirebaseDeviceId(),
+      updatedByUid: String(this.firebaseAuthUid || '').trim()
+    };
+
+    await this.firebaseDb.collection('app_meta').doc('sync_state').set(payload, { merge: true });
+  }
+
+  startFirebaseRealtimeSyncWatcher() {
+    if (!this.firebaseDb || !this.firebaseConnected) return;
+
+    if (this.firebaseSyncRealtimeUnsubscribe) {
+      this.firebaseSyncRealtimeUnsubscribe();
+      this.firebaseSyncRealtimeUnsubscribe = null;
+    }
+
+    this.firebaseSyncRealtimeUnsubscribe = this.firebaseDb
+      .collection('app_meta')
+      .doc('sync_state')
+      .onSnapshot((doc) => {
+        if (!doc || !doc.exists) return;
+
+        const data = doc.data ? doc.data() : {};
+        const updatedByDeviceId = String(data.updatedByDeviceId || '').trim();
+        if (updatedByDeviceId && updatedByDeviceId === this.firebaseDeviceId) return;
+
+        const remoteMillis = this.parseFirebaseTimeToMillis(data.updatedAt) || Number(data.updatedAtMillis || 0);
+        if (!remoteMillis || remoteMillis <= this.lastRealtimeSyncMillis) return;
+
+        this.lastRealtimeSyncMillis = remoteMillis;
+        void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true })
+          .then(() => {
+            this.showRemoteSyncIndicator(remoteMillis);
+          })
+          .catch((err) => {
+            console.log('Falha na sincronização em tempo real:', err);
+          });
+      }, (err) => {
+        console.log('Falha no listener de sincronização em tempo real:', err);
+      });
   }
 
   createWhatsAppTemplateId(prefix) {
@@ -4601,6 +4733,11 @@ class ConsultorioApp {
       this.firebaseSyncIntervalId = null;
     }
 
+    if (this.firebaseSyncRealtimeUnsubscribe) {
+      this.firebaseSyncRealtimeUnsubscribe();
+      this.firebaseSyncRealtimeUnsubscribe = null;
+    }
+
     this.firebaseConnected = false;
     this.firebaseApp = null;
     this.firebaseDb = null;
@@ -4668,6 +4805,7 @@ class ConsultorioApp {
       this.firebaseConnected = true;
       this.setFirebaseStatus(true, 'Conectado ao Firebase', 'live');
       this.startFirebaseAutoRefresh();
+      this.startFirebaseRealtimeSyncWatcher();
       this.showToast('Firebase conectado com sucesso.', 'success');
 
       try {
@@ -4676,7 +4814,7 @@ class ConsultorioApp {
           this.setFirebaseSyncDirty(false);
         }
 
-        await this.syncDataWithFirebase();
+        await this.syncDataWithFirebase({ skipDirtyPush: false });
       } catch (syncErr) {
         const message = syncErr && syncErr.message ? syncErr.message : 'Erro desconhecido';
         this.setFirebaseLastError(syncErr, message);
@@ -4714,13 +4852,29 @@ class ConsultorioApp {
     }
   }
 
-  async syncDataWithFirebase() {
+  async syncDataWithFirebase(options = {}) {
     if (!this.firebaseDb) return;
+
+    const skipDirtyPush = Boolean(options.skipDirtyPush);
+    const silent = Boolean(options.silent);
+
     try {
-      if (this.isFirebaseSyncDirty()) {
-        // Local changes (including deletions) must win before pulling remote snapshots.
-        await this.pushAllDataToFirebase();
-        this.setFirebaseSyncDirty(false);
+      if (this.isFirebaseSyncDirty() && !skipDirtyPush) {
+        const remoteState = await this.getRemoteSyncState();
+        const remoteUpdatedMillis = Number((remoteState && remoteState.updatedAtMillis) || 0);
+        const localLastPushMillis = this.getLocalLastPushMillis();
+        const shouldSkipPushToAvoidOverwrite = remoteUpdatedMillis > localLastPushMillis;
+
+        if (shouldSkipPushToAvoidOverwrite) {
+          // Another device has newer committed data; pull first to avoid overriding it.
+          if (!silent) {
+            this.showToast('Detectei dados mais novos em outro dispositivo. Atualizando sem sobrescrever.', 'info');
+          }
+        } else {
+          // Local changes (including deletions) can be safely sent first.
+          await this.pushAllDataToFirebase();
+          this.setFirebaseSyncDirty(false);
+        }
       }
 
       const collections = [
@@ -4843,6 +4997,9 @@ class ConsultorioApp {
 
         await batch.commit();
       }
+
+      await this.updateRemoteSyncState();
+      this.setLocalLastPushMillis(Date.now());
     } catch (err) {
       console.log('Falha ao enviar dados para o Firestore:', err);
       throw err;
@@ -4901,7 +5058,7 @@ class ConsultorioApp {
     }
 
     try {
-      await this.syncDataWithFirebase();
+      await this.syncDataWithFirebase({ skipDirtyPush: true });
       this.updateCloudSyncMeta('Dados atualizados do Firebase', 'live');
       this.showToast('Dados atualizados com sucesso.', 'success');
     } catch (err) {
@@ -5041,7 +5198,7 @@ class ConsultorioApp {
     this.firebaseSyncIntervalId = window.setInterval(() => {
       if (!this.firebaseConnected || !this.firebaseDb) return;
 
-      void this.syncDataWithFirebase()
+      void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true })
         .then(() => {
           this.updateCloudSyncMeta('Dados atualizados do Firebase', 'live');
         })
@@ -5051,15 +5208,33 @@ class ConsultorioApp {
     }, this.firebaseSyncIntervalMs);
   }
 
-  updateCloudSyncMeta(customText = '', mode = 'local') {
+  showRemoteSyncIndicator(remoteMillis = 0) {
+    const dateValue = Number(remoteMillis) > 0 ? new Date(Number(remoteMillis)) : new Date();
+    const timeLabel = Number.isNaN(dateValue.getTime())
+      ? new Date().toLocaleTimeString('pt-BR')
+      : dateValue.toLocaleTimeString('pt-BR');
+
+    this.updateCloudSyncMeta(`Sincronizado de outro dispositivo às ${timeLabel}`, 'remote', {
+      highlight: true
+    });
+  }
+
+  updateCloudSyncMeta(customText = '', mode = 'local', options = {}) {
     const info = document.getElementById('cloud-sync-last');
     if (!info) return;
 
-    info.classList.remove('live', 'local');
-    info.classList.add(mode === 'live' ? 'live' : 'local');
+    info.classList.remove('live', 'local', 'remote', 'cloud-sync-meta-pulse');
+    if (mode === 'live') info.classList.add('live');
+    else if (mode === 'remote') info.classList.add('remote');
+    else info.classList.add('local');
 
     if (customText) {
       info.textContent = customText;
+      if (options && options.highlight) {
+        // Retrigger pulse animation each time a remote sync arrives.
+        void info.offsetWidth;
+        info.classList.add('cloud-sync-meta-pulse');
+      }
       return;
     }
 
@@ -7508,7 +7683,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260731-22')
+    navigator.serviceWorker.register('./sw.js?v=20260801-1')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

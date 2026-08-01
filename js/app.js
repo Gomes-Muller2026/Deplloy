@@ -481,7 +481,11 @@ class ConsultorioApp {
     this.firebaseSyncIntervalId = null;
     this.firebaseSyncIntervalMs = 45 * 1000;
     this.firebaseSyncStatePollIntervalId = null;
+    this.firebaseSyncStatePollTickMs = 3000;
     this.firebaseSyncStatePollIntervalMs = 12 * 1000;
+    this.firebaseSyncStatePollFastIntervalMs = 3000;
+    this.firebaseSyncStatePollFastUntil = 0;
+    this.firebaseSyncStatePollLastRunAt = 0;
     this.firebaseSyncRealtimeUnsubscribe = null;
     this.firebaseCollectionRealtimeUnsubscribes = [];
     this.firebaseRealtimeSyncTimerId = null;
@@ -504,7 +508,8 @@ class ConsultorioApp {
     this.agendaQuickMenuOutsideHandler = null;
     this.agendaQuickMenuEscapeHandler = null;
     this.agendaRowLongPressTimerId = null;
-    this.headerSyncNoticeTimerId = null;
+    this.firebaseQuotaNoticeCooldownMs = 45 * 1000;
+    this.lastFirebaseQuotaNoticeAt = 0;
     this.loadStore();
     this.loadWhatsAppTemplates();
     this.loadPaymentReceiptTemplate();
@@ -800,6 +805,7 @@ class ConsultorioApp {
     this.bumpVersion();
     this.updateCloudSyncMeta();
     this.setFirebaseSyncDirty(true);
+    this.boostFirebaseSyncPolling(22000, 'alteracao-local');
 
     this.requestFirebasePushSync();
   }
@@ -1146,6 +1152,7 @@ class ConsultorioApp {
         this.lastRealtimeSyncMillis = remoteMillis;
         this.lastRemoteStateSeenMillis = Math.max(Number(this.lastRemoteStateSeenMillis || 0), remoteMillis);
         this.logSyncAudit('realtime', 'Alteração remota detectada via metadata.');
+        this.boostFirebaseSyncPolling(18000, 'realtime-meta');
         this.scheduleFirebaseRealtimePullSync('meta', remoteMillis);
       }, (err) => {
         console.log('Falha no listener de sincronização em tempo real:', err);
@@ -3460,26 +3467,41 @@ class ConsultorioApp {
   }
 
   showHeaderSyncInlineNotice(message = 'Dados atualizados com sucesso.', type = 'success', timeoutMs = 2600) {
-    const note = document.getElementById('header-sync-inline-note');
-    if (!note) {
-      this.showToast(message, type === 'warning' ? 'warning' : 'success');
-      return;
+    const normalizedType = String(type || '').toLowerCase();
+    const mode = normalizedType === 'warning' ? 'local' : 'live';
+    this.updateCloudSyncMeta(String(message || '').trim(), mode, {
+      highlight: true
+    });
+  }
+
+  isFirebaseQuotaExceededError(err) {
+    const code = String((err && err.code) || '').trim().toLowerCase();
+    const message = String((err && err.message) || '').trim().toLowerCase();
+    return (
+      code.includes('resource-exhausted')
+      || message.includes('resource-exhausted')
+      || message.includes('quota exceeded')
+      || message.includes('too many requests')
+      || message.includes('429')
+    );
+  }
+
+  notifyFirebaseQuotaPause(err, source = 'sync') {
+    if (!this.isFirebaseQuotaExceededError(err)) return false;
+
+    const now = Date.now();
+    const cooldownMs = Math.max(15000, Number(this.firebaseQuotaNoticeCooldownMs) || 45000);
+    const details = String((err && (err.code || err.message)) || 'resource-exhausted');
+
+    this.updateCloudSyncMeta('Sync pausado: cota do Firebase excedida', 'local');
+    this.logSyncAudit('warning', `Sync pausado por cota do Firebase (${source}): ${details}`);
+
+    if ((now - Number(this.lastFirebaseQuotaNoticeAt || 0)) >= cooldownMs) {
+      this.showHeaderSyncInlineNotice('Sync pausado por cota do Firebase. Aguarde e tente novamente.', 'warning', 5200);
+      this.lastFirebaseQuotaNoticeAt = now;
     }
 
-    if (this.headerSyncNoticeTimerId) {
-      window.clearTimeout(this.headerSyncNoticeTimerId);
-      this.headerSyncNoticeTimerId = null;
-    }
-
-    note.textContent = String(message || '').trim();
-    note.classList.add('is-visible');
-    note.classList.toggle('is-warning', String(type || '').toLowerCase() === 'warning');
-
-    this.headerSyncNoticeTimerId = window.setTimeout(() => {
-      note.classList.remove('is-visible', 'is-warning');
-      note.textContent = '';
-      this.headerSyncNoticeTimerId = null;
-    }, Math.max(1000, Number(timeoutMs) || 2600));
+    return true;
   }
 
   getPendingReminderAppointments() {
@@ -4655,12 +4677,24 @@ class ConsultorioApp {
       if (!document.hidden) {
         this.checkAppointmentReminders();
         this.updateNotificationPermissionUI();
+        if (this.firebaseConnected && this.firebaseDb) {
+          this.boostFirebaseSyncPolling(26000, 'aba-visivel');
+          void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true }).catch((err) => {
+            console.log('Falha ao sincronizar ao voltar para a aba:', err);
+          });
+        }
       }
     });
 
     window.addEventListener('focus', () => {
       this.checkAppointmentReminders();
       this.updateNotificationPermissionUI();
+      if (this.firebaseConnected && this.firebaseDb) {
+        this.boostFirebaseSyncPolling(26000, 'janela-em-foco');
+        void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true }).catch((err) => {
+          console.log('Falha ao sincronizar ao focar a janela:', err);
+        });
+      }
     });
 
     const clearFinanceFilterBtn = document.getElementById('btn-clear-finance-filter');
@@ -5446,6 +5480,7 @@ class ConsultorioApp {
       this.setFirebaseStatus(true, 'Conectado ao Firebase', 'live');
       this.startFirebaseAutoRefresh();
       this.startFirebaseSyncStatePolling();
+      this.boostFirebaseSyncPolling(30000, 'conexao-inicial');
       this.startFirebaseRealtimeSyncWatcher();
       this.startFirebaseCollectionRealtimeWatchers();
       this.showToast('Firebase conectado com sucesso.', 'success');
@@ -5610,6 +5645,7 @@ class ConsultorioApp {
       const message = err && err.message ? err.message : 'Erro desconhecido';
       console.log('Falha ao sincronizar com Firestore:', message);
       this.logSyncAudit('error', `Falha no pull: ${String((err && (err.code || err.message)) || message)}`);
+      this.notifyFirebaseQuotaPause(err, silent ? 'pull-silencioso' : 'pull');
       throw err;
     }
   }
@@ -5767,8 +5803,11 @@ class ConsultorioApp {
       this.showHeaderSyncInlineNotice('Dados atualizados com sucesso.', 'success', 2600);
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
-      this.updateCloudSyncMeta('Falha ao atualizar dados do Firebase', 'local');
-      this.showHeaderSyncInlineNotice(`Falha ao atualizar dados: ${message}`, 'warning', 3600);
+      const quotaPaused = this.notifyFirebaseQuotaPause(err, 'atualizacao-manual');
+      if (!quotaPaused) {
+        this.updateCloudSyncMeta('Falha ao atualizar dados do Firebase', 'local');
+        this.showHeaderSyncInlineNotice(`Falha ao atualizar dados: ${message}`, 'warning', 3600);
+      }
     }
   }
 
@@ -5888,8 +5927,11 @@ class ConsultorioApp {
       this.showToast(`Última atualização encontrada em ${latest.label}.`, 'success');
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
-      this.updateCloudSyncMeta('Falha ao buscar última atualização remota', 'local');
-      this.showToast(`Não foi possível buscar a última atualização: ${message}`, 'warning');
+      const quotaPaused = this.notifyFirebaseQuotaPause(err, 'busca-ultima-atualizacao');
+      if (!quotaPaused) {
+        this.updateCloudSyncMeta('Falha ao buscar última atualização remota', 'local');
+        this.showToast(`Não foi possível buscar a última atualização: ${message}`, 'warning');
+      }
     }
   }
 
@@ -5920,6 +5962,20 @@ class ConsultorioApp {
 
     this.firebaseSyncStatePollIntervalId = window.setInterval(async () => {
       if (!this.firebaseConnected || !this.firebaseDb) return;
+
+      const now = Date.now();
+      const isFastWindow = now < Number(this.firebaseSyncStatePollFastUntil || 0);
+      const cadenceMs = isFastWindow
+        ? Math.max(1200, Number(this.firebaseSyncStatePollFastIntervalMs) || 3000)
+        : Math.max(3000, Number(this.firebaseSyncStatePollIntervalMs) || 12000);
+
+      if ((now - Number(this.firebaseSyncStatePollLastRunAt || 0)) < cadenceMs) return;
+      this.firebaseSyncStatePollLastRunAt = now;
+
+      // Back off reads while Firebase quota is exhausted.
+      if ((now - Number(this.lastFirebaseQuotaNoticeAt || 0)) < Math.max(15000, Number(this.firebaseQuotaNoticeCooldownMs) || 45000)) {
+        return;
+      }
 
       try {
         const remoteState = await this.getRemoteSyncState();
@@ -5952,7 +6008,15 @@ class ConsultorioApp {
         const details = String((err && (err.code || err.message)) || 'erro desconhecido');
         this.logSyncAudit('error', `Falha no polling de metadata: ${details}`);
       }
-    }, this.firebaseSyncStatePollIntervalMs);
+    }, Math.max(1000, Number(this.firebaseSyncStatePollTickMs) || 3000));
+  }
+
+  boostFirebaseSyncPolling(durationMs = 22000, reason = 'manual') {
+    const now = Date.now();
+    const safeDuration = Math.max(4000, Number(durationMs) || 22000);
+    const nextUntil = now + safeDuration;
+    this.firebaseSyncStatePollFastUntil = Math.max(Number(this.firebaseSyncStatePollFastUntil || 0), nextUntil);
+    this.logSyncAudit('info', `Modo turbo de sincronização ativado (${reason}) por ${Math.round(safeDuration / 1000)}s.`);
   }
 
   showRemoteSyncIndicator(remoteMillis = 0) {
@@ -5968,20 +6032,32 @@ class ConsultorioApp {
 
   updateCloudSyncMeta(customText = '', mode = 'local', options = {}) {
     const info = document.getElementById('cloud-sync-last');
+    const panel = document.getElementById('header-sync-panel');
+    const panelText = document.getElementById('header-sync-note-text');
     if (!info) return;
 
+    const shouldBlink = Boolean((options && options.highlight) || mode === 'live' || mode === 'remote');
     info.classList.remove('live', 'local', 'remote', 'cloud-sync-meta-pulse', 'cloud-sync-dot-blink');
     if (mode === 'live') info.classList.add('live');
     else if (mode === 'remote') info.classList.add('remote');
     else info.classList.add('local');
+
+    if (panel) {
+      panel.classList.remove('live', 'local', 'remote');
+      if (mode === 'live') panel.classList.add('live');
+      else if (mode === 'remote') panel.classList.add('remote');
+      else panel.classList.add('local');
+    }
 
     if (customText) {
       const fullText = String(customText || '').trim();
       info.textContent = '';
       info.title = fullText;
       info.setAttribute('aria-label', fullText);
-      if (options && options.highlight) {
-        // Retrigger dot blink each time a remote sync arrives.
+      if (panelText) panelText.textContent = fullText;
+      if (panel) panel.title = fullText;
+      if (shouldBlink) {
+        // Retrigger dot blink when realtime/pull sync state changes.
         void info.offsetWidth;
         info.classList.add('cloud-sync-dot-blink');
       }
@@ -5993,6 +6069,12 @@ class ConsultorioApp {
     info.textContent = '';
     info.title = defaultText;
     info.setAttribute('aria-label', defaultText);
+    if (panelText) panelText.textContent = defaultText;
+    if (panel) panel.title = defaultText;
+    if (shouldBlink) {
+      void info.offsetWidth;
+      info.classList.add('cloud-sync-dot-blink');
+    }
   }
 
   syncTopDatesToAgendaFilters() {
@@ -8556,7 +8638,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-21')
+    navigator.serviceWorker.register('./sw.js?v=20260801-25')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

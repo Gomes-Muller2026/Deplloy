@@ -2354,10 +2354,6 @@ input[type="date"]:focus {
   min-width: 188px;
 }
 
-#tab-agenda .agenda-filter-end-hidden {
-  display: none;
-}
-
 #tab-agenda #agenda-filter-status {
   min-width: 210px;
 }

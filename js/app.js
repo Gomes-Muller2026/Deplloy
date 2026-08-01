@@ -5489,7 +5489,6 @@ class ConsultorioApp {
         const iso = this.normalizeAgendaDateToIso(agendaStart.value);
         if (iso) {
           agendaStart.value = iso;
-          if (this.agendaViewMode === 'list' && agendaEnd) agendaEnd.value = iso;
         }
         this.renderAgendaTable();
       });
@@ -5497,7 +5496,6 @@ class ConsultorioApp {
         const iso = this.normalizeAgendaDateToIso(agendaStart.value);
         if (iso) {
           agendaStart.value = iso;
-          if (this.agendaViewMode === 'list' && agendaEnd) agendaEnd.value = iso;
         }
         this.renderAgendaTable();
       });
@@ -5528,14 +5526,16 @@ class ConsultorioApp {
     if (btnAgendaViewList) {
       btnAgendaViewList.addEventListener('click', () => {
         this.agendaViewMode = 'list';
-        this.updateAgendaViewModeUI();
+        this.syncTopDatesToAgendaFilters();
+        this.renderAgendaTable();
       });
     }
 
     if (btnAgendaViewCalendar) {
       btnAgendaViewCalendar.addEventListener('click', () => {
         this.agendaViewMode = 'calendar';
-        this.updateAgendaViewModeUI();
+        this.syncTopDatesToAgendaFilters();
+        this.renderAgendaTable();
       });
     }
 
@@ -10914,7 +10914,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260801-16', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260801-17', 'app-root')
       ]);
     }
   } catch (err) {

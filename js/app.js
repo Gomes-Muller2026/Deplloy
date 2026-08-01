@@ -1487,30 +1487,109 @@ class ConsultorioApp {
   }
 
   async sharePaymentReceiptPdf(appointment, content) {
-    const blob = await this.buildReceiptPdfBlob('Recibo de Pagamento', content);
     const fileName = `recibo-pagamento-${String(appointment && appointment.id ? appointment.id : Date.now())}.pdf`;
-    const file = new File([blob], fileName, { type: 'application/pdf' });
+    const title = 'Recibo de Pagamento';
 
-    if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-      await navigator.share({
-        title: 'Recibo de Pagamento',
-        text: 'Recibo em PDF',
-        files: [file]
-      });
-      return true;
+    if (!window.html2canvas || !window.jspdf || !window.jspdf.jsPDF) {
+      const blob = await this.buildReceiptPdfBlob(title, content);
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+        await navigator.share({ title, text: 'Recibo em PDF', files: [file] });
+        return true;
+      }
+
+      const fallbackUrl = URL.createObjectURL(blob);
+      const fallbackLink = document.createElement('a');
+      fallbackLink.href = fallbackUrl;
+      fallbackLink.download = fileName;
+      fallbackLink.target = '_blank';
+      fallbackLink.rel = 'noopener';
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      fallbackLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(fallbackUrl), 1500);
+      return false;
     }
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.target = '_blank';
-    link.rel = 'noopener';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-    return false;
+    const container = document.createElement('div');
+    container.setAttribute('aria-hidden', 'true');
+    container.style.position = 'fixed';
+    container.style.left = '-10000px';
+    container.style.top = '0';
+    container.style.width = '794px';
+    container.style.background = '#ffffff';
+    container.style.zIndex = '-1';
+    container.innerHTML = this.buildPaymentReceiptShareHtml(content);
+    document.body.appendChild(container);
+
+    try {
+      const canvas = await window.html2canvas(container, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true
+      });
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const pxPerPt = canvas.width / pageWidth;
+      const sliceHeightPx = Math.max(1, Math.floor(pageHeight * pxPerPt));
+      let renderedPages = 0;
+
+      for (let sourceY = 0; sourceY < canvas.height; sourceY += sliceHeightPx) {
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = Math.min(sliceHeightPx, canvas.height - sourceY);
+        const sliceCtx = sliceCanvas.getContext('2d');
+        if (!sliceCtx) break;
+
+        sliceCtx.fillStyle = '#ffffff';
+        sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        sliceCtx.drawImage(
+          canvas,
+          0,
+          sourceY,
+          canvas.width,
+          sliceCanvas.height,
+          0,
+          0,
+          sliceCanvas.width,
+          sliceCanvas.height
+        );
+
+        const sliceDataUrl = sliceCanvas.toDataURL('image/png', 1.0);
+        const sliceHeightPt = sliceCanvas.height / pxPerPt;
+
+        if (renderedPages > 0) pdf.addPage();
+        pdf.addImage(sliceDataUrl, 'PNG', 0, 0, pageWidth, sliceHeightPt);
+        renderedPages += 1;
+      }
+
+      const blob = pdf.output('blob');
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+        await navigator.share({ title, text: 'Recibo em PDF', files: [file] });
+        return true;
+      }
+
+      const fallbackUrl = URL.createObjectURL(blob);
+      const fallbackLink = document.createElement('a');
+      fallbackLink.href = fallbackUrl;
+      fallbackLink.download = fileName;
+      fallbackLink.target = '_blank';
+      fallbackLink.rel = 'noopener';
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      fallbackLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(fallbackUrl), 1500);
+      return false;
+    } finally {
+      container.remove();
+    }
   }
 
   renderWhatsAppTemplateEditor(kind) {
@@ -4979,6 +5058,24 @@ class ConsultorioApp {
     return this.normalizePaymentReceiptText(manualText || this.buildPaymentReceiptText(appointment, amountNow));
   }
 
+  buildPaymentReceiptShareHtml(content) {
+    const logoUrl = new URL('./assets/icons/icon-512.png', window.location.href).href;
+    const safeContent = safeText(String(content || '')).replace(/\n/g, '<br>');
+
+    return `
+      <div class="receipt-share-page" style="background:#ffffff;color:#0f172a;font-family:Arial,sans-serif;padding:32px 24px;box-sizing:border-box;width:794px;min-height:1123px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;border-bottom:2px solid #d1d5db;padding-bottom:10px;">
+          <img src="${logoUrl}" alt="Logo" style="width:46px;height:46px;border-radius:10px;object-fit:cover;border:1px solid #cbd5e1;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <h1 style="font-size:20px;margin:0;line-height:1.1;">Recibo de Pagamento</h1>
+            <div style="font-size:12px;color:#334155;">Emitido em: ${new Date().toLocaleString('pt-BR')}</div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.5;white-space:normal;">${safeContent}</div>
+      </div>
+    `;
+  }
+
   savePaymentReceiptTemplateFromUI() {
     const templateEl = document.getElementById('pay-receipt-template');
     if (!templateEl) return;
@@ -7159,7 +7256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260731-6')
+    navigator.serviceWorker.register('./sw.js?v=20260731-7')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

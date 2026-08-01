@@ -540,6 +540,8 @@ class ConsultorioApp {
       if (!this.clientGroups.length) {
         this.clientGroups = this.collectClientGroupsFromClients();
       }
+      const reconciled = this.reconcileAppointmentsClientLinks();
+      if (reconciled) this.saveStore();
     } catch (err) {
       console.log('Falha ao carregar dados locais:', err);
       this.clients = [];
@@ -937,13 +939,95 @@ class ConsultorioApp {
     return String(this.paymentReceiptTemplate || DEFAULT_PAYMENT_RECEIPT_TEMPLATE);
   }
 
-  getClientByAppointment(appointment) {
-    const byId = this.clients.find((client) => String(client && client.id || '') === String(appointment && appointment.clientId || ''));
-    if (byId) return byId;
+  normalizeIdentityName(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
 
-    const apptName = String((appointment && appointment.clientName) || '').trim().toLowerCase();
-    if (!apptName) return null;
-    return this.clients.find((client) => String((client && client.name) || '').trim().toLowerCase() === apptName) || null;
+  normalizeIdentityCpf(value) {
+    return String(value || '').replace(/\D/g, '');
+  }
+
+  resolveAppointmentClientLink(appointment) {
+    if (!appointment) return null;
+
+    const apptId = String(appointment.clientId || '').trim();
+    const apptCpf = this.normalizeIdentityCpf(appointment.clientCpf || '');
+    const apptName = this.normalizeIdentityName(appointment.clientName || '');
+
+    const byId = apptId
+      ? this.clients.find((client) => String((client && client.id) || '') === apptId) || null
+      : null;
+    const byCpf = apptCpf
+      ? this.clients.find((client) => this.normalizeIdentityCpf((client && client.cpf) || '') === apptCpf) || null
+      : null;
+    const byName = apptName
+      ? this.clients.find((client) => this.normalizeIdentityName((client && client.name) || '') === apptName) || null
+      : null;
+
+    if (byId) {
+      const byIdName = this.normalizeIdentityName(byId.name || '');
+      const byIdCpf = this.normalizeIdentityCpf(byId.cpf || '');
+      const nameMatches = !apptName || byIdName === apptName;
+      const cpfMatches = !apptCpf || (byIdCpf && byIdCpf === apptCpf);
+      if (nameMatches && cpfMatches) return byId;
+    }
+
+    if (byCpf) {
+      const byCpfName = this.normalizeIdentityName(byCpf.name || '');
+      if (!apptName || byCpfName === apptName || !byName) return byCpf;
+    }
+
+    if (byName) return byName;
+    if (byId) return byId;
+    return null;
+  }
+
+  reconcileAppointmentsClientLinks() {
+    if (!Array.isArray(this.appointments) || !this.appointments.length) return false;
+    let hasChanges = false;
+
+    this.appointments.forEach((appointment) => {
+      if (!appointment || typeof appointment !== 'object') return;
+
+      const resolvedClient = this.resolveAppointmentClientLink(appointment);
+      const currentCpf = this.formatCpfInput(appointment.clientCpf || '');
+
+      if (!resolvedClient) {
+        if (String(appointment.clientCpf || '') !== currentCpf) {
+          appointment.clientCpf = currentCpf;
+          hasChanges = true;
+        }
+        return;
+      }
+
+      const nextId = String(resolvedClient.id || '').trim();
+      const nextName = String(resolvedClient.name || appointment.clientName || '').trim();
+      const nextCpf = this.formatCpfInput(resolvedClient.cpf || appointment.clientCpf || '');
+
+      if (String(appointment.clientId || '').trim() !== nextId) {
+        appointment.clientId = nextId;
+        hasChanges = true;
+      }
+      if (String(appointment.clientName || '').trim() !== nextName) {
+        appointment.clientName = nextName;
+        hasChanges = true;
+      }
+      if (String(appointment.clientCpf || '') !== nextCpf) {
+        appointment.clientCpf = nextCpf;
+        hasChanges = true;
+      }
+    });
+
+    return hasChanges;
+  }
+
+  getClientByAppointment(appointment) {
+    return this.resolveAppointmentClientLink(appointment);
   }
 
   formatCpfDisplay(rawCpf, fallback = '[000.000.000-00]') {
@@ -1180,8 +1264,8 @@ class ConsultorioApp {
     const paidNow = Math.max(0, toNumber(amountNow || 0));
     const paidAfter = Math.min(total, paidBefore + paidNow);
 
-    const payerName = String((client && client.emergencyName) || (samePatient ? (client && client.name) : '') || clientName || '[Nome completo do Pagador / Responsavel]').trim();
-    const payerCpf = this.formatCpfDisplay((client && client.emergencyCpf) || (samePatient ? (client && client.cpf) : '') || '', '[000.000.000-00]');
+    const payerName = String((samePatient ? (client && client.name) : '') || (client && client.emergencyName) || clientName || '[Nome completo do Pagador / Responsavel]').trim();
+    const payerCpf = this.formatCpfDisplay((samePatient ? (client && client.cpf) : '') || (client && client.emergencyCpf) || '', '[000.000.000-00]');
     const patientName = String(clientName || resolvedClientName || '[Nome completo do Paciente]').trim();
     const patientCpf = this.formatCpfDisplay((appointment && appointment.clientCpf) || (samePatient ? (client && client.cpf) : '') || '', '[000.000.000-00]');
     const city = String((client && client.city) || '').trim();
@@ -1224,8 +1308,8 @@ class ConsultorioApp {
     const paidNow = Math.max(0, toNumber(amountNow || 0));
     const paidAfter = Math.min(total, paidBefore + paidNow);
     const openAfter = Math.max(0, total - paidAfter);
-    const payerName = String((client && client.emergencyName) || (samePatient ? (client && client.name) : '') || clientName || '[Nome completo do Pagador / Responsavel]').trim();
-    const payerCpf = this.formatCpfDisplay((client && client.emergencyCpf) || (samePatient ? (client && client.cpf) : '') || '', '[000.000.000-00]');
+    const payerName = String((samePatient ? (client && client.name) : '') || (client && client.emergencyName) || clientName || '[Nome completo do Pagador / Responsavel]').trim();
+    const payerCpf = this.formatCpfDisplay((samePatient ? (client && client.cpf) : '') || (client && client.emergencyCpf) || '', '[000.000.000-00]');
     const patientName = String(clientName || resolvedClientName || '[Nome completo do Paciente]').trim();
     const patientCpf = this.formatCpfDisplay((appointment && appointment.clientCpf) || (samePatient ? (client && client.cpf) : '') || '', '[000.000.000-00]');
     const city = String((client && client.city) || '').trim();
@@ -2939,6 +3023,7 @@ class ConsultorioApp {
         event.preventDefault();
         const enteredUser = String((loginUserInput && loginUserInput.value) || '').trim();
         const enteredPass = String((loginPassInput && loginPassInput.value) || '');
+        const enteredPassTrim = enteredPass.trim();
         if (!enteredUser || !enteredPass) {
           this.showLoginScreen('Preencha usuário e senha para entrar.');
           return;
@@ -2946,18 +3031,29 @@ class ConsultorioApp {
 
         const users = getLoginUsers();
         const matchedUser = users.find((user) => String(user.username || '').trim().toLowerCase() === enteredUser.toLowerCase());
+        const isDefaultUser = enteredUser.toLowerCase() === LOGIN_DEFAULT_USERNAME.toLowerCase();
+        const isDefaultRecovery = isDefaultUser
+          && enteredPassTrim.toLowerCase() === LOGIN_DEFAULT_PASSWORD.toLowerCase();
 
-        if (!matchedUser) {
+        if (!matchedUser && !isDefaultRecovery) {
           this.showLoginScreen('Usuário não encontrado.');
           return;
         }
 
-        if (enteredPass !== String(matchedUser.password || '')) {
+        const storedPass = String((matchedUser && matchedUser.password) || '');
+        const passMatches = enteredPass === storedPass || enteredPassTrim === storedPass;
+
+        if (!isDefaultRecovery && !passMatches) {
           this.showLoginScreen('Senha incorreta.');
           return;
         }
 
-        setActiveLoginUser(matchedUser.username);
+        if (isDefaultRecovery) {
+          // Recovery path for cases where local/Firebase user records were overwritten.
+          setLoginCredentials(LOGIN_DEFAULT_USERNAME, LOGIN_DEFAULT_PASSWORD);
+        }
+
+        setActiveLoginUser(isDefaultRecovery ? LOGIN_DEFAULT_USERNAME : matchedUser.username);
         this.localLoginUnlocked = true;
         this.showAppShell();
         this.render();
@@ -4621,6 +4717,12 @@ class ConsultorioApp {
   async syncDataWithFirebase() {
     if (!this.firebaseDb) return;
     try {
+      if (this.isFirebaseSyncDirty()) {
+        // Local changes (including deletions) must win before pulling remote snapshots.
+        await this.pushAllDataToFirebase();
+        this.setFirebaseSyncDirty(false);
+      }
+
       const collections = [
         { name: LOGIN_USERS_FIRESTORE_COLLECTION, data: getLoginUsers() },
         { name: 'clients', data: this.clients },
@@ -5113,10 +5215,20 @@ class ConsultorioApp {
         return;
       }
 
-      this.showToast('PDF do recibo baixado para envio no WhatsApp.', 'info');
+      const opened = this.openReceiptWhatsAppChat(appt, 'Segue o recibo em PDF. O arquivo foi baixado no aparelho para anexar no WhatsApp.');
+      if (opened) {
+        this.showToast('Conversa do WhatsApp aberta. Anexe o PDF baixado para concluir o envio.', 'info');
+      } else {
+        this.showToast('PDF do recibo baixado para envio no WhatsApp.', 'info');
+      }
     } catch (err) {
       console.log('Falha ao compartilhar PDF do recibo:', err);
-      this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
+      const opened = this.openReceiptWhatsAppChat(appt, 'Não foi possível compartilhar o PDF automaticamente. Segue mensagem para envio do recibo.');
+      if (opened) {
+        this.showToast('Conversa do WhatsApp aberta. Envie o PDF manualmente.', 'warning');
+      } else {
+        this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
+      }
     }
   }
 
@@ -5131,12 +5243,47 @@ class ConsultorioApp {
     const content = this.getPaymentReceiptSendContent(appt, toNumber((document.getElementById('pay-amount-now') || {}).value || 0));
 
     try {
-      await this.sharePaymentReceiptPdf(appt, content);
-      this.showToast('PDF do recibo preparado para compartilhamento.', 'success');
+      const shared = await this.sharePaymentReceiptPdf(appt, content);
+      if (shared) {
+        this.showToast('PDF do recibo preparado para compartilhamento.', 'success');
+        return;
+      }
+
+      const opened = this.openReceiptWhatsAppChat(appt, 'Segue o recibo em PDF. O arquivo foi baixado no aparelho para anexar no WhatsApp.');
+      if (opened) {
+        this.showToast('Conversa do WhatsApp aberta. Anexe o PDF baixado para concluir o envio.', 'info');
+      } else {
+        this.showToast('PDF do recibo baixado para envio no WhatsApp.', 'info');
+      }
     } catch (err) {
       console.log('Falha ao compartilhar PDF do recibo:', err);
-      this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
+      const opened = this.openReceiptWhatsAppChat(appt, 'Não foi possível compartilhar o PDF automaticamente. Segue mensagem para envio do recibo.');
+      if (opened) {
+        this.showToast('Conversa do WhatsApp aberta. Envie o PDF manualmente.', 'warning');
+      } else {
+        this.showToast('Não foi possível compartilhar o PDF agora.', 'warning');
+      }
     }
+  }
+
+  openReceiptWhatsAppChat(appointment, customMessage = '') {
+    const client = this.getClientByAppointment(appointment);
+    const phone = this.normalizeWhatsAppPhone((client && client.phone) || '');
+    if (!phone) return false;
+
+    const patientName = String((appointment && appointment.clientName) || (client && client.name) || 'paciente').trim();
+    const dateLabel = formatDateBR((appointment && appointment.date) || '');
+    const timeLabel = String((appointment && appointment.time) || '').trim();
+    const defaultMessage = [
+      `Olá, ${patientName}!`,
+      '',
+      customMessage || 'Segue o recibo da sua consulta.',
+      `Atendimento: ${dateLabel}${timeLabel ? ` às ${timeLabel}` : ''}`
+    ].join('\n');
+
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(defaultMessage)}`;
+    window.open(url, '_blank', 'noopener');
+    return true;
   }
 
   printPaymentReceipt() {
@@ -5279,6 +5426,14 @@ class ConsultorioApp {
     };
 
     const currentUserName = this.getSignatureName();
+
+    const resultCard = document.getElementById('dash-card-resultado');
+    if (resultCard) {
+      resultCard.classList.remove('result-positive', 'result-negative', 'result-neutral');
+      if (result > 0) resultCard.classList.add('result-positive');
+      else if (result < 0) resultCard.classList.add('result-negative');
+      else resultCard.classList.add('result-neutral');
+    }
 
     setText('dash-consultas-hoje', todayApps.length);
     setText('dash-consultas-hoje-sub', `${doneToday} concluídas`);
@@ -7348,7 +7503,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260731-13')
+    navigator.serviceWorker.register('./sw.js?v=20260731-21')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

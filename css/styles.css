@@ -1407,12 +1407,16 @@ input[type="date"]:focus {
 }
 .stat-card.result-positive::after { background: radial-gradient(circle, rgba(52,211,153,0.9), transparent 65%); }
 .stat-card.result-positive .stat-icon { background: var(--success-light); color: var(--success); }
+.stat-card.result-positive .stat-value { color: #bbf7d0; }
+.stat-card.result-positive .stat-sub { color: #86efac; opacity: 1; }
 
 .stat-card.result-negative {
   background: linear-gradient(145deg, rgba(239,68,68,0.32) 0%, rgba(127,29,29,0.22) 55%, rgba(7,17,31,0.72) 100%);
 }
 .stat-card.result-negative::after { background: radial-gradient(circle, rgba(248,113,113,0.9), transparent 65%); }
 .stat-card.result-negative .stat-icon { background: rgba(239,68,68,0.18); color: #fca5a5; }
+.stat-card.result-negative .stat-value { color: #fecaca; }
+.stat-card.result-negative .stat-sub { color: #fca5a5; opacity: 1; }
 
 .stat-card.result-neutral {
   background: linear-gradient(145deg, rgba(148,163,184,0.26) 0%, rgba(51,65,85,0.22) 55%, rgba(7,17,31,0.72) 100%);

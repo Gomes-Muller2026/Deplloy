@@ -33,8 +33,18 @@ const clientModule = {
     app.closeClientModal();
   },
 
-  deleteClient(app, clientId) {
-    if (!confirm('Deseja realmente excluir este cliente?')) return;
+  async deleteClient(app, clientId) {
+    let confirmed = false;
+    if (typeof app.askConfirmation === 'function') {
+      confirmed = await app.askConfirmation('Deseja realmente excluir este cliente? Todas as consultas vinculadas também serão removidas.', {
+        title: 'Excluir cliente',
+        confirmLabel: 'Excluir'
+      });
+    } else {
+      confirmed = confirm('Deseja realmente excluir este cliente?');
+    }
+    if (!confirmed) return;
+
     app.clients = app.clients.filter((c) => c.id !== clientId);
     app.appointments = app.appointments.filter((a) => a.clientId !== clientId);
     app.saveData();

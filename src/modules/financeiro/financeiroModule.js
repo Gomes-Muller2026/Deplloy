@@ -29,8 +29,18 @@ const financeiroModule = {
     app.closeExpenseModal();
   },
 
-  deleteExpense(app, expenseId) {
-    if (!confirm('Deseja realmente excluir esta despesa?')) return;
+  async deleteExpense(app, expenseId) {
+    let confirmed = false;
+    if (typeof app.askConfirmation === 'function') {
+      confirmed = await app.askConfirmation('Deseja realmente excluir esta despesa?', {
+        title: 'Excluir despesa',
+        confirmLabel: 'Excluir'
+      });
+    } else {
+      confirmed = confirm('Deseja realmente excluir esta despesa?');
+    }
+    if (!confirmed) return;
+
     app.expenses = app.expenses.filter((e) => e.id !== expenseId);
     app.saveData();
     app.render();

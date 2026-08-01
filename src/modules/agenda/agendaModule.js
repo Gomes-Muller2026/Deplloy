@@ -38,8 +38,18 @@ const agendaModule = {
     app.closeAppointmentModal();
   },
 
-  deleteAppointment(app, appointmentId) {
-    if (!confirm('Deseja realmente excluir esta consulta?')) return;
+  async deleteAppointment(app, appointmentId) {
+    let confirmed = false;
+    if (typeof app.askConfirmation === 'function') {
+      confirmed = await app.askConfirmation('Deseja realmente excluir esta consulta?', {
+        title: 'Excluir consulta',
+        confirmLabel: 'Excluir'
+      });
+    } else {
+      confirmed = confirm('Deseja realmente excluir esta consulta?');
+    }
+    if (!confirmed) return;
+
     app.appointments = app.appointments.filter((a) => a.id !== appointmentId);
     app.saveData();
     app.render();

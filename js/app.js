@@ -2510,6 +2510,70 @@ class ConsultorioApp {
     return container;
   }
 
+  askConfirmation(message, options = {}) {
+    const text = String(message || '').trim() || 'Confirmar ação?';
+    const title = String(options.title || 'Confirmar exclusão');
+    const confirmLabel = String(options.confirmLabel || 'Excluir');
+    const cancelLabel = String(options.cancelLabel || 'Cancelar');
+
+    return new Promise((resolve) => {
+      const existing = document.getElementById('modal-confirm-action');
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop';
+      backdrop.id = 'modal-confirm-action';
+
+      backdrop.innerHTML = `
+        <div class="modal-card modal-card-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-action-title">
+          <div class="modal-header">
+            <h3 id="confirm-action-title">${safeText(title)}</h3>
+            <button class="btn-close" type="button" data-confirm-close aria-label="Fechar">×</button>
+          </div>
+          <div class="modal-body">
+            <p style="margin:0; color:var(--text-muted);">${safeText(text)}</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" type="button" data-confirm-cancel>${safeText(cancelLabel)}</button>
+            <button class="btn btn-danger" type="button" data-confirm-ok>${safeText(confirmLabel)}</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(backdrop);
+
+      const okBtn = backdrop.querySelector('[data-confirm-ok]');
+      const cancelBtn = backdrop.querySelector('[data-confirm-cancel]');
+      const closeBtn = backdrop.querySelector('[data-confirm-close]');
+      const card = backdrop.querySelector('.modal-card');
+
+      const done = (result) => {
+        document.removeEventListener('keydown', onKeydown);
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        resolve(Boolean(result));
+      };
+
+      const onKeydown = (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          done(false);
+        }
+      };
+
+      document.addEventListener('keydown', onKeydown);
+
+      backdrop.addEventListener('click', (event) => {
+        if (event.target === backdrop) done(false);
+      });
+      if (okBtn) okBtn.addEventListener('click', () => done(true));
+      if (cancelBtn) cancelBtn.addEventListener('click', () => done(false));
+      if (closeBtn) closeBtn.addEventListener('click', () => done(false));
+
+      if (card) card.addEventListener('click', (event) => event.stopPropagation());
+      if (okBtn) okBtn.focus();
+    });
+  }
+
   getAppointmentDateTime(appointment) {
     const date = String((appointment && appointment.date) || '').trim();
     const time = String((appointment && appointment.time) || '').trim();
@@ -8032,7 +8096,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-9')
+    navigator.serviceWorker.register('./sw.js?v=20260801-10')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

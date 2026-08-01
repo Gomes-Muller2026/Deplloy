@@ -495,6 +495,10 @@ class ConsultorioApp {
     this.firebasePushInFlight = false;
     this.firebasePushQueued = false;
     this.firebasePushRetryTimerId = null;
+    this.firebasePushWatchdogTimerId = null;
+    this.firebasePushWatchdogMs = 22000;
+    this.firebasePushAttemptSeq = 0;
+    this.firebasePushActiveAttemptId = 0;
     this.syncAuditLogLimit = 18;
     this.syncAuditEvents = [];
     this.deletedAppointmentTombstones = {};
@@ -824,17 +828,25 @@ class ConsultorioApp {
       return;
     }
 
+    const attemptId = this.nextFirebasePushAttemptId();
+    this.firebasePushActiveAttemptId = attemptId;
     this.firebasePushInFlight = true;
     this.logSyncAudit('push', 'Push iniciado para enviar alterações locais.');
+    this.startFirebasePushWatchdog(attemptId);
     void this.pushAllDataToFirebase()
       .then(() => {
+        if (attemptId !== this.firebasePushActiveAttemptId) return;
+        this.clearFirebasePushWatchdog();
         this.setFirebaseSyncDirty(false);
         this.logSyncAudit('push', 'Push concluído com sucesso.');
       })
       .catch((err) => {
+        if (attemptId !== this.firebasePushActiveAttemptId) return;
+        this.clearFirebasePushWatchdog();
         console.log('Falha ao enviar dados para o Firebase:', err);
         this.setFirebaseSyncDirty(true);
         this.logSyncAudit('error', `Falha no push: ${String((err && (err.code || err.message)) || 'erro desconhecido')}`);
+        this.notifyFirebaseQuotaPause(err, 'push');
 
         // Retry quickly to avoid losing cross-device freshness after transient network issues.
         this.firebasePushRetryTimerId = window.setTimeout(() => {
@@ -844,12 +856,46 @@ class ConsultorioApp {
         }, 1200);
       })
       .finally(() => {
+        if (attemptId !== this.firebasePushActiveAttemptId) return;
         this.firebasePushInFlight = false;
         if (this.firebasePushQueued) {
           this.firebasePushQueued = false;
           this.requestFirebasePushSync();
         }
       });
+  }
+
+  nextFirebasePushAttemptId() {
+    this.firebasePushAttemptSeq = Number(this.firebasePushAttemptSeq || 0) + 1;
+    return this.firebasePushAttemptSeq;
+  }
+
+  clearFirebasePushWatchdog() {
+    if (this.firebasePushWatchdogTimerId) {
+      window.clearTimeout(this.firebasePushWatchdogTimerId);
+      this.firebasePushWatchdogTimerId = null;
+    }
+  }
+
+  startFirebasePushWatchdog(attemptId) {
+    this.clearFirebasePushWatchdog();
+    const timeoutMs = Math.max(8000, Number(this.firebasePushWatchdogMs) || 22000);
+    this.firebasePushWatchdogTimerId = window.setTimeout(() => {
+      this.firebasePushWatchdogTimerId = null;
+      if (attemptId !== this.firebasePushActiveAttemptId) return;
+      if (!this.firebasePushInFlight) return;
+
+      this.logSyncAudit('warning', `Push demorou mais de ${Math.round(timeoutMs / 1000)}s; reenviando de forma automática.`);
+      this.updateCloudSyncMeta('Push em atraso: tentando reenviar alterações...', 'local', {
+        highlight: true
+      });
+
+      this.setFirebaseSyncDirty(true);
+      this.firebasePushInFlight = false;
+      this.firebasePushQueued = false;
+      this.firebasePushActiveAttemptId = 0;
+      this.requestFirebasePushSync();
+    }, timeoutMs);
   }
 
   isFirebaseSyncDirty() {
@@ -5388,8 +5434,10 @@ class ConsultorioApp {
       window.clearTimeout(this.firebasePushRetryTimerId);
       this.firebasePushRetryTimerId = null;
     }
+    this.clearFirebasePushWatchdog();
     this.firebasePushInFlight = false;
     this.firebasePushQueued = false;
+    this.firebasePushActiveAttemptId = 0;
 
     this.firebaseConnected = false;
     this.firebaseApp = null;
@@ -8638,7 +8686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-25')
+    navigator.serviceWorker.register('./sw.js?v=20260801-26')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

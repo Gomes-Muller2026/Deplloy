@@ -26,14 +26,18 @@ const GOOGLE_CALENDAR_ALLOWED_ORIGINS = [
   'http://localhost:8000',
   'https://gomes-muller2026.github.io'
 ];
+const SHARED_SETTINGS_SIGNATURE_STORAGE_KEY = 'consultorio_shared_settings_signature';
 const FIREBASE_FORCE_LONG_POLLING = true;
 const LOCAL_BACKUP_DATA_URL = './data/backup_consultorio_2026-07-26%20(1).json';
 const APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY = 'consultorio_deleted_appointment_tombstones';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
-const APP_RELEASE_VERSION = 'v31.07.2026-2';
+const APP_RELEASE_SEEN_STORAGE_KEY = 'consultorio_app_release_seen';
+const APP_RELEASE_VERSION = 'v01.08.2026-1';
 const LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY = 'consultorio_landscape_sidebar_collapsed';
 const LOGIN_USERS_FIRESTORE_COLLECTION = 'login_users';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
+const CLIENT_CATEGORIES_STORAGE_KEY = 'consultorio_client_categories';
+const DEFAULT_CLIENT_CATEGORIES = ['Paciente', 'Medico', 'Yoga', 'Limpeza'];
 const WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_template';
 const WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_template';
 const WHATSAPP_CONFIRM_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_confirm_templates';
@@ -44,6 +48,13 @@ const PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY = 'consultorio_payment_receipt_templa
 const PAYMENT_RECEIPT_COUNTER_STORAGE_KEY = 'consultorio_payment_receipt_counter';
 const PAYMENT_RECEIPT_NUMBER_MAP_STORAGE_KEY = 'consultorio_payment_receipt_number_map';
 const PAYMENT_RECEIPT_PROFILE_STORAGE_KEY = 'consultorio_payment_receipt_profile';
+const REQUIRED_LOGIN_USERS = [
+  {
+    username: 'Rafael',
+    password: '160658'
+  }
+];
+const MASTER_CONFIG_USERNAME = 'Rafael';
 const DEFAULT_RECEIPT_PROFESSIONAL_NAME = 'Patricia Grando Muller';
 const DEFAULT_RECEIPT_PROFESSIONAL_CRP = '[Numero do CRP/Regiao]';
 const DEFAULT_RECEIPT_PROFESSIONAL_CPF = '001.715.930-06';
@@ -308,8 +319,41 @@ const normalizeLoginUsers = (rawUsers) => {
   return users;
 };
 
-const saveLoginUsers = (users, options = {}) => {
+const ensureRequiredLoginUsers = (users) => {
   const normalized = normalizeLoginUsers(users);
+  const merged = normalized.slice();
+
+  REQUIRED_LOGIN_USERS.forEach((requiredUser) => {
+    const username = String((requiredUser && requiredUser.username) || '').trim();
+    const password = String((requiredUser && requiredUser.password) || '');
+    if (!username || !password) return;
+
+    const index = merged.findIndex((entry) => String((entry && entry.username) || '').trim().toLowerCase() === username.toLowerCase());
+    const today = getTodayStr();
+
+    if (index >= 0) {
+      merged[index] = {
+        ...merged[index],
+        username,
+        password,
+        updatedAt: today
+      };
+      return;
+    }
+
+    merged.push({
+      username,
+      password,
+      createdAt: today,
+      updatedAt: today
+    });
+  });
+
+  return normalizeLoginUsers(merged);
+};
+
+const saveLoginUsers = (users, options = {}) => {
+  const normalized = ensureRequiredLoginUsers(users);
   localStorage.setItem(LOGIN_USERS_STORAGE_KEY, JSON.stringify(normalized));
   if (options.syncRemote !== false && typeof window !== 'undefined' && window.app && typeof window.app.syncLoginUsersToFirebase === 'function') {
     void window.app.syncLoginUsersToFirebase(normalized);
@@ -522,6 +566,7 @@ class ConsultorioApp {
     this.syncAuditLogLimit = 18;
     this.syncAuditEvents = [];
     this.deletedAppointmentTombstones = {};
+    this.clientCategories = DEFAULT_CLIENT_CATEGORIES.slice();
     this.firebaseDeviceId = this.getOrCreateFirebaseDeviceId();
     this.lastRealtimeSyncMillis = 0;
     this.lastRemoteStateSeenMillis = 0;
@@ -588,16 +633,25 @@ class ConsultorioApp {
       const a = JSON.parse(localStorage.getItem('consultorio_appointments') || '[]');
       const e = JSON.parse(localStorage.getItem('consultorio_expenses') || '[]');
       const g = JSON.parse(localStorage.getItem(CLIENT_GROUPS_STORAGE_KEY) || '[]');
+      const categories = JSON.parse(localStorage.getItem(CLIENT_CATEGORIES_STORAGE_KEY) || '[]');
       const t = JSON.parse(localStorage.getItem(APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY) || '{}');
       this.clients = Array.isArray(c) ? c : [];
       this.appointments = this.normalizeAppointmentsCollection(Array.isArray(a) ? a : [], 'local-store');
       this.expenses = Array.isArray(e) ? e : [];
+      this.clientCategories = Array.isArray(categories) ? categories.filter((item) => String(item || '').trim()) : [];
       this.clientGroups = Array.isArray(g) ? g.filter((item) => String(item || '').trim()) : [];
       this.deletedAppointmentTombstones = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
+      this.clients = this.clients.map((client) => ({
+        ...client,
+        category: this.normalizeClientCategory(client && client.category)
+      }));
       this.pruneDeletedAppointmentTombstones();
       this.applyStableDataOrdering();
       if (!this.clientGroups.length) {
         this.clientGroups = this.collectClientGroupsFromClients();
+      }
+      if (!this.clientCategories.length) {
+        this.clientCategories = this.collectClientCategoriesFromClients();
       }
       const reconciled = this.reconcileAppointmentsClientLinks();
       if (reconciled) this.saveStore();
@@ -607,6 +661,7 @@ class ConsultorioApp {
       this.appointments = [];
       this.expenses = [];
       this.clientGroups = [];
+      this.clientCategories = DEFAULT_CLIENT_CATEGORIES.slice();
       this.deletedAppointmentTombstones = {};
     }
   }
@@ -641,6 +696,7 @@ class ConsultorioApp {
       if (!loadedCollections.length) return false;
 
       this.clientGroups = this.collectClientGroupsFromClients();
+      this.clientCategories = this.collectClientCategoriesFromClients();
       this.applyStableDataOrdering();
       this.reconcileAppointmentsClientLinks();
 
@@ -785,11 +841,53 @@ class ConsultorioApp {
     this.renderVersionBadge();
   }
 
+  getCurrentLoginUsername() {
+    const creds = getLoginCredentials();
+    return String((creds && creds.username) || '').trim();
+  }
+
+  isMasterConfigUser(username = '') {
+    return String(username || '').trim().toLowerCase() === String(MASTER_CONFIG_USERNAME || '').trim().toLowerCase();
+  }
+
+  canCurrentUserAccessConfig() {
+    return this.isMasterConfigUser(this.getCurrentLoginUsername());
+  }
+
+  applyConfigAccessControl() {
+    const canAccessConfig = this.canCurrentUserAccessConfig();
+
+    document.querySelectorAll('.sidebar-nav .nav-item[data-tab="config"]').forEach((btn) => {
+      btn.style.display = canAccessConfig ? 'inline-flex' : 'none';
+      btn.setAttribute('aria-hidden', canAccessConfig ? 'false' : 'true');
+      btn.setAttribute('aria-disabled', canAccessConfig ? 'false' : 'true');
+    });
+
+    return canAccessConfig;
+  }
+
+  shouldForceReleaseRefresh() {
+    try {
+      return localStorage.getItem(APP_RELEASE_SEEN_STORAGE_KEY) !== APP_RELEASE_VERSION;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  markReleaseRefreshSeen() {
+    try {
+      localStorage.setItem(APP_RELEASE_SEEN_STORAGE_KEY, APP_RELEASE_VERSION);
+    } catch (err) {
+      console.log('Falha ao registrar release ativa:', err);
+    }
+  }
+
   saveStore() {
     localStorage.setItem('consultorio_clients', JSON.stringify(this.clients));
     localStorage.setItem('consultorio_appointments', JSON.stringify(this.appointments));
     localStorage.setItem('consultorio_expenses', JSON.stringify(this.expenses));
     localStorage.setItem(CLIENT_GROUPS_STORAGE_KEY, JSON.stringify(this.clientGroups));
+    localStorage.setItem(CLIENT_CATEGORIES_STORAGE_KEY, JSON.stringify(this.clientCategories));
     localStorage.setItem(APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY, JSON.stringify(this.deletedAppointmentTombstones || {}));
   }
 
@@ -958,6 +1056,8 @@ class ConsultorioApp {
         this.clearFirebasePushWatchdog();
         this.setFirebaseSyncDirty(false);
         this.logSyncAudit('push', 'Push concluído com sucesso.');
+        this.boostFirebaseSyncPolling(18000, 'push-concluido');
+        this.scheduleFirebaseRealtimePullSync('meta', Date.now());
       })
       .catch((err) => {
         if (attemptId !== this.firebasePushActiveAttemptId) return;
@@ -1230,6 +1330,119 @@ class ConsultorioApp {
     } catch (err) {
       console.log('Falha ao salvar o timestamp de push local:', err);
     }
+  }
+
+  getLocalSharedSettingsSignature() {
+    try {
+      return String(localStorage.getItem(SHARED_SETTINGS_SIGNATURE_STORAGE_KEY) || '').trim();
+    } catch (err) {
+      return '';
+    }
+  }
+
+  setLocalSharedSettingsSignature(signature) {
+    try {
+      localStorage.setItem(SHARED_SETTINGS_SIGNATURE_STORAGE_KEY, String(signature || '').trim());
+    } catch (err) {
+      console.log('Falha ao salvar assinatura das configurações compartilhadas:', err);
+    }
+  }
+
+  buildSharedSettingsComparable() {
+    const firebaseConfig = normalizeFirebaseConfig(this.firebaseConfig || this.loadFirebaseConfig() || null);
+    const googleCalendarClientId = String(this.loadGoogleCalendarClientId() || '').trim();
+
+    return {
+      firebaseConfig: firebaseConfig || null,
+      googleCalendarClientId,
+      soundEnabled: Boolean(this.soundEnabled),
+      reminderMinutes: Math.max(1, Number(this.reminderMinutes) || 15),
+      reminderIntensity: ['normal', 'strong', 'ultra'].includes(String(this.reminderIntensity || '').toLowerCase())
+        ? String(this.reminderIntensity || '').toLowerCase()
+        : 'strong'
+    };
+  }
+
+  computeSharedSettingsSignatureFromComparable(comparable) {
+    try {
+      return JSON.stringify(this.normalizeValueForSyncSignature(comparable || {}));
+    } catch (err) {
+      return '';
+    }
+  }
+
+  buildSharedSettingsSyncPayload() {
+    const comparable = this.buildSharedSettingsComparable();
+    return {
+      ...comparable,
+      updatedAt: (window.firebase && window.firebase.firestore && window.firebase.firestore.FieldValue)
+        ? window.firebase.firestore.FieldValue.serverTimestamp()
+        : new Date().toISOString(),
+      updatedAtMillis: Date.now(),
+      updatedByDeviceId: this.firebaseDeviceId || this.getOrCreateFirebaseDeviceId(),
+      updatedByUid: String(this.firebaseAuthUid || '').trim()
+    };
+  }
+
+  applySharedSettingsFromRemote(payload = {}) {
+    if (!payload || typeof payload !== 'object') return false;
+
+    const comparable = {
+      firebaseConfig: normalizeFirebaseConfig(payload.firebaseConfig || null) || null,
+      googleCalendarClientId: String(payload.googleCalendarClientId || '').trim(),
+      soundEnabled: payload.soundEnabled == null ? this.soundEnabled : Boolean(payload.soundEnabled),
+      reminderMinutes: Math.max(1, Number(payload.reminderMinutes) || 15),
+      reminderIntensity: ['normal', 'strong', 'ultra'].includes(String(payload.reminderIntensity || '').toLowerCase())
+        ? String(payload.reminderIntensity || '').toLowerCase()
+        : 'strong'
+    };
+
+    const remoteSignature = this.computeSharedSettingsSignatureFromComparable(comparable);
+    if (!remoteSignature) return false;
+    if (remoteSignature === this.getLocalSharedSettingsSignature()) return false;
+
+    try {
+      if (comparable.firebaseConfig) {
+        localStorage.setItem(FIREBASE_CONFIG_STORAGE_KEY, JSON.stringify(comparable.firebaseConfig));
+      }
+
+      if (comparable.googleCalendarClientId) {
+        localStorage.setItem(GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY, comparable.googleCalendarClientId);
+      } else {
+        localStorage.removeItem(GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY);
+      }
+
+      this.firebaseConfig = comparable.firebaseConfig;
+      this.googleCalendarClientId = comparable.googleCalendarClientId;
+      this.soundEnabled = comparable.soundEnabled;
+      this.reminderMinutes = comparable.reminderMinutes;
+      this.reminderIntensity = comparable.reminderIntensity;
+      this.saveSoundSettings({ skipSync: true });
+
+      const firebaseInput = document.getElementById('cfg-firebase-json');
+      if (firebaseInput && comparable.firebaseConfig) {
+        firebaseInput.value = JSON.stringify(comparable.firebaseConfig, null, 2);
+      }
+
+      const googleInput = document.getElementById('cfg-google-calendar-client-id');
+      if (googleInput) {
+        googleInput.value = comparable.googleCalendarClientId || '';
+      }
+
+      this.updateSoundControlsUI();
+      this.updateGoogleCalendarStatus(this.googleCalendarAuthorized ? 'ok' : (this.googleCalendarClientId ? 'ready' : 'offline'));
+      this.setLocalSharedSettingsSignature(remoteSignature);
+      return true;
+    } catch (err) {
+      console.log('Falha ao aplicar configurações compartilhadas remotas:', err);
+      return false;
+    }
+  }
+
+  markSharedSettingsDirty(reason = 'config-update') {
+    this.setFirebaseSyncDirty(true);
+    this.boostFirebaseSyncPolling(26000, reason);
+    this.requestFirebasePushSync();
   }
 
   createEmptyFirebasePushShadowState() {
@@ -1890,6 +2103,14 @@ class ConsultorioApp {
     return 'Pendente';
   }
 
+  normalizeAppointmentRecurrenceType(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return 'nao_recorrente';
+    if (raw.includes('recorr')) return 'recorrente';
+    if (raw === 'sim' || raw === 'yes' || raw === 'true') return 'recorrente';
+    return 'nao_recorrente';
+  }
+
   normalizeSingleAppointmentRecord(rawAppointment = {}, source = 'unknown') {
     const raw = rawAppointment && typeof rawAppointment === 'object' ? rawAppointment : {};
     const sourceTag = String(source || '').trim();
@@ -1945,6 +2166,7 @@ class ConsultorioApp {
       paymentMethod: String(raw.paymentMethod || raw.formaPagamento || raw.payment || 'Pix').trim() || 'Pix',
       status: this.normalizeAppointmentStatus(raw.status || raw.appointmentStatus || raw.situacao || 'Agendado'),
       paymentStatus: this.normalizeAppointmentPaymentStatus(raw.paymentStatus || raw.pagamentoStatus || raw.financeStatus || 'Pendente'),
+      recurrenceType: this.normalizeAppointmentRecurrenceType(raw.recurrenceType || raw.recorrencia || raw.repeticao || raw.repeatRule || raw.isRecurring),
       notes: String(raw.notes || raw.observacoes || raw.observacao || '').trim(),
       color: normalizeHexColor(raw.color || raw.cor || DEFAULT_APPOINTMENT_COLOR)
     };
@@ -3061,6 +3283,35 @@ class ConsultorioApp {
       .sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }
 
+  collectClientCategoriesFromClients() {
+    const seen = new Set();
+    const fromStored = Array.isArray(this.clientCategories) ? this.clientCategories : [];
+    const fromClients = this.clients
+      .map((client) => this.normalizeClientCategory(client && client.category))
+      .filter((category) => {
+        if (!category) return false;
+        const key = this.normalizeClientCategoryKey(category);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+    const all = DEFAULT_CLIENT_CATEGORIES.concat(fromStored).concat(fromClients)
+      .map((category) => this.normalizeClientCategory(category))
+      .filter(Boolean);
+
+    const unique = [];
+    const uniqueKeys = new Set();
+    all.forEach((category) => {
+      const key = this.normalizeClientCategoryKey(category);
+      if (uniqueKeys.has(key)) return;
+      uniqueKeys.add(key);
+      unique.push(category);
+    });
+
+    return unique;
+  }
+
   rememberClientGroup(groupName) {
     const normalized = this.normalizeClientGroupName(groupName);
     if (!normalized) return;
@@ -3070,6 +3321,27 @@ class ConsultorioApp {
     this.clientGroups.unshift(normalized);
     this.clientGroups = this.clientGroups.slice(0, 40);
     this.populateClientGroupOptions();
+  }
+
+  rememberClientCategory(categoryName) {
+    const normalized = this.normalizeClientCategory(categoryName);
+    if (!normalized) return;
+
+    const existingIndex = this.clientCategories.findIndex((item) => this.normalizeClientCategoryKey(item) === this.normalizeClientCategoryKey(normalized));
+    if (existingIndex >= 0) this.clientCategories.splice(existingIndex, 1);
+    this.clientCategories.unshift(normalized);
+
+    const requiredDefaults = DEFAULT_CLIENT_CATEGORIES.map((item) => this.normalizeClientCategory(item));
+    requiredDefaults.reverse().forEach((category) => {
+      const key = this.normalizeClientCategoryKey(category);
+      if (!this.clientCategories.some((item) => this.normalizeClientCategoryKey(item) === key)) {
+        this.clientCategories.unshift(category);
+      }
+    });
+
+    this.clientCategories = this.clientCategories.slice(0, 60);
+    this.populateClientCategoryOptions();
+    this.populateClientCategoryFilterOptions();
   }
 
   populateClientGroupOptions(preferredGroup = '') {
@@ -3085,6 +3357,41 @@ class ConsultorioApp {
     datalist.innerHTML = groups
       .map((group) => `<option value="${safeText(group)}"></option>`)
       .join('');
+  }
+
+  populateClientCategoryOptions(preferredCategory = '') {
+    const datalist = document.getElementById('client-category-options');
+    if (!datalist) return;
+
+    const categories = this.clientCategories.slice();
+    const preferred = this.normalizeClientCategory(preferredCategory);
+    const preferredKey = this.normalizeClientCategoryKey(preferred);
+    if (preferred && !categories.some((item) => this.normalizeClientCategoryKey(item) === preferredKey)) {
+      categories.unshift(preferred);
+    }
+
+    datalist.innerHTML = categories
+      .map((category) => `<option value="${safeText(category)}"></option>`)
+      .join('');
+  }
+
+  populateClientCategoryFilterOptions() {
+    const select = document.getElementById('clientes-category-filter');
+    if (!select) return;
+
+    const current = String(select.value || 'paciente').trim().toLowerCase() || 'paciente';
+    const normalizedCategories = this.collectClientCategoriesFromClients();
+    this.clientCategories = normalizedCategories.slice();
+
+    const options = ['<option value="todos">Todas as categorias</option>'];
+    normalizedCategories.forEach((category) => {
+      const key = this.normalizeClientCategoryKey(category);
+      options.push(`<option value="${safeText(key)}">${safeText(category)}</option>`);
+    });
+
+    select.innerHTML = options.join('');
+    const validValues = ['todos'].concat(normalizedCategories.map((category) => this.normalizeClientCategoryKey(category)));
+    select.value = validValues.includes(current) ? current : 'paciente';
   }
 
   showToast(message, type = 'info') {
@@ -3737,6 +4044,8 @@ class ConsultorioApp {
     this.loadSoundSettings();
     this.updateSoundControlsUI();
     this.populateClientGroupOptions();
+    this.populateClientCategoryOptions();
+    this.populateClientCategoryFilterOptions();
     this.prefillSenhaTabFields();
     this.prefillFirebaseConfig();
     this.prefillGoogleCalendarConfig();
@@ -3847,7 +4156,7 @@ class ConsultorioApp {
     }
   }
 
-  saveSoundSettings() {
+  saveSoundSettings(options = {}) {
     try {
       localStorage.setItem(SOUND_ENABLED_STORAGE_KEY, this.soundEnabled ? '1' : '0');
       localStorage.setItem(REMINDER_MINS_STORAGE_KEY, String(this.reminderMinutes));
@@ -3855,6 +4164,9 @@ class ConsultorioApp {
         REMINDER_INTENSITY_STORAGE_KEY,
         ['normal', 'strong', 'ultra'].includes(this.reminderIntensity) ? this.reminderIntensity : 'strong'
       );
+      if (!options || options.skipSync !== true) {
+        this.markSharedSettingsDirty('sound-settings');
+      }
     } catch (err) {
       console.log('Falha ao salvar configuração de avisos:', err);
     }
@@ -4109,19 +4421,11 @@ class ConsultorioApp {
 
         await Promise.all(registrations.map(async (registration) => {
           try {
-            if (typeof registration.update === 'function') {
-              await registration.update();
+            if (typeof registration.unregister === 'function') {
+              await registration.unregister();
             }
           } catch (updateErr) {
-            console.log('Falha ao atualizar registration do SW:', updateErr);
-          }
-
-          try {
-            if (registration.waiting) {
-              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            }
-          } catch (waitingErr) {
-            console.log('Falha ao sinalizar skipWaiting:', waitingErr);
+            console.log('Falha ao remover registration do SW:', updateErr);
           }
         }));
       }
@@ -4482,11 +4786,27 @@ class ConsultorioApp {
         return;
       }
 
+      const clientCategoriesOpenTrigger = target.closest('#btn-manage-client-categories');
+      if (clientCategoriesOpenTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.openClientCategoriesModal();
+        return;
+      }
+
       const clientGroupsCloseTrigger = target.closest('#btn-close-client-groups, #btn-close-client-groups-footer');
       if (clientGroupsCloseTrigger) {
         event.preventDefault();
         event.stopPropagation();
         this.closeClientGroupsModal();
+        return;
+      }
+
+      const clientCategoriesCloseTrigger = target.closest('#btn-close-client-categories, #btn-close-client-categories-footer');
+      if (clientCategoriesCloseTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeClientCategoriesModal();
         return;
       }
 
@@ -4774,6 +5094,15 @@ class ConsultorioApp {
       });
     }
 
+    const clientCategoryInput = document.getElementById('client-category');
+    if (clientCategoryInput) {
+      clientCategoryInput.addEventListener('blur', () => {
+        const normalized = this.normalizeClientCategory(clientCategoryInput.value || 'Paciente');
+        clientCategoryInput.value = normalized;
+        this.rememberClientCategory(normalized);
+      });
+    }
+
     const emergencyPhoneInput = document.getElementById('client-emergency-phone');
     if (emergencyPhoneInput) {
       emergencyPhoneInput.addEventListener('input', () => {
@@ -4847,10 +5176,21 @@ class ConsultorioApp {
       manageClientGroupsBtn.addEventListener('click', () => this.openClientGroupsModal());
     }
 
+    const manageClientCategoriesBtn = document.getElementById('btn-manage-client-categories');
+    if (manageClientCategoriesBtn) {
+      manageClientCategoriesBtn.addEventListener('click', () => this.openClientCategoriesModal());
+    }
+
     const closeClientGroupsButtons = ['btn-close-client-groups', 'btn-close-client-groups-footer'];
     closeClientGroupsButtons.forEach((id) => {
       const btn = document.getElementById(id);
       if (btn) btn.addEventListener('click', () => this.closeClientGroupsModal());
+    });
+
+    const closeClientCategoriesButtons = ['btn-close-client-categories', 'btn-close-client-categories-footer'];
+    closeClientCategoriesButtons.forEach((id) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', () => this.closeClientCategoriesModal());
     });
 
     const closeAppointmentButtons = ['btn-cancel-appointment', 'btn-close-appointment'];
@@ -5058,8 +5398,10 @@ class ConsultorioApp {
 
     const clientesSearch = document.getElementById('clientes-search');
     const clientesPhoneFilter = document.getElementById('clientes-phone-filter');
+    const clientesCategoryFilter = document.getElementById('clientes-category-filter');
     if (clientesSearch) clientesSearch.addEventListener('input', () => this.renderClientsTable());
     if (clientesPhoneFilter) clientesPhoneFilter.addEventListener('change', () => this.renderClientsTable());
+    if (clientesCategoryFilter) clientesCategoryFilter.addEventListener('change', () => this.renderClientsTable());
 
     const financeiroSearch = document.getElementById('financeiro-search');
     if (financeiroSearch) financeiroSearch.addEventListener('input', () => this.renderFinanceiroTable());
@@ -5357,7 +5699,12 @@ class ConsultorioApp {
 
   switchTab(tabId) {
     const previousTab = this.currentTab;
-    const targetId = document.getElementById(`tab-${tabId}`) ? tabId : 'dashboard';
+    const requestedTab = document.getElementById(`tab-${tabId}`) ? tabId : 'dashboard';
+    const canAccessConfig = this.applyConfigAccessControl();
+    const targetId = (requestedTab === 'config' && !canAccessConfig) ? 'dashboard' : requestedTab;
+    if (requestedTab === 'config' && !canAccessConfig) {
+      this.showToast('Apenas o usuário master pode acessar Configurações.', 'warning');
+    }
     this.currentTab = targetId;
 
     const pageTitle = document.getElementById('page-title');
@@ -5634,10 +5981,13 @@ class ConsultorioApp {
     }
   }
 
-  saveFirebaseConfig(config) {
+  saveFirebaseConfig(config, options = {}) {
     try {
       localStorage.setItem(FIREBASE_CONFIG_STORAGE_KEY, JSON.stringify(config));
       this.bumpVersion();
+      if (!options || options.skipSync !== true) {
+        this.markSharedSettingsDirty('firebase-config');
+      }
     } catch (err) {
       console.log('Falha ao salvar configuração do Firebase:', err);
     }
@@ -5661,7 +6011,7 @@ class ConsultorioApp {
     }
   }
 
-  saveGoogleCalendarClientId(clientId) {
+  saveGoogleCalendarClientId(clientId, options = {}) {
     const safeClientId = String(clientId || '').trim();
     const looksLikeSecret = /^GOCSPX-/i.test(safeClientId) || /client_secret/i.test(safeClientId);
 
@@ -5680,6 +6030,9 @@ class ConsultorioApp {
       this.googleCalendarClientId = safeClientId;
       this.bumpVersion();
       this.updateGoogleCalendarStatus(safeClientId ? 'ready' : 'offline');
+      if (!options || options.skipSync !== true) {
+        this.markSharedSettingsDirty('google-calendar-client-id');
+      }
       return true;
     } catch (err) {
       console.log('Falha ao salvar Client ID do Google Calendar:', err);
@@ -5985,6 +6338,7 @@ class ConsultorioApp {
     const created = {
       id: generatedId,
       name: String(clientName || 'Cliente').trim() || 'Cliente',
+      category: 'Paciente',
       phone: '',
       email: '',
       cpf: '',
@@ -6722,7 +7076,7 @@ class ConsultorioApp {
 
     if (input) input.value = JSON.stringify(config, null, 2);
     this.firebaseConfig = config;
-    this.saveFirebaseConfig(config);
+    this.saveFirebaseConfig(config, { skipSync: true });
     this.clearFirebaseLastError();
     this.updateFirebaseAuthStatus('pending', 'Auth Firebase: Autenticando');
 
@@ -6894,6 +7248,13 @@ class ConsultorioApp {
         snapshotsByCollection[item.name] = snapshot;
       }));
 
+      let sharedSettingsDoc = null;
+      try {
+        sharedSettingsDoc = await this.firebaseDb.collection('app_meta').doc('shared_settings').get();
+      } catch (sharedErr) {
+        this.logSyncAudit('warning', `Falha ao ler configurações compartilhadas: ${String((sharedErr && (sharedErr.code || sharedErr.message)) || 'erro desconhecido')}`);
+      }
+
       let shouldSeedRemoteFromLocal = false;
 
       for (const item of collections) {
@@ -6946,6 +7307,13 @@ class ConsultorioApp {
       if (shouldSeedRemoteFromLocal) {
         await this.pushAllDataToFirebase();
         this.logSyncAudit('push', 'Remote vazio detectado; base local enviada para semear dados.');
+      }
+
+      if (sharedSettingsDoc && sharedSettingsDoc.exists) {
+        const appliedSharedSettings = this.applySharedSettingsFromRemote(sharedSettingsDoc.data ? sharedSettingsDoc.data() : {});
+        if (appliedSharedSettings) {
+          this.logSyncAudit('pull', 'Configurações compartilhadas aplicadas do Firebase.');
+        }
       }
 
       this.applyStableDataOrdering();
@@ -7008,7 +7376,12 @@ class ConsultorioApp {
         addOperation({ type: 'delete', collection: 'appointments', id: normalizedId });
       });
 
-      if (!operations.length) {
+      const sharedComparable = this.buildSharedSettingsComparable();
+      const nextSharedSettingsSignature = this.computeSharedSettingsSignatureFromComparable(sharedComparable);
+      const currentSharedSettingsSignature = this.getLocalSharedSettingsSignature();
+      const shouldPushSharedSettings = Boolean(nextSharedSettingsSignature) && nextSharedSettingsSignature !== currentSharedSettingsSignature;
+
+      if (!operations.length && !shouldPushSharedSettings) {
         this.firebasePushShadowState = nextState;
         this.saveFirebasePushShadowState();
         this.setLocalLastPushMillis(Date.now());
@@ -7039,6 +7412,11 @@ class ConsultorioApp {
         await batch.commit();
       }
 
+      if (shouldPushSharedSettings) {
+        const sharedPayload = this.buildSharedSettingsSyncPayload();
+        await this.firebaseDb.collection('app_meta').doc('shared_settings').set(sharedPayload, { merge: true });
+      }
+
       try {
         await this.updateRemoteSyncState();
       } catch (metaErr) {
@@ -7048,6 +7426,9 @@ class ConsultorioApp {
       this.firebasePushShadowState = nextState;
       this.saveFirebasePushShadowState();
       this.setLocalLastPushMillis(Date.now());
+      if (shouldPushSharedSettings) {
+        this.setLocalSharedSettingsSignature(nextSharedSettingsSignature);
+      }
       this.firebasePushQueued = false;
       if (this.firebasePushRetryTimerId) {
         window.clearTimeout(this.firebasePushRetryTimerId);
@@ -7792,7 +8173,7 @@ class ConsultorioApp {
     setText('dash-pending-count', `${this.appointments.filter((a) => toNumber(a.price) - toNumber(a.amountPaid) > 0).length} cobranças pendentes`);
     setText('dash-result-total', formatCurrency(result));
     setText('dash-result-sub', result > 0 ? `Superávit de ${formatCurrency(result)}` : (result < 0 ? `Déficit de ${formatCurrency(Math.abs(result))}` : 'Equilíbrio no período'));
-    setText('dash-total-clients', this.clients.length);
+    setText('dash-total-clients', this.getPatientClients().length);
     setText('dash-current-user', currentUserName);
     setText('dash-current-user-sub', 'Usuário da sessão atual');
     setText('header-current-user-name', `Olá, ${currentUserName}`);
@@ -8161,10 +8542,16 @@ class ConsultorioApp {
       if (!existingClientIds.has(id)) this.selectedClientReportIds.delete(id);
     });
 
+    this.populateClientCategoryFilterOptions();
+
     const search = String((document.getElementById('clientes-search') || {}).value || '').toLowerCase().trim();
     const phoneFilter = (document.getElementById('clientes-phone-filter') || {}).value || 'todos';
+    const categoryFilter = String((document.getElementById('clientes-category-filter') || {}).value || 'paciente').trim().toLowerCase();
 
     let filtered = this.clients.slice();
+    if (categoryFilter !== 'todos') {
+      filtered = filtered.filter((client) => this.normalizeClientCategoryKey(client.category) === categoryFilter);
+    }
     if (search) {
       filtered = filtered.filter((c) =>
         String(c.name || '').toLowerCase().includes(search) ||
@@ -8184,7 +8571,7 @@ class ConsultorioApp {
     if (!filtered.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7">
+          <td colspan="8">
             <div class="empty-state"><p>Nenhum cliente encontrado.</p></div>
           </td>
         </tr>
@@ -8205,6 +8592,7 @@ class ConsultorioApp {
         </td>
         <td><strong>${c.registrationNumber || '-'}</strong></td>
         <td>${safeText(c.name || '-')}</td>
+        <td>${safeText(this.normalizeClientCategory(c.category))}</td>
         <td>${safeText(c.phone || '-')}</td>
         <td>${safeText(c.email || '-')}</td>
         <td>${formatDateBR(c.createdAt || '')}</td>
@@ -8653,13 +9041,40 @@ class ConsultorioApp {
     }
   }
 
+  normalizeClientCategory(value) {
+    const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return 'Paciente';
+    return normalized
+      .split(' ')
+      .map((part) => part ? (part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()) : '')
+      .join(' ');
+  }
+
+  normalizeClientCategoryKey(value) {
+    const label = this.normalizeClientCategory(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    return String(label || '')
+      .toLowerCase()
+      .replace(/\s+/g, '-');
+  }
+
+  isPatientClient(client) {
+    if (!client || typeof client !== 'object') return false;
+    return this.normalizeClientCategoryKey(client.category) === 'paciente';
+  }
+
+  getPatientClients() {
+    return (this.clients || []).filter((client) => this.isPatientClient(client));
+  }
+
   populateClientSelectOptions(selectedId = '') {
     const select = document.getElementById('appt-client-id');
     if (!select) return;
 
     const current = selectedId || select.value;
     const options = ['<option value="">Selecione um cliente...</option>']
-      .concat(this.clients
+      .concat(this.getPatientClients()
         .slice()
         .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
         .map((c) => `<option value="${safeText(c.id)}">${safeText(c.name)} - ${safeText(c.phone || '-')}</option>`));
@@ -8680,6 +9095,9 @@ class ConsultorioApp {
     if (idInput) idInput.value = '';
     if (title) title.textContent = 'Cadastrar Novo Paciente';
     this.populateClientGroupOptions();
+    this.populateClientCategoryOptions();
+    const categoryInput = document.getElementById('client-category');
+    if (categoryInput) categoryInput.value = 'Paciente';
 
     let _anamneseData = null;
     if (clientId) {
@@ -8694,6 +9112,7 @@ class ConsultorioApp {
         set('client-name', c.name);
         set('client-phone', this.formatPhoneInput(c.phone));
         set('client-email', c.email);
+        set('client-category', this.normalizeClientCategory(c.category));
         set('client-cpf', this.formatCpfInput(c.cpf));
         set('client-rg', c.rg);
         set('client-dob', this.formatDobForInput(c.dob));
@@ -8712,6 +9131,7 @@ class ConsultorioApp {
         set('client-referral-source', c.referralSource);
         set('client-referral-notes', c.referralNotes);
         this.populateClientGroupOptions(c.group);
+        this.populateClientCategoryOptions(this.normalizeClientCategory(c.category));
         if (title) title.textContent = 'Editar Dados do Paciente';
       }
     }
@@ -8782,6 +9202,85 @@ class ConsultorioApp {
   closeClientGroupsModal() {
     const modal = document.getElementById('modal-client-groups');
     if (modal) modal.classList.remove('active');
+  }
+
+  openClientCategoriesModal() {
+    const modal = document.getElementById('modal-client-categories');
+    if (!modal) return;
+    this.renderClientCategoriesManager();
+    modal.classList.add('active');
+  }
+
+  closeClientCategoriesModal() {
+    const modal = document.getElementById('modal-client-categories');
+    if (modal) modal.classList.remove('active');
+  }
+
+  renderClientCategoriesManager() {
+    const container = document.getElementById('client-categories-list');
+    if (!container) return;
+
+    const addBtn = document.getElementById('btn-add-category');
+    const addInput = document.getElementById('new-category-input');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        const name = this.normalizeClientCategory((addInput || {}).value || '');
+        if (!name) { this.showToast('Informe um nome para a categoria.', 'warning'); return; }
+        if (this.clientCategories.some((category) => this.normalizeClientCategoryKey(category) === this.normalizeClientCategoryKey(name))) {
+          this.showToast('Categoria já existe.', 'warning'); return;
+        }
+
+        this.rememberClientCategory(name);
+        this.saveStore();
+        if (addInput) addInput.value = '';
+        this.renderClientCategoriesManager();
+        this.showToast(`Categoria "${name}" criada.`, 'success');
+      };
+    }
+    if (addInput) {
+      addInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (addBtn) addBtn.click(); } };
+    }
+
+    if (!this.clientCategories.length) {
+      container.innerHTML = '<div class="empty-state"><p>Nenhuma categoria salva ainda.</p></div>';
+      return;
+    }
+
+    const categories = this.clientCategories.slice().sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    container.innerHTML = categories.map((category) => `
+      <div class="group-manager-card" data-category-row="${safeText(category)}">
+        <i data-lucide="tag"></i>
+        <input type="text" class="form-control group-manager-input" value="${safeText(category)}" data-category-edit aria-label="Nome da categoria">
+        <div class="group-manager-actions">
+          <button type="button" class="btn btn-sm btn-secondary" data-category-action="rename" data-category="${safeText(category)}"><i data-lucide="check"></i> Salvar</button>
+          <button type="button" class="btn btn-sm btn-ghost group-manager-delete" data-category-action="delete" data-category="${safeText(category)}"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('[data-category-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = String(btn.getAttribute('data-category-action') || '');
+        const categoryName = this.normalizeClientCategory(btn.getAttribute('data-category') || '');
+        if (!categoryName) return;
+
+        if (action === 'rename') {
+          const row = btn.closest('[data-category-row]');
+          const input = row ? row.querySelector('[data-category-edit]') : null;
+          const nextName = input ? String(input.value || '') : '';
+          this.renameClientCategory(categoryName, nextName);
+          return;
+        }
+
+        if (action === 'delete') {
+          this.deleteClientCategory(categoryName);
+        }
+      });
+    });
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
   }
 
   renderClientGroupsManager() {
@@ -8912,11 +9411,82 @@ class ConsultorioApp {
     this.showToast(`Grupo removido. ${affectedClients} cliente(s) ajustado(s).`, 'success');
   }
 
+  renameClientCategory(oldCategory, newCategory) {
+    const oldNormalized = this.normalizeClientCategory(oldCategory);
+    const newNormalized = this.normalizeClientCategory(newCategory);
+    const oldKey = this.normalizeClientCategoryKey(oldNormalized);
+    const newKey = this.normalizeClientCategoryKey(newNormalized);
+
+    if (!oldNormalized) return;
+    if (!newNormalized) {
+      this.showToast('Informe um nome válido para a categoria.', 'warning');
+      return;
+    }
+    if (oldKey === newKey) return;
+
+    let updatedClients = 0;
+    this.clients = this.clients.map((client) => {
+      const currentKey = this.normalizeClientCategoryKey(client.category);
+      if (currentKey !== oldKey) return client;
+      updatedClients += 1;
+      return { ...client, category: newNormalized };
+    });
+
+    this.clientCategories = this.clientCategories.filter((category) => this.normalizeClientCategoryKey(category) !== oldKey);
+    this.rememberClientCategory(newNormalized);
+
+    const categoryInput = document.getElementById('client-category');
+    if (categoryInput && this.normalizeClientCategoryKey(categoryInput.value) === oldKey) {
+      categoryInput.value = newNormalized;
+    }
+
+    this.populateClientCategoryOptions(newNormalized);
+    this.populateClientCategoryFilterOptions();
+    this.saveStore();
+    this.renderClientCategoriesManager();
+    this.render();
+    this.showToast(`Categoria atualizada. ${updatedClients} cadastro(s) ajustado(s).`, 'success');
+  }
+
+  deleteClientCategory(categoryName) {
+    const normalized = this.normalizeClientCategory(categoryName);
+    const targetKey = this.normalizeClientCategoryKey(normalized);
+    if (!targetKey) return;
+    if (targetKey === 'paciente') {
+      this.showToast('A categoria Paciente não pode ser removida.', 'warning');
+      return;
+    }
+
+    let affectedClients = 0;
+    this.clients = this.clients.map((client) => {
+      const currentKey = this.normalizeClientCategoryKey(client.category);
+      if (currentKey !== targetKey) return client;
+      affectedClients += 1;
+      return { ...client, category: 'Paciente' };
+    });
+
+    this.clientCategories = this.clientCategories.filter((category) => this.normalizeClientCategoryKey(category) !== targetKey);
+    this.rememberClientCategory('Paciente');
+
+    const categoryInput = document.getElementById('client-category');
+    if (categoryInput && this.normalizeClientCategoryKey(categoryInput.value) === targetKey) {
+      categoryInput.value = 'Paciente';
+    }
+
+    this.populateClientCategoryOptions('Paciente');
+    this.populateClientCategoryFilterOptions();
+    this.saveStore();
+    this.renderClientCategoriesManager();
+    this.render();
+    this.showToast(`Categoria removida. ${affectedClients} cadastro(s) voltaram para Paciente.`, 'success');
+  }
+
   saveClientForm() {
     const id = (document.getElementById('client-id') || {}).value || '';
     const name = String((document.getElementById('client-name') || {}).value || '').trim();
     const phone = this.formatPhoneInput((document.getElementById('client-phone') || {}).value || '');
     const email = String((document.getElementById('client-email') || {}).value || '').trim();
+    const category = this.normalizeClientCategory((document.getElementById('client-category') || {}).value || 'Paciente');
 
     const group = this.normalizeClientGroupName((document.getElementById('client-group') || {}).value || '');
     const dobRaw = String((document.getElementById('client-dob') || {}).value || '').trim();
@@ -8932,6 +9502,7 @@ class ConsultorioApp {
       name,
       phone,
       email,
+      category,
       cpf: String((document.getElementById('client-cpf') || {}).value || '').trim(),
       rg: String((document.getElementById('client-rg') || {}).value || '').trim(),
       dob: dobIso,
@@ -8951,6 +9522,8 @@ class ConsultorioApp {
       referralNotes: String((document.getElementById('client-referral-notes') || {}).value || '').trim(),
       anamnese: this.getAnamneseData()
     };
+
+    this.rememberClientCategory(category);
 
     if (window.clientModule && typeof window.clientModule.saveClient === 'function') {
       window.clientModule.saveClient(this, payload, id || '');
@@ -8980,9 +9553,13 @@ class ConsultorioApp {
     const idInput = document.getElementById('appointment-id');
     const title = document.getElementById('modal-appointment-title');
     const colorInput = document.getElementById('appt-color');
+    const recurrenceSelect = document.getElementById('appt-recurrence-type');
+    const bulkUpdateModeSelect = document.getElementById('appt-bulk-update-mode');
     if (idInput) idInput.value = '';
     if (title) title.textContent = 'Agendar Consulta';
     if (colorInput) colorInput.value = DEFAULT_APPOINTMENT_COLOR;
+    if (recurrenceSelect) recurrenceSelect.value = 'nao_recorrente';
+    if (bulkUpdateModeSelect) bulkUpdateModeSelect.value = 'nao_aplicar';
     this.selectAppointmentColor(DEFAULT_APPOINTMENT_COLOR);
 
     const dateInput = document.getElementById('appt-date');
@@ -9005,6 +9582,7 @@ class ConsultorioApp {
         set('appt-status', a.status || 'Agendado');
         set('appt-payment-status', a.paymentStatus || 'Pendente');
         set('appt-amount-paid', a.amountPaid || 0);
+        set('appt-recurrence-type', this.normalizeAppointmentRecurrenceType(a.recurrenceType));
         set('appt-notes', a.notes || '');
         this.selectAppointmentColor(a.color || DEFAULT_APPOINTMENT_COLOR);
         if (title) title.textContent = 'Editar Consulta/Financeiro';
@@ -9192,6 +9770,8 @@ class ConsultorioApp {
       status: String((document.getElementById('appt-status') || {}).value || 'Agendado'),
       paymentStatus: String((document.getElementById('appt-payment-status') || {}).value || 'Pendente'),
       amountPaid: toNumber((document.getElementById('appt-amount-paid') || {}).value || 0),
+      recurrenceType: this.normalizeAppointmentRecurrenceType((document.getElementById('appt-recurrence-type') || {}).value || ''),
+      bulkUpdateMode: String((document.getElementById('appt-bulk-update-mode') || {}).value || 'nao_aplicar'),
       notes: String((document.getElementById('appt-notes') || {}).value || '').trim()
     };
 
@@ -9921,6 +10501,7 @@ class ConsultorioApp {
   }
 
   render() {
+    this.applyConfigAccessControl();
     this.renderVersionBadge();
     this.renderDashboard();
     this.renderAgendaTable();
@@ -9959,11 +10540,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260801-10', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260801-14', 'app-root')
       ]);
     }
   } catch (err) {
     console.log('Falha ao carregar partials:', err);
+  }
+
+  if (window.app && typeof window.app.shouldForceReleaseRefresh === 'function' && window.app.shouldForceReleaseRefresh()) {
+    window.app.markReleaseRefreshSeen();
+    await window.app.forceAppUpdate();
+    return;
   }
 
   window.app.initDOM();
@@ -9980,7 +10567,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-36')
+    navigator.serviceWorker.register('./sw.js?v=20260801-42')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

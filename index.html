@@ -329,6 +329,10 @@
                 <option value="validos">Com WhatsApp</option>
                 <option value="invalidos">Sem WhatsApp</option>
               </select>
+              <select id="clientes-category-filter" class="form-control">
+                <option value="paciente">Paciente</option>
+                <option value="todos">Todas as categorias</option>
+              </select>
             </div>
             <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
               <button class="btn btn-secondary" id="btn-print-selected-clients" type="button" onclick="app.printSelectedClientsReports()" ontouchstart="app.printSelectedClientsReports()" disabled><i data-lucide="printer"></i> Imprimir Selecionados (0)</button>
@@ -344,6 +348,7 @@
                       <th style="width:52px;text-align:center;"><input type="checkbox" id="clientes-select-all-print" title="Selecionar todos visíveis" onchange="app.toggleAllVisibleClientReports(this.checked)"></th>
                       <th>ID</th>
                       <th>Nome</th>
+                      <th>Categoria</th>
                       <th>Telefone</th>
                       <th>E-mail</th>
                       <th>Cadastro</th>
@@ -702,6 +707,7 @@
             <div class="form-group grid-col-span-2"><label for="client-name">Nome *</label><input type="text" id="client-name" class="form-control" required></div>
             <div class="form-group"><label for="client-phone">Telefone *</label><input type="tel" id="client-phone" class="form-control" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000" required></div>
             <div class="form-group"><label for="client-email">E-mail</label><input type="email" id="client-email" class="form-control"></div>
+            <div class="form-group"><label for="client-category">Categoria</label><input type="text" id="client-category" class="form-control" list="client-category-options" placeholder="Digite ou selecione uma categoria"><datalist id="client-category-options"></datalist><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-categories">Gerenciar categorias</button></div></div>
             <div class="form-group"><label for="client-cpf">CPF</label><input type="text" id="client-cpf" class="form-control" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
             <div class="form-group"><label for="client-rg">RG</label><input type="text" id="client-rg" class="form-control"></div>
             <div class="form-group"><label for="client-dob">Data de Nascimento</label><input type="date" id="client-dob" class="form-control date-input"></div>
@@ -932,6 +938,26 @@
           <h3>Gerenciar Grupos</h3>
           <button class="btn-close" id="btn-close-client-groups"><i data-lucide="x"></i></button>
         </div>
+
+        <div class="modal-backdrop" id="modal-client-categories">
+          <div class="modal-card">
+            <div class="modal-header">
+              <h3>Gerenciar Categorias</h3>
+              <button class="btn-close" id="btn-close-client-categories"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+              <p style="margin-top:0; color:var(--text-muted);">Adicione, renomeie ou exclua categorias de cadastro.</p>
+              <div class="groups-add-row">
+                <input type="text" id="new-category-input" class="form-control" placeholder="Nome da nova categoria...">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-add-category"><i data-lucide="plus"></i> Adicionar</button>
+              </div>
+              <div id="client-categories-list"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" id="btn-close-client-categories-footer">Fechar</button>
+            </div>
+          </div>
+        </div>
         <div class="modal-body">
           <div class="groups-add-row">
             <input type="text" id="new-group-input" class="form-control" placeholder="Nome do novo grupo...">
@@ -961,6 +987,16 @@
             <div class="form-group"><label for="appt-price">Valor (R$) *</label><input type="number" step="0.01" min="0" id="appt-price" class="form-control" required></div>
             <div class="form-group"><label for="appt-payment-method">Forma de Pagamento</label><select id="appt-payment-method" class="form-control"><option value="Pix">Pix</option><option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option><option value="Transferência">Transferência</option></select></div>
             <div class="form-group"><label for="appt-status">Status</label><select id="appt-status" class="form-control"><option value="Agendado">Agendado</option><option value="Concluido">Concluído</option><option value="Cancelado">Cancelado</option></select></div>
+            <div class="form-group"><label for="appt-recurrence-type">Regra de Recorrência</label><select id="appt-recurrence-type" class="form-control"><option value="nao_recorrente">Não recorrente</option><option value="recorrente">Recorrente</option></select></div>
+            <div class="form-group" title="Escolha como aplicar alterações em outros agendamentos futuros do mesmo paciente.">
+              <label for="appt-bulk-update-mode">Aplicar ajuste em outros agendamentos</label>
+              <select id="appt-bulk-update-mode" class="form-control">
+                <option value="nao_aplicar">Não aplicar nos demais</option>
+                <option value="futuros_mesmo_paciente">Futuros do mesmo paciente</option>
+                <option value="futuros_mesmo_procedimento">Somente mesmo procedimento + futuros</option>
+                <option value="recorrentes_futuros_paciente">Todos recorrentes futuros do paciente</option>
+              </select>
+            </div>
             <div class="form-group grid-col-span-2">
               <label for="appt-color">Cor do Agendamento</label>
               <input type="hidden" id="appt-color" value="#0ea5e9">

@@ -1,4 +1,69 @@
 const agendaModule = {
+  normalizeRecurrenceType(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return 'nao_recorrente';
+    if (raw.includes('recorr')) return 'recorrente';
+    if (raw === 'sim' || raw === 'yes' || raw === 'true') return 'recorrente';
+    return 'nao_recorrente';
+  },
+
+  normalizeBulkUpdateMode(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    if (raw === 'futuros_mesmo_paciente') return 'futuros_mesmo_paciente';
+    if (raw === 'futuros_mesmo_procedimento') return 'futuros_mesmo_procedimento';
+    if (raw === 'recorrentes_futuros_paciente') return 'recorrentes_futuros_paciente';
+    return 'nao_aplicar';
+  },
+
+  applyRecurringPatientUpdates(app, baseAppointment, fields = {}, mode = 'nao_aplicar') {
+    if (!app || !baseAppointment) return 0;
+
+    const normalizedMode = this.normalizeBulkUpdateMode(mode);
+    if (normalizedMode === 'nao_aplicar') return 0;
+
+    const clientId = String(baseAppointment.clientId || '').trim();
+    if (!clientId) return 0;
+    const baseProcedure = String(baseAppointment.procedure || '').trim().toLowerCase();
+
+    const baseId = String(baseAppointment.id || '').trim();
+    const baseDate = String(baseAppointment.date || '').trim();
+    const baseTime = String(baseAppointment.time || '').trim() || '00:00';
+    let updatedCount = 0;
+
+    app.appointments = (app.appointments || []).map((appointment) => {
+      const currentId = String((appointment && appointment.id) || '').trim();
+      if (!currentId || currentId === baseId) return appointment;
+
+      const sameClient = String((appointment && appointment.clientId) || '').trim() === clientId;
+      if (!sameClient) return appointment;
+
+      const currentDate = String((appointment && appointment.date) || '').trim();
+      const currentTime = String((appointment && appointment.time) || '').trim() || '00:00';
+      if (currentDate && baseDate) {
+        if (currentDate < baseDate) return appointment;
+        if (currentDate === baseDate && currentTime < baseTime) return appointment;
+      }
+
+      if (normalizedMode === 'futuros_mesmo_procedimento') {
+        const currentProcedure = String((appointment && appointment.procedure) || '').trim().toLowerCase();
+        if (!baseProcedure || currentProcedure !== baseProcedure) return appointment;
+      }
+
+      if (normalizedMode === 'recorrentes_futuros_paciente') {
+        const currentRecurrence = this.normalizeRecurrenceType((appointment && appointment.recurrenceType) || '');
+        if (currentRecurrence !== 'recorrente') return appointment;
+      }
+
+      updatedCount += 1;
+      return {
+        ...appointment,
+        ...fields
+      };
+    });
+
+    return updatedCount;
+  },
+
   scheduleGoogleCalendarAutoSync(app, reason = 'agenda-change') {
     if (!app || typeof app !== 'object') return;
     if (!app.googleCalendarAuthorized) return;
@@ -42,21 +107,42 @@ const agendaModule = {
       id: appointmentId || `app-${Date.now()}`,
       status: payload.status || 'Agendado',
       paymentStatus: payload.paymentStatus || 'Pendente',
+      recurrenceType: this.normalizeRecurrenceType(payload.recurrenceType),
       price: toNumber(payload.price),
       amountPaid: toNumber(payload.amountPaid)
     };
+
+    const bulkUpdateMode = this.normalizeBulkUpdateMode(payload.bulkUpdateMode);
 
     if (typeof app.clearAppointmentDeletionTombstone === 'function' && normalized.id) {
       app.clearAppointmentDeletionTombstone(normalized.id);
     }
 
     const existing = app.appointments.find((a) => a.id === appointmentId);
+    let updatedRecurringCount = 0;
     if (existing) {
       app.appointments = app.appointments.map((a) => (a.id === appointmentId ? normalized : a));
+      if (bulkUpdateMode !== 'nao_aplicar') {
+        updatedRecurringCount = this.applyRecurringPatientUpdates(app, normalized, {
+          procedure: normalized.procedure,
+          price: normalized.price,
+          paymentMethod: normalized.paymentMethod,
+          color: normalized.color,
+          notes: normalized.notes
+        }, bulkUpdateMode);
+      }
       app.showToast('Consulta atualizada com sucesso.', 'success');
     } else {
       app.appointments.push(normalized);
       app.showToast('Consulta agendada com sucesso.', 'success');
+    }
+
+    if (bulkUpdateMode !== 'nao_aplicar' && existing) {
+      if (updatedRecurringCount > 0) {
+        app.showToast(`Atualização recorrente aplicada em ${updatedRecurringCount} consulta(s) do mesmo paciente.`, 'success');
+      } else {
+        app.showToast('Nenhum outro agendamento futuro do paciente precisou de ajuste.', 'info');
+      }
     }
 
     app.saveData();

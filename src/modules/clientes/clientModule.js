@@ -12,6 +12,7 @@ const clientModule = {
     const normalized = {
       ...payload,
       id: clientId || `client-${Date.now()}`,
+      category: app.normalizeClientCategory(payload.category || 'Paciente'),
       group: app.normalizeClientGroupName(payload.group),
       createdAt: payload.createdAt || getTodayStr(),
       registrationNumber: payload.registrationNumber || app.getNextClientRegistrationNumber()

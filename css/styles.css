@@ -1025,18 +1025,19 @@ select.form-control:focus {
 
 .color-palette {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  grid-template-rows: repeat(2, auto);
-  gap: 0.65rem;
+  grid-template-columns: repeat(16, minmax(26px, 40px));
+  grid-template-rows: auto;
+  gap: 0.35rem;
   margin-top: 0.5rem;
+  justify-content: flex-start;
 }
 
 .color-swatch {
   width: 100%;
   min-width: 0;
   aspect-ratio: 1 / 1;
-  border: 3px solid transparent;
-  border-radius: 0.85rem;
+  border: 2px solid transparent;
+  border-radius: 0.6rem;
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   position: relative;
@@ -1055,10 +1056,10 @@ select.form-control:focus {
 .color-swatch.selected::before {
   content: '\2713';
   position: absolute;
-  right: 6px;
-  top: 6px;
+  right: 4px;
+  top: 4px;
   color: rgba(255, 255, 255, 0.95);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
 }
 
 .color-swatch::after {
@@ -1393,6 +1394,7 @@ input[type="date"]:focus {
 
 .tab-content {
   display: none;
+  padding-top: 0.1rem;
 }
 
 .tab-content.active {
@@ -2254,6 +2256,8 @@ input[type="date"]:focus {
 #tab-agenda .filter-bar {
   gap: 0.75rem;
   position: relative;
+  align-items: stretch;
+  padding: 0.9rem 1rem;
 }
 
 #tab-agenda #agenda-search {
@@ -2303,6 +2307,7 @@ input[type="date"]:focus {
   margin-left: auto;
   position: relative;
   z-index: 2;
+  align-self: center;
 }
 
 #tab-agenda .filter-bar #btn-new-appointment-agenda {
@@ -2310,6 +2315,7 @@ input[type="date"]:focus {
   position: relative;
   z-index: 3;
   pointer-events: auto;
+  align-self: center;
 }
 
 .finance-filter-indicator {
@@ -2408,6 +2414,10 @@ input[type="date"]:focus {
     margin-left: 0;
   }
 
+  #tab-agenda .filter-bar {
+    padding: 0.9rem;
+  }
+
   .agenda-calendar-toolbar {
     flex-direction: column;
     align-items: flex-start;
@@ -2424,6 +2434,47 @@ input[type="date"]:focus {
 .agenda-calendar-card,
 .agenda-table-card {
   margin-bottom: 0;
+}
+
+#tab-agenda .agenda-table-card,
+#tab-agenda .agenda-calendar-card {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+#tab-agenda .agenda-table-card .card-body {
+  padding: 0;
+  background: linear-gradient(180deg, rgba(8, 13, 22, 0.95) 0%, rgba(39, 52, 64, 0.78) 24%, rgba(103, 118, 122, 0.62) 100%);
+}
+
+#tab-agenda .agenda-table-card .table-responsive {
+  border-radius: 0;
+}
+
+#tab-agenda .data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+#tab-agenda .data-table tbody tr:hover {
+  background: rgba(14, 165, 233, 0.08);
+}
+
+#tab-agenda .data-table td,
+#tab-agenda .data-table th {
+  padding-top: 0.82rem;
+  padding-bottom: 0.82rem;
+}
+
+#tab-clientes > .card:last-child {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+#tab-clientes > .card:last-child .card-body {
+  padding: 0;
+  background: linear-gradient(180deg, rgba(8, 13, 22, 0.95) 0%, rgba(39, 52, 64, 0.78) 24%, rgba(103, 118, 122, 0.62) 100%);
 }
 
 .agenda-calendar-card {
@@ -4150,10 +4201,11 @@ textarea.form-control,
 /* Keep color palette items from expanding beyond modal width */
 .color-palette {
   display: grid;
-  grid-template-columns: repeat(8, minmax(32px, 1fr));
-  grid-template-rows: repeat(2, auto);
-  gap: 0.5rem;
+  grid-template-columns: repeat(16, minmax(26px, 40px));
+  grid-template-rows: auto;
+  gap: 0.35rem;
   margin-top: 0.5rem;
+  justify-content: flex-start;
 }
 
 .grid-col-span-2 {
@@ -4670,6 +4722,16 @@ textarea.form-control,
 }
 
 @media (max-width: 600px) {
+  .color-palette {
+    grid-template-columns: repeat(8, minmax(24px, 34px));
+    grid-template-rows: repeat(2, auto);
+    gap: 0.3rem;
+  }
+
+  .color-swatch {
+    border-radius: 0.5rem;
+  }
+
   .header-actions {
     width: 100%;
     display: grid;

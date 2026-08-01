@@ -496,6 +496,7 @@ class ConsultorioApp {
     this.reminderIntensity = 'strong';
     this.agendaViewMode = 'calendar';
     this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
+    this.topDateRangeUserSelected = false;
     this.firebaseConfig = null;
     this.firebaseApp = null;
     this.firebaseDb = null;
@@ -733,6 +734,7 @@ class ConsultorioApp {
 
   restoreAgendaFiltersForLoadedAppointments() {
     if (!Array.isArray(this.appointments) || !this.appointments.length) return false;
+    if (this.topDateRangeUserSelected) return false;
 
     const agendaStart = document.getElementById('agenda-filter-start');
     const agendaEnd = document.getElementById('agenda-filter-end');
@@ -4993,6 +4995,7 @@ class ConsultorioApp {
     const resetDatesBtn = document.getElementById('btn-reset-top-dates');
     if (resetDatesBtn) {
       resetDatesBtn.addEventListener('click', () => {
+        this.topDateRangeUserSelected = true;
         const today = getTodayStr();
         const startDateInput = document.getElementById('top-date-start');
         const endDateInput = document.getElementById('top-date-end');
@@ -5011,6 +5014,7 @@ class ConsultorioApp {
         if (typeof topStart.showPicker === 'function') topStart.showPicker();
       });
       topStart.addEventListener('input', () => {
+        this.topDateRangeUserSelected = true;
         this.syncTopDatesToAgendaFilters();
       });
       topStart.addEventListener('blur', () => {
@@ -5028,6 +5032,7 @@ class ConsultorioApp {
         if (typeof topEnd.showPicker === 'function') topEnd.showPicker();
       });
       topEnd.addEventListener('input', () => {
+        this.topDateRangeUserSelected = true;
         this.syncTopDatesToAgendaFilters();
       });
       topEnd.addEventListener('blur', () => {
@@ -8221,9 +8226,7 @@ class ConsultorioApp {
 
     const dashPending = document.getElementById('dash-pending-list');
     if (dashPending) {
-      const pend = this.appointments
-        .filter((a) => toNumber(a.price) - toNumber(a.amountPaid) > 0)
-        .slice(0, 6);
+      const pend = periodPendingAppointments.slice(0, 6);
       if (!pend.length) {
         dashPending.innerHTML = '<div class="empty-state"><p>Sem cobranças pendentes.</p></div>';
       } else {
@@ -8272,20 +8275,17 @@ class ConsultorioApp {
     }
 
     if (calendarGrid) {
-      if (!filtered.length) {
-        calendarGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;"><p>Nenhum agendamento no período.</p></div>';
-      } else {
-        const start = agendaStartInput ? (this.normalizeAgendaDateToIso(agendaStartInput.value) || this.agendaCalendarStartDate) : this.agendaCalendarStartDate;
-        const days = Array.from({ length: 7 }, (_, idx) => addDaysIso(start, idx));
-        const hours = Array.from({ length: 24 }, (_, idx) => idx);
+      const start = agendaStartInput ? (this.normalizeAgendaDateToIso(agendaStartInput.value) || this.agendaCalendarStartDate) : this.agendaCalendarStartDate;
+      const days = Array.from({ length: 7 }, (_, idx) => addDaysIso(start, idx));
+      const hours = Array.from({ length: 24 }, (_, idx) => idx);
 
-        const grouped = {};
-        filtered.forEach((a) => {
-          const h = Number(String(a.time || '00:00').split(':')[0] || 0);
-          const key = `${a.date}|${String(h).padStart(2, '0')}`;
-          grouped[key] = grouped[key] || [];
-          grouped[key].push(a);
-        });
+      const grouped = {};
+      filtered.forEach((a) => {
+        const h = Number(String(a.time || '00:00').split(':')[0] || 0);
+        const key = `${a.date}|${String(h).padStart(2, '0')}`;
+        grouped[key] = grouped[key] || [];
+        grouped[key].push(a);
+      });
 
         const headerHtml = ['<div class="agenda-header blank"></div>']
           .concat(days.map((date) => `
@@ -8331,8 +8331,7 @@ class ConsultorioApp {
           return `<div class="agenda-time-axis">${hourLabel}</div>${rowCells}`;
         }).join('');
 
-        calendarGrid.innerHTML = headerHtml + bodyHtml;
-      }
+      calendarGrid.innerHTML = headerHtml + bodyHtml;
     }
 
     if (!tbody) return;
@@ -9828,7 +9827,8 @@ class ConsultorioApp {
       return;
     }
 
-    if (!clientId || !date || !time || !procedure || price <= 0) {
+    const isEditing = Boolean(id);
+    if (!clientId || !date || !time || !procedure || price < 0 || (!isEditing && price <= 0)) {
       this.showToast('Preencha cliente, data, horário, abordagem e valor da consulta.', 'warning');
       return;
     }

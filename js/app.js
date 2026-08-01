@@ -3365,7 +3365,8 @@ class ConsultorioApp {
     const select = document.getElementById('client-category');
     if (!select) return;
 
-    const categories = this.clientCategories.slice();
+    const categories = this.clientCategories.slice()
+      .sort((firstCategory, secondCategory) => firstCategory.localeCompare(secondCategory, 'pt-BR', { sensitivity: 'base' }));
     const preferred = this.normalizeClientCategory(preferredCategory || select.value);
     const preferredKey = this.normalizeClientCategoryKey(preferred);
     if (preferred && !categories.some((item) => this.normalizeClientCategoryKey(item) === preferredKey)) {
@@ -7813,8 +7814,13 @@ class ConsultorioApp {
   }
 
   getNextClientRegistrationNumber() {
-    const max = this.clients.reduce((acc, c) => Math.max(acc, Number(c.registrationNumber || 0)), 0);
-    return max + 1;
+    const usedNumbers = new Set((this.clients || [])
+      .map((client) => Number(client.registrationNumber))
+      .filter((number) => Number.isInteger(number) && number > 0));
+
+    let nextNumber = 1;
+    while (usedNumbers.has(nextNumber)) nextNumber += 1;
+    return nextNumber;
   }
 
   normalizeWhatsAppPhone(phone) {
@@ -8150,9 +8156,13 @@ class ConsultorioApp {
     const doneToday = todayApps.filter((a) => String(a.status || '').toLowerCase() === 'concluido').length;
 
     const received = this.appointments.reduce((sum, a) => sum + toNumber(a.amountPaid), 0);
-    const pending = this.appointments.reduce((sum, a) => sum + Math.max(0, toNumber(a.price) - toNumber(a.amountPaid)), 0);
-    const expensesTotal = this.expenses.reduce((sum, e) => sum + toNumber(e.amount), 0);
-    const result = received - expensesTotal;
+    const periodAppointments = this.filterItemsByTopRange(this.appointments, 'date');
+    const periodExpenses = this.filterItemsByTopRange(this.expenses, 'date');
+    const periodPendingAppointments = periodAppointments.filter((appointment) => toNumber(appointment.price) - toNumber(appointment.amountPaid) > 0);
+    const pending = periodPendingAppointments.reduce((sum, appointment) => sum + Math.max(0, toNumber(appointment.price) - toNumber(appointment.amountPaid)), 0);
+    const periodReceived = periodAppointments.reduce((sum, appointment) => sum + toNumber(appointment.amountPaid), 0);
+    const periodExpensesTotal = periodExpenses.reduce((sum, expense) => sum + toNumber(expense.amount), 0);
+    const result = periodReceived - periodExpensesTotal;
 
     const setText = (id, value) => {
       const el = document.getElementById(id);
@@ -8173,7 +8183,7 @@ class ConsultorioApp {
     setText('dash-consultas-hoje-sub', `${doneToday} concluídas`);
     setText('dash-received-month', formatCurrency(received));
     setText('dash-pending-total', formatCurrency(pending));
-    setText('dash-pending-count', `${this.appointments.filter((a) => toNumber(a.price) - toNumber(a.amountPaid) > 0).length} cobranças pendentes`);
+    setText('dash-pending-count', `${periodPendingAppointments.length} cobranças pendentes`);
     setText('dash-result-total', formatCurrency(result));
     setText('dash-result-sub', result > 0 ? `Superávit de ${formatCurrency(result)}` : (result < 0 ? `Déficit de ${formatCurrency(Math.abs(result))}` : 'Equilíbrio no período'));
     setText('dash-total-clients', this.getPatientClients().length);
@@ -8267,7 +8277,7 @@ class ConsultorioApp {
       } else {
         const start = agendaStartInput ? (this.normalizeAgendaDateToIso(agendaStartInput.value) || this.agendaCalendarStartDate) : this.agendaCalendarStartDate;
         const days = Array.from({ length: 7 }, (_, idx) => addDaysIso(start, idx));
-        const hours = Array.from({ length: 14 }, (_, idx) => 7 + idx);
+        const hours = Array.from({ length: 24 }, (_, idx) => idx);
 
         const grouped = {};
         filtered.forEach((a) => {
@@ -9126,19 +9136,33 @@ class ConsultorioApp {
     return (this.clients || []).filter((client) => this.isPatientClient(client));
   }
 
-  populateClientSelectOptions(selectedId = '') {
+  populateClientSelectOptions(selectedId = '', selectedName = '') {
     const select = document.getElementById('appt-client-id');
-    if (!select) return;
+    if (!select) return '';
 
-    const current = selectedId || select.value;
+    const normalizedSelectedName = String(selectedName || '').normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
+    const selectedClient = this.clients.find((client) => String(client.id || '') === String(selectedId || ''))
+      || this.clients.find((client) => String(client.name || '').normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase() === normalizedSelectedName);
+    const availableClients = this.getPatientClients().slice();
+    if (selectedClient && !availableClients.some((client) => client.id === selectedClient.id)) {
+      availableClients.push(selectedClient);
+    }
+
+    const current = (selectedClient && selectedClient.id) || selectedId || select.value;
     const options = ['<option value="">Selecione um cliente...</option>']
-      .concat(this.getPatientClients()
-        .slice()
+      .concat(availableClients
         .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
-        .map((c) => `<option value="${safeText(c.id)}">${safeText(c.name)} - ${safeText(c.phone || '-')}</option>`));
+        .map((c) => `<option value="${safeText(c.id)}">${safeText(c.name)}${c.phone ? ` - ${safeText(c.phone)}` : ''}</option>`));
 
     select.innerHTML = options.join('');
     if (current) select.value = current;
+    return select.value;
   }
 
   openClientModal(clientId = '') {
@@ -9627,11 +9651,12 @@ class ConsultorioApp {
       const a = this.appointments.find((x) => x.id === appointmentId);
       if (a) {
         if (idInput) idInput.value = a.id;
+        const resolvedClientId = this.populateClientSelectOptions(a.clientId, a.clientName);
         const set = (id, val) => {
           const el = document.getElementById(id);
           if (el) el.value = val == null ? '' : val;
         };
-        set('appt-client-id', a.clientId);
+        set('appt-client-id', resolvedClientId);
         set('appt-date', this.formatDobForInput(a.date));
         set('appt-time', a.time);
         set('appt-procedure', a.procedure);

@@ -4,8 +4,8 @@ const clientModule = {
   },
 
   saveClient(app, payload, clientId) {
-    if (!payload.name || !payload.phone) {
-      app.showToast('Nome e telefone são obrigatórios.', 'warning');
+    if (!payload.name) {
+      app.showToast('Nome é obrigatório.', 'warning');
       return;
     }
 

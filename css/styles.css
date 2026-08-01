@@ -2513,6 +2513,16 @@ input[type="date"]:focus {
   background: linear-gradient(180deg, rgba(8, 13, 22, 0.95) 0%, rgba(39, 52, 64, 0.78) 24%, rgba(103, 118, 122, 0.62) 100%);
 }
 
+#finance-grouped-card {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+#finance-grouped-card .card-body {
+  padding: 0;
+  background: linear-gradient(180deg, rgba(8, 13, 22, 0.95) 0%, rgba(39, 52, 64, 0.78) 24%, rgba(103, 118, 122, 0.62) 100%);
+}
+
 .agenda-calendar-card {
   max-height: calc(100vh - 290px);
   overflow-y: auto;

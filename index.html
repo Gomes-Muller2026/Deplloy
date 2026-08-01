@@ -18,7 +18,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260801-3">
+  <link rel="stylesheet" href="css/styles.css?v=20260801-4">
 </head>
 <body>
   <div id="login-root">
@@ -426,7 +426,7 @@
               </div>
             </div>
           </div>
-          <div class="card">
+          <div class="card" id="finance-grouped-card">
             <div class="card-body">
               <div class="table-responsive">
                 <table class="data-table">
@@ -715,7 +715,7 @@
           <input type="hidden" id="client-id">
           <div class="modal-body grid-2">
             <div class="form-group grid-col-span-2"><label for="client-name">Nome *</label><input type="text" id="client-name" class="form-control" required></div>
-            <div class="form-group"><label for="client-phone">Telefone *</label><input type="tel" id="client-phone" class="form-control" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000" required></div>
+            <div class="form-group"><label for="client-phone">Telefone</label><input type="tel" id="client-phone" class="form-control" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000"></div>
             <div class="form-group"><label for="client-email">E-mail</label><input type="email" id="client-email" class="form-control"></div>
             <div class="form-group"><label for="client-category">Categoria</label><select id="client-category" class="form-control"></select><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-categories">Gerenciar categorias</button></div></div>
             <div class="form-group"><label for="client-cpf">CPF</label><input type="text" id="client-cpf" class="form-control" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
@@ -1238,9 +1238,9 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="src/modules/clientes/clientModule.js?v=20260801-2"></script>
+  <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260801-3"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260801-47"></script>
+  <script src="js/app.js?v=20260801-54"></script>
 </body>
 </html>

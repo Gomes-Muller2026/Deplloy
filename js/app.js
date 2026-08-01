@@ -1241,7 +1241,12 @@ class ConsultorioApp {
       if (!this.firebaseConnected || !this.firebaseDb) return;
 
       void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true })
-        .then(() => {
+        .then((syncResult) => {
+          if (syncResult && syncResult.deferred) {
+            this.updateCloudSyncMeta('Sincronismo pendente: aguardando envio local', 'local');
+            this.logSyncAudit('warning', 'Pull realtime adiado: envio local ainda não efetivado.');
+            return;
+          }
           if (source === 'meta') {
             this.showRemoteSyncIndicator(remoteMillis || Date.now());
             this.logSyncAudit('pull', 'Pull aplicado por alteração remota (metadata).');
@@ -5580,7 +5585,9 @@ class ConsultorioApp {
   }
 
   async syncDataWithFirebase(options = {}) {
-    if (!this.firebaseDb) return;
+    if (!this.firebaseDb) {
+      return { applied: false, deferred: true, reason: 'firebase-unavailable' };
+    }
 
     const skipDirtyPush = Boolean(options.skipDirtyPush);
     const silent = Boolean(options.silent);
@@ -5593,7 +5600,7 @@ class ConsultorioApp {
       if (!silent) {
         this.updateCloudSyncMeta('Aguardando envio local para sincronizar com segurança', 'local');
       }
-      return;
+      return { applied: false, deferred: true, reason: 'dirty-local-pending-push' };
     }
 
     try {
@@ -5689,6 +5696,7 @@ class ConsultorioApp {
       this.saveStore();
       this.render();
       if (!silent) this.logSyncAudit('pull', 'Pull concluído e interface atualizada.');
+      return { applied: true, deferred: false, reason: 'ok' };
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
       console.log('Falha ao sincronizar com Firestore:', message);
@@ -5846,7 +5854,15 @@ class ConsultorioApp {
     }
 
     try {
-      await this.syncDataWithFirebase({ skipDirtyPush: true });
+      const syncResult = await this.syncDataWithFirebase({ skipDirtyPush: true });
+      if (syncResult && syncResult.deferred) {
+        this.updateCloudSyncMeta('Sincronismo pendente: envio local ainda não efetivado', 'local', {
+          highlight: true
+        });
+        this.showHeaderSyncInlineNotice('Envio local pendente. Vou reenviar automaticamente.', 'warning', 4200);
+        return;
+      }
+
       this.updateCloudSyncMeta('Dados atualizados do Firebase', 'live');
       this.showHeaderSyncInlineNotice('Dados atualizados com sucesso.', 'success', 2600);
     } catch (err) {
@@ -5993,7 +6009,11 @@ class ConsultorioApp {
       if (!this.firebaseConnected || !this.firebaseDb) return;
 
       void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true })
-        .then(() => {
+        .then((syncResult) => {
+          if (syncResult && syncResult.deferred) {
+            this.updateCloudSyncMeta('Sincronismo pendente: aguardando envio local', 'local');
+            return;
+          }
           this.updateCloudSyncMeta('Dados atualizados do Firebase', 'live');
         })
         .catch((err) => {
@@ -6049,7 +6069,11 @@ class ConsultorioApp {
         this.lastRemoteStateSeenMillis = remoteMillis;
         this.logSyncAudit('realtime', 'Mudança remota detectada via polling de metadata.');
 
-        await this.syncDataWithFirebase({ skipDirtyPush: true, silent: true });
+        const syncResult = await this.syncDataWithFirebase({ skipDirtyPush: true, silent: true });
+        if (syncResult && syncResult.deferred) {
+          this.updateCloudSyncMeta('Sincronismo pendente: aguardando envio local', 'local');
+          return;
+        }
         this.showRemoteSyncIndicator(remoteMillis);
         this.logSyncAudit('pull', 'Pull aplicado por polling de metadata remota.');
       } catch (err) {
@@ -8686,7 +8710,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-26')
+    navigator.serviceWorker.register('./sw.js?v=20260801-27')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

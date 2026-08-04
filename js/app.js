@@ -3290,6 +3290,14 @@ class ConsultorioApp {
     return this.formatDobDisplay(raw);
   }
 
+  formatDobForDisplay(value) {
+    const raw = String(value || '').trim();
+    const iso = this.normalizeDobToIso(raw);
+    if (!iso) return this.formatDobDisplay(raw);
+    const [year, month, day] = iso.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
   normalizeDobToIso(value) {
     const raw = String(value || '').trim();
     if (!raw) return '';
@@ -5237,12 +5245,21 @@ class ConsultorioApp {
 
     const clientDobInput = document.getElementById('client-dob');
     if (clientDobInput) {
-      clientDobInput.addEventListener('click', () => {
-        if (typeof clientDobInput.showPicker === 'function') clientDobInput.showPicker();
+      if (window.flatpickr) {
+        window.flatpickr(clientDobInput, {
+          locale: 'pt',
+          allowInput: true,
+          dateFormat: 'd/m/Y',
+          disableMobile: true,
+          maxDate: 'today'
+        });
+      }
+      clientDobInput.addEventListener('input', () => {
+        clientDobInput.value = this.formatDobDisplay(clientDobInput.value);
       });
       clientDobInput.addEventListener('blur', () => {
         const iso = this.normalizeDobToIso(clientDobInput.value);
-        if (iso) clientDobInput.value = iso;
+        if (iso) clientDobInput.value = this.formatDobForDisplay(iso);
       });
     }
 
@@ -9408,6 +9425,8 @@ class ConsultorioApp {
 
     const form = document.getElementById('form-client');
     if (form) form.reset();
+    const clientDobInput = document.getElementById('client-dob');
+    if (clientDobInput && clientDobInput._flatpickr) clientDobInput._flatpickr.clear();
 
     const idInput = document.getElementById('client-id');
     const title = document.getElementById('modal-client-title');
@@ -9434,7 +9453,11 @@ class ConsultorioApp {
         set('client-category', this.normalizeClientCategory(c.category));
         set('client-cpf', this.formatCpfInput(c.cpf));
         set('client-rg', c.rg);
-        set('client-dob', this.formatDobForInput(c.dob));
+        if (clientDobInput && clientDobInput._flatpickr && c.dob) {
+          clientDobInput._flatpickr.setDate(c.dob, false, 'Y-m-d');
+        } else {
+          set('client-dob', this.formatDobForDisplay(c.dob));
+        }
         set('client-group', c.group);
         set('client-cep', this.formatCep(c.cep));
         set('client-street', c.street);
@@ -9812,7 +9835,7 @@ class ConsultorioApp {
     const dobIso = this.normalizeDobToIso(dobRaw);
 
     if (dobRaw && !dobIso) {
-      this.showToast('Data de nascimento inválida. Use o formato ddmmaaaa.', 'warning');
+      this.showToast('Data de nascimento inválida. Use o formato dd/mm/aaaa.', 'warning');
       return;
     }
 

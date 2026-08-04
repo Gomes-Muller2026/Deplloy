@@ -321,8 +321,8 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="search" aria-hidden="true" class="lucide lucide-search"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
               <input type="text" id="agenda-search" placeholder="Buscar por cliente ou procedimento...">
             </div>
-            <input type="date" id="agenda-filter-start" class="form-control agenda-filter-date date-input" title="Data inicial do período">
-            <input type="date" id="agenda-filter-end" class="form-control agenda-filter-date date-input" title="Data final do período">
+            <input type="text" id="agenda-filter-start" class="form-control agenda-filter-date date-input" title="Data inicial do período">
+            <input type="text" id="agenda-filter-end" class="form-control agenda-filter-date date-input" title="Data final do período">
             <select id="agenda-filter-status" class="form-control">
               <option value="todos">Todos os Status</option>
               <option value="Agendado">Agendado</option>
@@ -894,7 +894,7 @@
           </div>
           <div class="form-group">
             <label for="client-dob">Data de Nascimento</label>
-            <input type="date" id="client-dob" class="form-control date-input">
+            <input type="text" id="client-dob" class="form-control date-input">
           </div>
           <div class="form-group grid-col-span-2">
             <label for="client-notes">Observações / Histórico Médico</label>
@@ -967,7 +967,7 @@
           </div>
           <div class="form-group">
             <label for="appt-date">Data da Consulta *</label>
-            <input type="date" id="appt-date" class="form-control date-input" required="">
+            <input type="text" id="appt-date" class="form-control date-input" required="">
           </div>
           <div class="form-group">
             <label for="appt-time">Horário *</label>
@@ -1150,7 +1150,7 @@
           </div>
           <div class="form-group">
             <label for="expense-date">Data *</label>
-            <input type="date" id="expense-date" class="form-control date-input" required="">
+            <input type="text" id="expense-date" class="form-control date-input" required="">
           </div>
           <div class="form-group" style="align-items:flex-start; display:flex; gap:0.5rem;">
             <input type="checkbox" id="expense-recurring" style="margin-top:0.3rem;">

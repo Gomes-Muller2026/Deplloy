@@ -735,8 +735,8 @@ class ConsultorioApp {
         this.agendaCalendarStartDate = getWeekStartMondayIso(startDate);
         if (topStart) topStart.value = this.formatTopDateForInput(startDate);
         if (topEnd) topEnd.value = this.formatTopDateForInput(endDate);
-        if (agendaStart) agendaStart.value = startDate;
-        if (agendaEnd) agendaEnd.value = endDate;
+        if (agendaStart) agendaStart.value = this.formatAgendaDateForInput(startDate);
+        if (agendaEnd) agendaEnd.value = this.formatAgendaDateForInput(endDate);
       }
 
       this.saveStore();
@@ -784,8 +784,8 @@ class ConsultorioApp {
     this.agendaCalendarStartDate = getWeekStartMondayIso(startDate);
     if (topStart) topStart.value = this.formatTopDateForInput(startDate);
     if (topEnd) topEnd.value = this.formatTopDateForInput(endDate);
-    if (agendaStart) agendaStart.value = startDate;
-    if (agendaEnd) agendaEnd.value = endDate;
+    if (agendaStart) agendaStart.value = this.formatAgendaDateForInput(startDate);
+    if (agendaEnd) agendaEnd.value = this.formatAgendaDateForInput(endDate);
     return true;
   }
 
@@ -3324,7 +3324,7 @@ class ConsultorioApp {
   }
 
   formatTopDateDisplay(value) {
-    return this.formatDobDisplay(value);
+    return this.formatDobForDisplay(value);
   }
 
   normalizeTopDateToIso(value) {
@@ -3334,11 +3334,11 @@ class ConsultorioApp {
   formatTopDateForInput(value) {
     const iso = this.normalizeTopDateToIso(value);
     if (!iso) return '';
-    return iso;
+    return this.formatTopDateDisplay(iso);
   }
 
   formatAgendaDateDisplay(value) {
-    return this.formatDobDisplay(value);
+    return this.formatDobForDisplay(value);
   }
 
   normalizeAgendaDateToIso(value) {
@@ -3348,7 +3348,7 @@ class ConsultorioApp {
   formatAgendaDateForInput(value) {
     const iso = this.normalizeAgendaDateToIso(value);
     if (!iso) return '';
-    return iso;
+    return this.formatAgendaDateDisplay(iso);
   }
 
   async fetchCepData(rawCep) {
@@ -5183,7 +5183,7 @@ class ConsultorioApp {
       const topFlatpickrOptions = {
         locale: 'pt',
         allowInput: true,
-        dateFormat: 'Y-m-d',
+        dateFormat: 'd/m/Y',
         disableMobile: true,
         onOpen: (_, __, inst) => {
           const selected = inst.selectedDates[0];
@@ -5202,6 +5202,15 @@ class ConsultorioApp {
           defaultDate: topEnd.value || undefined
         });
       }
+
+      ['agenda-filter-start', 'agenda-filter-end', 'appt-date', 'expense-date'].forEach((id) => {
+        const input = document.getElementById(id);
+        if (!input || input._flatpickr) return;
+        window.flatpickr(input, {
+          ...topFlatpickrOptions,
+          defaultDate: input.value || undefined
+        });
+      });
     }
     if (topStart) {
       topStart.addEventListener('click', () => {
@@ -5371,11 +5380,38 @@ class ConsultorioApp {
     const apptDateInput = document.getElementById('appt-date');
     if (apptDateInput) {
       apptDateInput.addEventListener('click', () => {
+        if (apptDateInput._flatpickr) {
+          apptDateInput._flatpickr.open();
+          return;
+        }
         if (typeof apptDateInput.showPicker === 'function') apptDateInput.showPicker();
       });
       apptDateInput.addEventListener('blur', () => {
         const iso = this.normalizeDobToIso(apptDateInput.value);
-        if (iso) apptDateInput.value = iso;
+        if (iso && apptDateInput._flatpickr) {
+          apptDateInput._flatpickr.setDate(iso, false, 'Y-m-d');
+        } else if (iso) {
+          apptDateInput.value = this.formatDobForDisplay(iso);
+        }
+      });
+    }
+
+    const expenseDateInput = document.getElementById('expense-date');
+    if (expenseDateInput) {
+      expenseDateInput.addEventListener('click', () => {
+        if (expenseDateInput._flatpickr) {
+          expenseDateInput._flatpickr.open();
+          return;
+        }
+        if (typeof expenseDateInput.showPicker === 'function') expenseDateInput.showPicker();
+      });
+      expenseDateInput.addEventListener('blur', () => {
+        const iso = this.normalizeDobToIso(expenseDateInput.value);
+        if (iso && expenseDateInput._flatpickr) {
+          expenseDateInput._flatpickr.setDate(iso, false, 'Y-m-d');
+        } else if (iso) {
+          expenseDateInput.value = this.formatDobForDisplay(iso);
+        }
       });
     }
 
@@ -5528,35 +5564,55 @@ class ConsultorioApp {
     if (agendaSearch) agendaSearch.addEventListener('input', () => this.renderAgendaTable());
     if (agendaStart) {
       agendaStart.addEventListener('click', () => {
+        if (agendaStart._flatpickr) {
+          agendaStart._flatpickr.open();
+          return;
+        }
         if (typeof agendaStart.showPicker === 'function') agendaStart.showPicker();
       });
       agendaStart.addEventListener('blur', () => {
         const iso = this.normalizeAgendaDateToIso(agendaStart.value);
-        if (iso) {
-          agendaStart.value = iso;
+        if (iso && agendaStart._flatpickr) {
+          agendaStart._flatpickr.setDate(iso, false, 'Y-m-d');
+        } else if (iso) {
+          agendaStart.value = this.formatAgendaDateDisplay(iso);
         }
         this.renderAgendaTable();
       });
       agendaStart.addEventListener('change', () => {
         const iso = this.normalizeAgendaDateToIso(agendaStart.value);
-        if (iso) {
-          agendaStart.value = iso;
+        if (iso && agendaStart._flatpickr) {
+          agendaStart._flatpickr.setDate(iso, false, 'Y-m-d');
+        } else if (iso) {
+          agendaStart.value = this.formatAgendaDateDisplay(iso);
         }
         this.renderAgendaTable();
       });
     }
     if (agendaEnd) {
       agendaEnd.addEventListener('click', () => {
+        if (agendaEnd._flatpickr) {
+          agendaEnd._flatpickr.open();
+          return;
+        }
         if (typeof agendaEnd.showPicker === 'function') agendaEnd.showPicker();
       });
       agendaEnd.addEventListener('blur', () => {
         const iso = this.normalizeAgendaDateToIso(agendaEnd.value);
-        if (iso) agendaEnd.value = iso;
+        if (iso && agendaEnd._flatpickr) {
+          agendaEnd._flatpickr.setDate(iso, false, 'Y-m-d');
+        } else if (iso) {
+          agendaEnd.value = this.formatAgendaDateDisplay(iso);
+        }
         this.renderAgendaTable();
       });
       agendaEnd.addEventListener('change', () => {
         const iso = this.normalizeAgendaDateToIso(agendaEnd.value);
-        if (iso) agendaEnd.value = iso;
+        if (iso && agendaEnd._flatpickr) {
+          agendaEnd._flatpickr.setDate(iso, false, 'Y-m-d');
+        } else if (iso) {
+          agendaEnd.value = this.formatAgendaDateDisplay(iso);
+        }
         this.renderAgendaTable();
       });
     }
@@ -8056,8 +8112,18 @@ class ConsultorioApp {
     const agendaEnd = document.getElementById('agenda-filter-end');
     const topStartIso = this.normalizeTopDateToIso((topStart || {}).value || '');
     const topEndIso = this.normalizeTopDateToIso((topEnd || {}).value || '');
-    if (agendaStart) agendaStart.value = topStartIso || '';
-    if (agendaEnd) agendaEnd.value = topEndIso || '';
+    if (agendaStart && agendaStart._flatpickr) {
+      if (topStartIso) agendaStart._flatpickr.setDate(topStartIso, false, 'Y-m-d');
+      else agendaStart._flatpickr.clear();
+    } else if (agendaStart) {
+      agendaStart.value = this.formatAgendaDateForInput(topStartIso);
+    }
+    if (agendaEnd && agendaEnd._flatpickr) {
+      if (topEndIso) agendaEnd._flatpickr.setDate(topEndIso, false, 'Y-m-d');
+      else agendaEnd._flatpickr.clear();
+    } else if (agendaEnd) {
+      agendaEnd.value = this.formatAgendaDateForInput(topEndIso);
+    }
   }
 
   getNextClientRegistrationNumber() {
@@ -9350,7 +9416,11 @@ class ConsultorioApp {
     if (title) title.textContent = 'Nova Despesa';
 
     const dateInput = document.getElementById('expense-date');
-    if (dateInput && !dateInput.value) dateInput.value = getTodayStr();
+    if (dateInput && dateInput._flatpickr) {
+      dateInput._flatpickr.setDate(getTodayStr(), false, 'Y-m-d');
+    } else if (dateInput && !dateInput.value) {
+      dateInput.value = this.formatDobForDisplay(getTodayStr());
+    }
 
     if (expenseId) {
       const expense = this.expenses.find((e) => e.id === expenseId);
@@ -9363,7 +9433,11 @@ class ConsultorioApp {
         set('expense-description', expense.description || '');
         set('expense-category', expense.category || 'Outros');
         set('expense-amount', toNumber(expense.amount));
-        set('expense-date', expense.date || getTodayStr());
+        if (dateInput && dateInput._flatpickr && expense.date) {
+          dateInput._flatpickr.setDate(expense.date, false, 'Y-m-d');
+        } else {
+          set('expense-date', this.formatDobForDisplay(expense.date || getTodayStr()));
+        }
         if (title) title.textContent = 'Editar Despesa';
       }
     }
@@ -9381,7 +9455,13 @@ class ConsultorioApp {
     const description = String((document.getElementById('expense-description') || {}).value || '').trim();
     const category = String((document.getElementById('expense-category') || {}).value || 'Outros');
     const amount = toNumber((document.getElementById('expense-amount') || {}).value || 0);
-    const date = String((document.getElementById('expense-date') || {}).value || '').trim();
+    const dateRaw = String((document.getElementById('expense-date') || {}).value || '').trim();
+    const date = this.normalizeDobToIso(dateRaw);
+
+    if (dateRaw && !date) {
+      this.showToast('Data inválida. Use o formato dd/mm/aaaa.', 'warning');
+      return;
+    }
 
     const payload = { id, description, category, amount, date };
     if (window.financeiroModule && typeof window.financeiroModule.saveExpense === 'function') {
@@ -9933,7 +10013,11 @@ class ConsultorioApp {
     this.selectAppointmentColor(DEFAULT_APPOINTMENT_COLOR);
 
     const dateInput = document.getElementById('appt-date');
-    if (dateInput && !dateInput.value) dateInput.value = this.formatDobForInput(getTodayStr());
+    if (dateInput && dateInput._flatpickr) {
+      dateInput._flatpickr.setDate(getTodayStr(), false, 'Y-m-d');
+    } else if (dateInput && !dateInput.value) {
+      dateInput.value = this.formatDobForDisplay(getTodayStr());
+    }
 
     if (appointmentId) {
       const a = this.appointments.find((x) => x.id === appointmentId);
@@ -9945,7 +10029,11 @@ class ConsultorioApp {
           if (el) el.value = val == null ? '' : val;
         };
         set('appt-client-id', resolvedClientId);
-        set('appt-date', this.formatDobForInput(a.date));
+        if (dateInput && dateInput._flatpickr && a.date) {
+          dateInput._flatpickr.setDate(a.date, false, 'Y-m-d');
+        } else {
+          set('appt-date', this.formatDobForDisplay(a.date));
+        }
         set('appt-time', a.time);
         set('appt-procedure', a.procedure);
         set('appt-price', this.getEffectiveAppointmentPrice(a));
@@ -10116,7 +10204,7 @@ class ConsultorioApp {
     const price = toNumber((document.getElementById('appt-price') || {}).value || 0);
 
     if (dateRaw && !date) {
-      this.showToast('Data inválida. Use o formato ddmmaaaa.', 'warning');
+      this.showToast('Data inválida. Use o formato dd/mm/aaaa.', 'warning');
       return;
     }
 

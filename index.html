@@ -262,8 +262,8 @@
                 <i data-lucide="search"></i>
                 <input type="text" id="agenda-search" placeholder="Buscar por cliente ou procedimento...">
               </div>
-              <input type="date" id="agenda-filter-start" class="form-control date-input agenda-filter-date" title="Data inicial">
-              <input type="date" id="agenda-filter-end" class="form-control date-input agenda-filter-date" title="Data final">
+              <input type="text" id="agenda-filter-start" class="form-control date-input agenda-filter-date" title="Data inicial">
+              <input type="text" id="agenda-filter-end" class="form-control date-input agenda-filter-date" title="Data final">
               <select id="agenda-filter-status" class="form-control">
                 <option value="todos">Todos os Status</option>
                 <option value="Agendado">Agendado</option>
@@ -992,7 +992,7 @@
           <input type="hidden" id="appointment-id">
           <div class="modal-body grid-2">
             <div class="form-group"><label for="appt-client-id">Paciente *</label><select id="appt-client-id" class="form-control" required></select></div>
-            <div class="form-group"><label for="appt-date">Data *</label><input type="date" id="appt-date" class="form-control date-input" required></div>
+            <div class="form-group"><label for="appt-date">Data *</label><input type="text" id="appt-date" class="form-control date-input" required></div>
             <div class="form-group"><label for="appt-time">Horário *</label><input type="time" id="appt-time" class="form-control" required></div>
             <div class="form-group"><label for="appt-procedure">Procedimento *</label><select id="appt-procedure" class="form-control" required></select></div>
             <div class="form-group"><label for="appt-price">Valor (R$) *</label><input type="number" step="0.01" min="0" id="appt-price" class="form-control" required></div>
@@ -1062,7 +1062,7 @@
               <option value="Software">Software</option>
             </select></div>
             <div class="form-group"><label for="expense-amount">Valor (R$) *</label><input type="number" step="0.01" min="0" id="expense-amount" class="form-control" required></div>
-            <div class="form-group"><label for="expense-date">Data *</label><input type="date" id="expense-date" class="form-control date-input" required></div>
+            <div class="form-group"><label for="expense-date">Data *</label><input type="text" id="expense-date" class="form-control date-input" required></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" type="button" id="btn-cancel-expense">Cancelar</button>

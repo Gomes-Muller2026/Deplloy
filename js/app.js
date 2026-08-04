@@ -5259,7 +5259,11 @@ class ConsultorioApp {
       });
       clientDobInput.addEventListener('blur', () => {
         const iso = this.normalizeDobToIso(clientDobInput.value);
-        if (iso) clientDobInput.value = this.formatDobForDisplay(iso);
+        if (iso && clientDobInput._flatpickr) {
+          clientDobInput._flatpickr.setDate(iso, false, 'Y-m-d');
+        } else if (iso) {
+          clientDobInput.value = this.formatDobForDisplay(iso);
+        }
       });
     }
 

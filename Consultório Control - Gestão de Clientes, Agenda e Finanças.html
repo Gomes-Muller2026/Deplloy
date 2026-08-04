@@ -21,7 +21,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=20260804-2">
 </head>
 <body>
   <div class="login-screen" id="login-screen" style="display: none;">
@@ -137,9 +137,9 @@
           </div>
           <div class="top-date-picker">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="calendar-range" aria-hidden="true" class="lucide lucide-calendar-range"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4"></path><path d="M3 10h18"></path><path d="M8 2v4"></path><path d="M17 14h-6"></path><path d="M13 18H7"></path><path d="M7 14h.01"></path><path d="M17 18h.01"></path></svg>
-            <input type="date" id="top-date-start" class="top-date-input date-input" title="Data Inicial do Período">
+            <input type="text" id="top-date-start" class="top-date-input date-input" title="Data Inicial do Período">
             <span class="top-date-sep">até</span>
-            <input type="date" id="top-date-end" class="top-date-input date-input" title="Data Final do Período">
+            <input type="text" id="top-date-end" class="top-date-input date-input" title="Data Final do Período">
             <button class="btn-clear-date" id="btn-reset-top-dates" title="Resetar para Mês Atual">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="rotate-ccw" aria-hidden="true" class="lucide lucide-rotate-ccw"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </button>

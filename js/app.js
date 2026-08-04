@@ -5179,10 +5179,34 @@ class ConsultorioApp {
 
     const topStart = document.getElementById('top-date-start');
     const topEnd = document.getElementById('top-date-end');
+    if (window.flatpickr) {
+      const topFlatpickrOptions = {
+        locale: 'pt',
+        allowInput: true,
+        dateFormat: 'Y-m-d',
+        disableMobile: true,
+        onOpen: (_, __, inst) => {
+          const selected = inst.selectedDates[0];
+          if (selected) inst.jumpToDate(selected);
+        }
+      };
+      if (topStart && !topStart._flatpickr) {
+        window.flatpickr(topStart, {
+          ...topFlatpickrOptions,
+          defaultDate: topStart.value || undefined
+        });
+      }
+      if (topEnd && !topEnd._flatpickr) {
+        window.flatpickr(topEnd, {
+          ...topFlatpickrOptions,
+          defaultDate: topEnd.value || undefined
+        });
+      }
+    }
     if (topStart) {
       topStart.addEventListener('click', () => {
         topStart.focus();
-        if (typeof topStart.showPicker === 'function') topStart.showPicker();
+        if (topStart._flatpickr) topStart._flatpickr.open();
       });
       topStart.addEventListener('input', () => {
         this.topDateRangeUserSelected = true;
@@ -5200,7 +5224,7 @@ class ConsultorioApp {
     if (topEnd) {
       topEnd.addEventListener('click', () => {
         topEnd.focus();
-        if (typeof topEnd.showPicker === 'function') topEnd.showPicker();
+        if (topEnd._flatpickr) topEnd._flatpickr.open();
       });
       topEnd.addEventListener('input', () => {
         this.topDateRangeUserSelected = true;
@@ -5220,7 +5244,7 @@ class ConsultorioApp {
     if (topStartPickerBtn && topStart) {
       topStartPickerBtn.addEventListener('click', () => {
         topStart.focus();
-        if (typeof topStart.showPicker === 'function') topStart.showPicker();
+        if (topStart._flatpickr) topStart._flatpickr.open();
       });
     }
 
@@ -5228,7 +5252,7 @@ class ConsultorioApp {
     if (topEndPickerBtn && topEnd) {
       topEndPickerBtn.addEventListener('click', () => {
         topEnd.focus();
-        if (typeof topEnd.showPicker === 'function') topEnd.showPicker();
+        if (topEnd._flatpickr) topEnd._flatpickr.open();
       });
     }
 

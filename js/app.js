@@ -19,11 +19,11 @@ const FIREBASE_DEVICE_ID_STORAGE_KEY = 'consultorio_firebase_device_id';
 const FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY = 'consultorio_firebase_last_push_millis';
 const FIREBASE_PUSH_SHADOW_STORAGE_KEY = 'consultorio_firebase_push_shadow';
 const GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY = 'consultorio_google_calendar_client_id';
+const GOOGLE_CALENDAR_REQUIRED_CLIENT_ID = '210238418315-lavm9rn9vpne0hqa3fgt77oj1e0cvvis.apps.googleusercontent.com';
 const GOOGLE_CALENDAR_LAST_SENT_STORAGE_KEY = 'consultorio_google_calendar_last_sent';
 const GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY = 'consultorio_google_calendar_last_imported';
 const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 const GOOGLE_CALENDAR_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-const GOOGLE_CALENDAR_LOGIN_HINT = 'psicoterapia.patricia@gmail.com';
 const GOOGLE_CALENDAR_ALLOWED_ORIGINS = [
   'http://127.0.0.1:8000',
   'http://localhost:8000',
@@ -1374,7 +1374,7 @@ class ConsultorioApp {
 
   buildSharedSettingsComparable() {
     const firebaseConfig = normalizeFirebaseConfig(this.firebaseConfig || this.loadFirebaseConfig() || null);
-    const googleCalendarClientId = String(this.loadGoogleCalendarClientId() || '').trim();
+    const googleCalendarClientId = this.normalizeGoogleCalendarClientId(this.loadGoogleCalendarClientId());
 
     return {
       firebaseConfig: firebaseConfig || null,
@@ -1413,7 +1413,7 @@ class ConsultorioApp {
 
     const comparable = {
       firebaseConfig: normalizeFirebaseConfig(payload.firebaseConfig || null) || null,
-      googleCalendarClientId: String(payload.googleCalendarClientId || '').trim(),
+      googleCalendarClientId: this.normalizeGoogleCalendarClientId(payload.googleCalendarClientId),
       soundEnabled: payload.soundEnabled == null ? this.soundEnabled : Boolean(payload.soundEnabled),
       reminderMinutes: Math.max(1, Number(payload.reminderMinutes) || 15),
       reminderIntensity: ['normal', 'strong', 'ultra'].includes(String(payload.reminderIntensity || '').toLowerCase())
@@ -6308,16 +6308,30 @@ class ConsultorioApp {
     this.renderGoogleCalendarSyncTimes();
   }
 
+  normalizeGoogleCalendarClientId(clientId) {
+    const raw = String(clientId || '').trim();
+    // Keep OAuth stable by using the configured production Client ID.
+    return raw === GOOGLE_CALENDAR_REQUIRED_CLIENT_ID
+      ? raw
+      : GOOGLE_CALENDAR_REQUIRED_CLIENT_ID;
+  }
+
   loadGoogleCalendarClientId() {
     try {
-      return String(localStorage.getItem(GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY) || '').trim();
+      const raw = String(localStorage.getItem(GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY) || '').trim();
+      const normalized = this.normalizeGoogleCalendarClientId(raw);
+      if (raw !== normalized) {
+        localStorage.setItem(GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY, normalized);
+      }
+      return normalized;
     } catch (err) {
-      return '';
+      return GOOGLE_CALENDAR_REQUIRED_CLIENT_ID;
     }
   }
 
   saveGoogleCalendarClientId(clientId, options = {}) {
-    const safeClientId = String(clientId || '').trim();
+    const rawClientId = String(clientId || '').trim();
+    const safeClientId = this.normalizeGoogleCalendarClientId(rawClientId);
     const looksLikeSecret = /^GOCSPX-/i.test(safeClientId) || /client_secret/i.test(safeClientId);
 
     if (looksLikeSecret) {
@@ -6333,6 +6347,13 @@ class ConsultorioApp {
         localStorage.removeItem(GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY);
       }
       this.googleCalendarClientId = safeClientId;
+      const input = document.getElementById('cfg-google-calendar-client-id');
+      if (input && input.value !== safeClientId) {
+        input.value = safeClientId;
+      }
+      if (rawClientId && rawClientId !== safeClientId) {
+        this.showToast('Client ID ajustado para o ID oficial configurado deste app.', 'info');
+      }
       this.bumpVersion();
       this.updateGoogleCalendarStatus(safeClientId ? 'ready' : 'offline');
       if (!options || options.skipSync !== true) {
@@ -7032,7 +7053,6 @@ class ConsultorioApp {
         this.googleCalendarTokenClient = window.google.accounts.oauth2.initTokenClient({
           client_id: clientId,
           scope: GOOGLE_CALENDAR_SCOPES,
-          hint: GOOGLE_CALENDAR_LOGIN_HINT,
           callback: ''
         });
       }
@@ -7079,11 +7099,8 @@ class ConsultorioApp {
       void this.syncAppointmentsToGoogleCalendar({ showToast: false });
     };
 
-    if (!window.gapi || !window.gapi.client || typeof window.gapi.client.getToken !== 'function' || window.gapi.client.getToken() === null) {
-      this.googleCalendarTokenClient.requestAccessToken({ prompt: 'consent', hint: GOOGLE_CALENDAR_LOGIN_HINT });
-    } else {
-      this.googleCalendarTokenClient.requestAccessToken({ prompt: '', hint: GOOGLE_CALENDAR_LOGIN_HINT });
-    }
+    // Always force account picker so the user can select the intended Google account.
+    this.googleCalendarTokenClient.requestAccessToken({ prompt: 'select_account consent' });
   }
 
   disconnectGoogleCalendar() {

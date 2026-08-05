@@ -7162,19 +7162,24 @@ class ConsultorioApp {
   async tryAutoConnectGoogleCalendar() {
     try {
       const shouldAuto = localStorage.getItem('googleCalendarAutoConnect') === 'true';
-      if (!shouldAuto) return;
+      if (!shouldAuto) {
+        this.logSyncAudit('info', 'Auto-connect Google Calendar: desativado (conecte manualmente uma vez para ativar).');
+        return;
+      }
     } catch (_) { return; }
 
     const initialized = await this.initGoogleCalendarClient();
     if (!initialized || !this.googleCalendarTokenClient) return;
 
+    this.logSyncAudit('info', 'Auto-connect Google Calendar: tentando reconexão silenciosa...');
     this.updateGoogleCalendarStatus('pending', 'Reconectando Google Calendar automaticamente...');
 
     this.googleCalendarTokenClient.callback = async (resp) => {
       if (resp && resp.error) {
-        // Silent auth failed (user needs to interact) — reset to ready state, do not show error toast.
+        // Silent auth failed — user needs to interact, do not show error toast.
         this.googleCalendarAuthorized = false;
-        this.updateGoogleCalendarStatus('ready', 'Clique em Conectar Google Calendar para autorizar.');
+        this.logSyncAudit('info', `Auto-connect Google Calendar: falhou silenciosamente (${resp.error}). Clique em Conectar.`);
+        this.updateGoogleCalendarStatus('ready', 'Sessão Google expirada. Clique em Conectar Google Calendar para reautorizar.');
         return;
       }
       this.googleCalendarAuthorized = true;
@@ -7182,9 +7187,10 @@ class ConsultorioApp {
       if (window.gapi && window.gapi.client) {
         window.gapi.client.setToken({ access_token: this.googleCalendarAccessToken });
       }
-      this.updateGoogleCalendarStatus('ok', 'Google Calendar reconectado automaticamente.');
+      this.logSyncAudit('info', 'Auto-connect Google Calendar: reconectado com sucesso. Iniciando sync...');
+      this.updateGoogleCalendarStatus('ok', 'Google Calendar reconectado automaticamente. Sincronizando...');
       this.scheduleGoogleCalendarAutoSync();
-      void this.syncAppointmentsToGoogleCalendar({ showToast: false });
+      void this.syncAppointmentsToGoogleCalendar({ showToast: true });
     };
 
     // prompt: '' attempts silent token refresh — no popup if already authorized.

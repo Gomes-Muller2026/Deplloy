@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Iniciar Servidor Local (Auto-Conectar Firebase)",
+      "type": "shell",
+      "command": "npx",
+      "args": ["--yes", "serve", "-l", "8080", "."],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": false
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    },
+    {
+      "label": "Abrir App no Navegador",
+      "type": "shell",
+      "command": "Start-Process",
+      "args": ["http://localhost:8080"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": "Iniciar Servidor Local (Auto-Conectar Firebase)",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Servir + Abrir App (Firebase Auto-Conecta)",
+      "dependsOn": [
+        "Iniciar Servidor Local (Auto-Conectar Firebase)",
+        "Abrir App no Navegador"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

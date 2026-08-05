@@ -557,6 +557,7 @@ class ConsultorioApp {
     this.reminderCheckIntervalMs = 30000;
     this.firebaseSyncIntervalId = null;
     this.firebaseSyncIntervalMs = 45 * 1000;
+    this.firebaseAutoReconnectLastAttemptAt = 0;
     this.firebaseSyncStatePollIntervalId = null;
     this.firebaseSyncStatePollTickMs = 3000;
     this.firebaseSyncStatePollIntervalMs = 12 * 1000;
@@ -586,6 +587,9 @@ class ConsultorioApp {
     this.googleCalendarAutoSyncIntervalId = null;
     this.googleCalendarAutoSyncEveryMs = 6 * 60 * 60 * 1000;
     this.googleCalendarAutoSyncInFlight = false;
+    this.googleCalendarRateLimitUntil = 0;
+    this.googleCalendarLastSyncAt = 0;
+    this.googleCalendarSyncCooldownMs = 30 * 1000;
     this.syncAuditLogLimit = 18;
     this.syncAuditEvents = [];
     this.deletedAppointmentTombstones = {};
@@ -4822,7 +4826,7 @@ class ConsultorioApp {
 
     if (listGoogleCalendarEventsBtn) {
       listGoogleCalendarEventsBtn.addEventListener('click', () => {
-        void this.syncAppointmentsToGoogleCalendar();
+        void this.syncAppointmentsToGoogleCalendar({ manual: true });
       });
     }
 
@@ -6437,10 +6441,14 @@ class ConsultorioApp {
     const runAutoSync = async () => {
       if (!this.googleCalendarAuthorized) return;
       if (this.googleCalendarAutoSyncInFlight) return;
+      if (Date.now() < Number(this.googleCalendarRateLimitUntil || 0)) {
+        this.logSyncAudit('warning', 'Auto-sync Google Calendar adiado: aguardando fim do cooldown de rate limit.');
+        return;
+      }
 
       this.googleCalendarAutoSyncInFlight = true;
       try {
-        await this.syncAppointmentsToGoogleCalendar({ showToast: false, importFromGoogle: false });
+        await this.syncAppointmentsToGoogleCalendar({ showToast: false, importFromGoogle: false, skipFinalList: true });
         if (!this.googleCalendarAuthorized) return;
         await this.importGoogleCalendarIntoLocalAgenda({ showToast: false });
         this.updateGoogleCalendarStatus('ok', 'Sincronização automática executada.');
@@ -6883,6 +6891,16 @@ class ConsultorioApp {
 
     const showToast = options && options.showToast === false ? false : true;
     const importFromGoogle = !(options && options.importFromGoogle === false);
+    const skipFinalList = Boolean(options && options.skipFinalList);
+    const manual = Boolean(options && options.manual);
+
+    const now = Date.now();
+    if (!manual && (now - Number(this.googleCalendarLastSyncAt || 0)) < Number(this.googleCalendarSyncCooldownMs || 30000)) {
+      this.logSyncAudit('info', 'Google Calendar sync ignorado: cooldown de 30s ativo (evitando chamadas duplicadas).');
+      return;
+    }
+    this.googleCalendarLastSyncAt = now;
+
     this.updateGoogleCalendarStatus('pending', 'Enviando agenda para o Google Calendar...');
 
     try {
@@ -6928,6 +6946,7 @@ class ConsultorioApp {
             resource: payload.resource
           });
           inserted += 1;
+          await new Promise((resolve) => window.setTimeout(resolve, 120));
           continue;
         }
 
@@ -6948,6 +6967,7 @@ class ConsultorioApp {
           resource: payload.resource
         });
         updated += 1;
+        await new Promise((resolve) => window.setTimeout(resolve, 120));
       }
 
       for (const event of managedEvents) {
@@ -6962,6 +6982,7 @@ class ConsultorioApp {
           eventId: event.id
         });
         removed += 1;
+        await new Promise((resolve) => window.setTimeout(resolve, 120));
       }
 
       let importStats = null;
@@ -6969,7 +6990,9 @@ class ConsultorioApp {
         importStats = await this.importGoogleCalendarEventsToAppointments();
       }
 
-      await this.listGoogleCalendarEvents();
+      if (!skipFinalList) {
+        await this.listGoogleCalendarEvents();
+      }
 
       const importLabel = importStats
         ? ` | Importados: ${importStats.insertedAppointments} | Atualizados local: ${importStats.updatedAppointments}`
@@ -6995,6 +7018,16 @@ class ConsultorioApp {
         this.googleCalendarAuthorized = false;
         this.updateGoogleCalendarStatus('error', 'Permissão insuficiente para enviar eventos. Clique em Conectar Google Calendar e autorize novamente.');
         this.showToast('Reautorize o Google Calendar para liberar escrita de eventos.', 'warning');
+        return;
+      }
+
+      if (lowered.includes('rate limit') || lowered.includes('usererrorexceeded') || lowered.includes('rateLimitExceeded') || (apiError && (apiError.code === 429 || apiError.code === 403))) {
+        const backoffMs = 120 * 1000;
+        this.googleCalendarRateLimitUntil = Date.now() + backoffMs;
+        const retryAt = new Date(this.googleCalendarRateLimitUntil).toLocaleTimeString('pt-BR');
+        this.updateGoogleCalendarStatus('error', `Rate Limit do Google Calendar. Próxima tentativa após ${retryAt}.`);
+        this.showToast('Limite de requisições do Google Calendar atingido. Aguarde 2 minutos.', 'warning');
+        this.logSyncAudit('warning', `Google Calendar rate limit: próximo sync após ${retryAt}.`);
         return;
       }
 
@@ -7125,7 +7158,7 @@ class ConsultorioApp {
       this.updateGoogleCalendarStatus('ok', 'Google Calendar conectado e autorizado.');
       this.showToast('Google Calendar conectado com sucesso.', 'success');
       this.scheduleGoogleCalendarAutoSync();
-      void this.syncAppointmentsToGoogleCalendar({ showToast: false });
+      void this.syncAppointmentsToGoogleCalendar({ showToast: false, manual: false });
     };
 
     // Always force account picker so the user can select the intended Google account.
@@ -7190,7 +7223,7 @@ class ConsultorioApp {
       this.logSyncAudit('info', 'Auto-connect Google Calendar: reconectado com sucesso. Iniciando sync...');
       this.updateGoogleCalendarStatus('ok', 'Google Calendar reconectado automaticamente. Sincronizando...');
       this.scheduleGoogleCalendarAutoSync();
-      void this.syncAppointmentsToGoogleCalendar({ showToast: true });
+      void this.syncAppointmentsToGoogleCalendar({ showToast: true, manual: false });
     };
 
     // prompt: '' attempts silent token refresh — no popup if already authorized.
@@ -7720,7 +7753,10 @@ class ConsultorioApp {
       this.restoreAgendaFiltersForLoadedAppointments();
       this.render();
       this.rebuildFirebasePushShadowFromCurrentState();
-      if (!silent) this.logSyncAudit('pull', 'Pull concluído e interface atualizada.');
+      if (!silent) {
+        const pullDetail = `consultas:${this.appointments.length}, clientes:${this.clients.length}, despesas:${this.expenses.length}`;
+        this.logSyncAudit('pull', `Pull concluído — recebidos ${pullDetail}`);
+      }
       return { applied: true, deferred: false, reason: 'ok' };
     } catch (err) {
       const message = err && err.message ? err.message : 'Erro desconhecido';
@@ -7792,6 +7828,14 @@ class ConsultorioApp {
         this.logSyncAudit('info', 'Push incremental sem alterações pendentes (no-op).');
         return;
       }
+
+      const pushCounts = {};
+      operations.forEach((op) => {
+        const label = op.type === 'delete' ? `${op.collection}(excluído)` : op.collection;
+        pushCounts[label] = (pushCounts[label] || 0) + 1;
+      });
+      const pushDetail = Object.entries(pushCounts).map(([k, v]) => `${k}:${v}`).join(', ');
+      this.logSyncAudit('push', `Enviando ${operations.length} doc(s) — ${pushDetail}`);
 
       const maxBatchSize = 450;
       for (let index = 0; index < operations.length; index += maxBatchSize) {
@@ -8043,7 +8087,15 @@ class ConsultorioApp {
     }
 
     this.firebaseSyncIntervalId = window.setInterval(() => {
-      if (!this.firebaseConnected || !this.firebaseDb) return;
+      if (!this.firebaseConnected || !this.firebaseDb) {
+        const now = Date.now();
+        const cooldownMs = 90 * 1000;
+        if ((now - Number(this.firebaseAutoReconnectLastAttemptAt || 0)) < cooldownMs) return;
+        this.firebaseAutoReconnectLastAttemptAt = now;
+        this.logSyncAudit('info', 'Reconexão automática ao Firebase iniciada...');
+        void this.initFirebase();
+        return;
+      }
 
       void this.syncDataWithFirebase({ skipDirtyPush: true, silent: true })
         .then((syncResult) => {
@@ -11172,7 +11224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260801-45')
+    navigator.serviceWorker.register('./sw.js?v=20260804-48')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

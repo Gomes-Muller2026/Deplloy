@@ -23,6 +23,7 @@ const GOOGLE_CALENDAR_LAST_SENT_STORAGE_KEY = 'consultorio_google_calendar_last_
 const GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY = 'consultorio_google_calendar_last_imported';
 const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 const GOOGLE_CALENDAR_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+const GOOGLE_CALENDAR_LOGIN_HINT = 'psicoterapia.patricia@gmail.com';
 const GOOGLE_CALENDAR_ALLOWED_ORIGINS = [
   'http://127.0.0.1:8000',
   'http://localhost:8000',
@@ -7031,6 +7032,7 @@ class ConsultorioApp {
         this.googleCalendarTokenClient = window.google.accounts.oauth2.initTokenClient({
           client_id: clientId,
           scope: GOOGLE_CALENDAR_SCOPES,
+          hint: GOOGLE_CALENDAR_LOGIN_HINT,
           callback: ''
         });
       }
@@ -7053,7 +7055,12 @@ class ConsultorioApp {
     this.updateGoogleCalendarStatus('pending', 'Autorizando Google Calendar...');
     this.googleCalendarTokenClient.callback = async (resp) => {
       if (resp && resp.error) {
-        const message = String(resp.error_description || resp.error || 'Falha ao autorizar Google Calendar.');
+        let message = String(resp.error_description || resp.error || 'Falha ao autorizar Google Calendar.');
+        const errorCode = String(resp.error || '').trim().toLowerCase();
+        if (errorCode === 'invalid_client') {
+          const origin = window.location && window.location.origin ? window.location.origin : 'origem desconhecida';
+          message = `Erro 401 invalid_client. Cadastre a origem ${origin} no OAuth Client ID do tipo Web no Google Cloud e confirme se o Client ID salvo no app pertence ao mesmo projeto.`;
+        }
         this.googleCalendarAuthorized = false;
         this.googleCalendarAccessToken = '';
         this.updateGoogleCalendarStatus('error', message);
@@ -7073,9 +7080,9 @@ class ConsultorioApp {
     };
 
     if (!window.gapi || !window.gapi.client || typeof window.gapi.client.getToken !== 'function' || window.gapi.client.getToken() === null) {
-      this.googleCalendarTokenClient.requestAccessToken({ prompt: 'consent' });
+      this.googleCalendarTokenClient.requestAccessToken({ prompt: 'consent', hint: GOOGLE_CALENDAR_LOGIN_HINT });
     } else {
-      this.googleCalendarTokenClient.requestAccessToken({ prompt: '' });
+      this.googleCalendarTokenClient.requestAccessToken({ prompt: '', hint: GOOGLE_CALENDAR_LOGIN_HINT });
     }
   }
 

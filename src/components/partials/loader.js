@@ -1,5 +1,5 @@
 function loadPartialViaXhr(filePath) {
-  const safePath = String(filePath || '').split('#')[0].split('?')[0];
+  const safePath = String(filePath || '').split('#')[0];
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('GET', safePath, true);

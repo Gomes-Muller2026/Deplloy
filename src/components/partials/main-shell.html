@@ -11,14 +11,14 @@
     </div>
 
     <nav class="sidebar-nav">
-      <button type="button" class="nav-item active" data-tab="dashboard" onclick="app.switchTab('dashboard')"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button>
-      <button type="button" class="nav-item nav-back-btn" id="btn-header-back" style="display:none;"><i data-lucide="arrow-left"></i><span>Voltar</span></button>
       <button type="button" class="nav-item" data-tab="agenda" onclick="app.switchTab('agenda')"><i data-lucide="calendar"></i><span>Agenda</span></button>
+      <button type="button" class="nav-item nav-back-btn" id="btn-header-back" style="display:none;"><i data-lucide="arrow-left"></i><span>Voltar</span></button>
       <button type="button" class="nav-item" data-tab="clientes" onclick="app.switchTab('clientes')"><i data-lucide="users"></i><span>Clientes</span></button>
       <button type="button" class="nav-item" data-tab="financeiro" onclick="app.switchTab('financeiro')"><i data-lucide="wallet"></i><span>Financeiro</span><span class="badge-pending-count" id="nav-pending-badge">0</span></button>
       <button type="button" class="nav-item" data-tab="despesas" onclick="app.switchTab('despesas')"><i data-lucide="receipt"></i><span>Despesas</span></button>
       <button type="button" class="nav-item" data-tab="whatsapp" onclick="app.switchTab('whatsapp')"><i data-lucide="message-circle"></i><span>WhatsApp</span></button>
       <button type="button" class="nav-item" data-tab="senha" onclick="app.switchTab('senha')"><i data-lucide="key-round"></i><span>Senha</span></button>
+      <button type="button" class="nav-item active" data-tab="panil" onclick="app.switchTab('panil')"><i data-lucide="layout-dashboard"></i><span>Panil</span></button>
       <button type="button" class="nav-item" data-tab="graficos" onclick="app.switchTab('graficos')"><i data-lucide="bar-chart-3"></i><span>Gráficos</span></button>
       <button type="button" class="nav-item" data-tab="config" onclick="app.switchTab('config')"><i data-lucide="settings"></i><span>Configurações</span></button>
     </nav>
@@ -114,7 +114,7 @@
       </div>
     </header>
 
-    <section class="tab-content active" id="tab-dashboard">
+    <section class="tab-content active" id="tab-panil">
       <div class="stats-grid">
         <button type="button" class="stat-card card-blue" id="dash-card-consultas" data-action="dashboard-card" data-target="agenda" aria-label="Consultas de hoje" onclick="app.handleDashboardCardClick('dash-card-consultas', 'agenda')" title="Abrir agenda de consultas de hoje">
           <div class="stat-icon"><i data-lucide="calendar-check"></i></div>
@@ -193,59 +193,89 @@
     </section>
 
     <section class="tab-content" id="tab-agenda">
-      <div class="filter-bar card">
-        <div class="filter-group">
-          <div class="input-icon">
-            <i data-lucide="search"></i>
-            <input type="text" id="agenda-search" placeholder="Buscar por cliente ou procedimento...">
-          </div>
-          <input type="text" id="agenda-filter-start" class="form-control date-input agenda-filter-date" title="Data inicial">
-          <input type="text" id="agenda-filter-end" class="form-control date-input agenda-filter-date" title="Data final">
-          <select id="agenda-filter-status" class="form-control">
-            <option value="todos">Todos os Status</option>
-            <option value="Agendado">Agendado</option>
-            <option value="Concluido">Concluído</option>
-            <option value="Cancelado">Cancelado</option>
-          </select>
-        </div>
-        <div class="agenda-view-toggle">
-          <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-calendar">Calendário</button>
-          <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-list">Lista</button>
-        </div>
-        <button class="btn btn-primary" id="btn-new-appointment-agenda" type="button" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="plus"></i> Agendar Consulta</button>
+      <div class="agenda-subtabs">
+        <button type="button" class="agenda-subtab-btn active" id="btn-agenda-subtab-geral" onclick="app.switchAgendaSubtab('geral')">Agenda geral</button>
+        <button type="button" class="agenda-subtab-btn" id="btn-agenda-subtab-por-dia" onclick="app.switchAgendaSubtab('por-dia')">Sessões por dia</button>
       </div>
 
-      <div class="card agenda-calendar-card" id="agenda-calendar-card" style="display:none;">
-        <div class="agenda-calendar-toolbar" id="agenda-calendar-toolbar">
-          <div class="agenda-nav-group">
-            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-prev"><i data-lucide="chevron-left"></i> Anterior</button>
-            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-today"><i data-lucide="rotate-ccw"></i> Voltar</button>
-            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-next">Próxima <i data-lucide="chevron-right"></i></button>
+      <div class="agenda-subtab-panel active" id="agenda-subtab-geral">
+        <div class="filter-bar card">
+          <div class="filter-group">
+            <div class="input-icon">
+              <i data-lucide="search"></i>
+              <input type="text" id="agenda-search" placeholder="Buscar por cliente ou procedimento...">
+            </div>
+            <input type="text" id="agenda-filter-start" class="form-control date-input agenda-filter-date" title="Data inicial">
+            <input type="text" id="agenda-filter-end" class="form-control date-input agenda-filter-date" title="Data final">
+            <select id="agenda-filter-status" class="form-control">
+              <option value="todos">Todos os Status</option>
+              <option value="Agendado">Agendado</option>
+              <option value="Concluido">Concluído</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
           </div>
-          <div class="agenda-calendar-range" id="agenda-calendar-range">Período</div>
+          <div class="agenda-view-toggle">
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-calendar">Calendário</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-view-list">Lista</button>
+          </div>
+          <button class="btn btn-primary" id="btn-new-appointment-agenda" type="button" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="plus"></i> Agendar Consulta</button>
         </div>
-        <div class="card-body">
-          <div id="agenda-calendar-grid" class="agenda-calendar-grid"></div>
+
+        <div class="card agenda-calendar-card" id="agenda-calendar-card" style="display:none;">
+          <div class="agenda-calendar-toolbar" id="agenda-calendar-toolbar">
+            <div class="agenda-nav-group">
+              <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-prev"><i data-lucide="chevron-left"></i> Anterior</button>
+              <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-today"><i data-lucide="rotate-ccw"></i> Voltar</button>
+              <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-next">Próxima <i data-lucide="chevron-right"></i></button>
+            </div>
+            <div class="agenda-calendar-range" id="agenda-calendar-range">Período</div>
+          </div>
+          <div class="card-body">
+            <div id="agenda-calendar-grid" class="agenda-calendar-grid"></div>
+          </div>
+        </div>
+
+        <div class="card agenda-table-card" id="agenda-table-card">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data / Horário</th>
+                    <th>Cliente / Paciente</th>
+                    <th>Procedimento / Motivo</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                    <th>Pagamento</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="agenda-table-body"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="card agenda-table-card" id="agenda-table-card">
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Data / Horário</th>
-                  <th>Cliente / Paciente</th>
-                  <th>Procedimento / Motivo</th>
-                  <th>Valor</th>
-                  <th>Status</th>
-                  <th>Pagamento</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="agenda-table-body"></tbody>
-            </table>
+      <div class="agenda-subtab-panel" id="agenda-subtab-por-dia" style="display:none;">
+        <div class="agenda-day-view">
+          <div class="card agenda-day-mini-card" id="agenda-day-mini-card">
+            <div class="agenda-day-mini-header">
+              <span><i data-lucide="calendar-days"></i> Calendário</span>
+              <button type="button" class="agenda-day-collapse-btn" id="btn-agenda-day-collapse" title="Recolher calendário"><i data-lucide="chevrons-left"></i></button>
+            </div>
+            <div id="agenda-day-mini-calendar" class="agenda-day-mini-calendar"></div>
+            <div class="agenda-day-mini-legend">
+              <span><i class="agenda-day-legend-dot"></i> Sessões agendadas</span>
+            </div>
+          </div>
+
+          <div class="card agenda-day-list-card">
+            <div class="agenda-day-list-header">
+              <span><i data-lucide="calendar-check-2"></i> <span id="agenda-day-list-title">Sessões do dia</span></span>
+              <button class="btn btn-primary btn-sm" id="btn-new-appointment-agenda-day" type="button" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="plus"></i> Agendar Consulta</button>
+            </div>
+            <div class="agenda-day-list-body" id="agenda-day-list-body"></div>
           </div>
         </div>
       </div>

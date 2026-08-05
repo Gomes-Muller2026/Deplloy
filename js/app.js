@@ -255,6 +255,13 @@ const weekdayShortPt = (isoDate) => {
   return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
 };
 
+const weekdayLongPt = (isoDate) => {
+  const d = parseIsoDate(isoDate);
+  if (!d) return '-';
+  const label = d.toLocaleDateString('pt-BR', { weekday: 'long' });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+};
+
 const formatDateBR = (isoDate) => {
   if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate))) return '-';
   const [y, m, d] = String(isoDate).split('-');
@@ -279,6 +286,8 @@ const safeText = (value) => String(value == null ? '' : value)
   .replace(/'/g, '&#39;');
 
 const DEFAULT_APPOINTMENT_COLOR = '#0ea5e9';
+const AGENDA_EVENT_DURATION_MIN = 50;
+const AGENDA_CASCADE_STEP_PX = 26;
 
 const normalizeHexColor = (value, fallback = DEFAULT_APPOINTMENT_COLOR) => {
   const raw = String(value || '').trim();
@@ -305,7 +314,7 @@ const hexToRgb = (hexColor) => {
 const agendaEventInlineStyle = (hexColor) => {
   const color = normalizeHexColor(hexColor);
   const rgb = hexToRgb(color);
-  return `background-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18); border-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.52);`;
+  return `background-color: #ffffff; border: 1px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.24); color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.95);`;
 };
 
 const normalizeLoginUsers = (rawUsers) => {
@@ -502,7 +511,7 @@ class ConsultorioApp {
     this.clients = [];
     this.appointments = [];
     this.expenses = [];
-    this.currentTab = 'dashboard';
+    this.currentTab = 'panil';
     this.localLoginUnlocked = false;
     this.financeViewFilter = 'all';
     this.financeViewMode = 'cliente';
@@ -643,7 +652,7 @@ class ConsultorioApp {
 
     if (currentTab === 'agenda' || currentTab === 'financeiro' || currentTab === 'clientes') {
       cardId = this.dashboardCardByTab[currentTab] || '';
-    } else if (currentTab === 'dashboard') {
+    } else if (currentTab === 'panil') {
       if (previousTab === 'agenda' || previousTab === 'financeiro' || previousTab === 'clientes') {
         cardId = this.dashboardCardByTab[previousTab] || this.dashboardLastActiveCardId;
       } else {
@@ -5152,7 +5161,7 @@ class ConsultorioApp {
 
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const tab = btn.getAttribute('data-tab') || 'dashboard';
+        const tab = btn.getAttribute('data-tab') || 'panil';
         if (tab === 'financeiro') this.financeViewFilter = 'all';
         this.switchTab(tab);
       });
@@ -5164,7 +5173,7 @@ class ConsultorioApp {
     const btnHeaderBack = document.getElementById('btn-header-back');
     if (btnHeaderBack) {
       btnHeaderBack.addEventListener('click', () => {
-        this.switchTab('dashboard');
+        this.switchTab('panil');
       });
     }
 
@@ -5672,6 +5681,11 @@ class ConsultorioApp {
       });
     }
 
+    const btnAgendaDayCollapse = document.getElementById('btn-agenda-day-collapse');
+    if (btnAgendaDayCollapse) {
+      btnAgendaDayCollapse.addEventListener('click', () => this.toggleAgendaDayMiniCalendar());
+    }
+
     const clientesSearch = document.getElementById('clientes-search');
     const clientesPhoneFilter = document.getElementById('clientes-phone-filter');
     const clientesCategoryFilter = document.getElementById('clientes-category-filter');
@@ -5976,9 +5990,10 @@ class ConsultorioApp {
 
   switchTab(tabId) {
     const previousTab = this.currentTab;
-    const requestedTab = document.getElementById(`tab-${tabId}`) ? tabId : 'dashboard';
+    const normalizedTabId = tabId === 'dashboard' ? 'panil' : tabId;
+    const requestedTab = document.getElementById(`tab-${normalizedTabId}`) ? normalizedTabId : 'panil';
     const canAccessConfig = this.applyConfigAccessControl();
-    const targetId = (requestedTab === 'config' && !canAccessConfig) ? 'dashboard' : requestedTab;
+    const targetId = (requestedTab === 'config' && !canAccessConfig) ? 'panil' : requestedTab;
     if (requestedTab === 'config' && !canAccessConfig) {
       this.showToast('Apenas o usuário master pode acessar Configurações.', 'warning');
     }
@@ -5987,7 +6002,7 @@ class ConsultorioApp {
     const pageTitle = document.getElementById('page-title');
     const pageSubtitle = document.getElementById('page-subtitle');
     const tabMeta = {
-      dashboard: { title: 'Consultório Control', subtitle: 'Gestão de clientes, agenda e financeiro' },
+      panil: { title: 'Consultório Control', subtitle: 'Gestão de clientes, agenda e financeiro' },
       agenda: { title: 'Agenda & Consultas', subtitle: 'Gerencie horários, sessões e atendimentos do período' },
       clientes: { title: 'Clientes', subtitle: 'Cadastros, contatos e histórico de pacientes' },
       financeiro: { title: 'Financeiro', subtitle: 'Recebimentos, pendências e relatórios do período' },
@@ -5997,13 +6012,13 @@ class ConsultorioApp {
       graficos: { title: 'Gráficos', subtitle: 'Visualizações e indicadores do consultório' },
       config: { title: 'Configurações', subtitle: 'Ajustes gerais e integrações do sistema' }
     };
-    const meta = tabMeta[this.currentTab] || tabMeta.dashboard;
+    const meta = tabMeta[this.currentTab] || tabMeta.panil;
     if (pageTitle) pageTitle.textContent = meta.title;
     if (pageSubtitle) pageSubtitle.textContent = meta.subtitle;
 
     const btnHeaderBack = document.getElementById('btn-header-back');
     if (btnHeaderBack) {
-      const showBack = this.currentTab !== 'dashboard';
+      const showBack = this.currentTab !== 'panil';
       btnHeaderBack.style.display = showBack ? 'inline-flex' : 'none';
     }
 
@@ -6017,6 +6032,9 @@ class ConsultorioApp {
 
     const target = document.getElementById(`tab-${this.currentTab}`);
     if (target) target.classList.add('active');
+
+    document.body.classList.toggle('agenda-view', this.currentTab === 'agenda');
+    document.body.classList.toggle('clientes-view', this.currentTab === 'clientes');
 
     if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
       const main = document.querySelector('.main-content');
@@ -6638,8 +6656,14 @@ class ConsultorioApp {
       || 'Consulta'
     ).trim() || 'Consulta';
 
+    const isOwnTemplateDescription = /ID Consulta \(Consultório Control\)\s*:/i.test(description);
+    const observacoesMatch = description.match(/(?:^|\n)\s*Observações\s*:\s*([\s\S]*?)(?:\n\s*\n\s*ID Consulta \(Consultório Control\)|$)/i);
+    const cleanedDescription = isOwnTemplateDescription
+      ? String((observacoesMatch && observacoesMatch[1]) || '').trim()
+      : description;
+
     const notesParts = [];
-    if (description) notesParts.push(description);
+    if (cleanedDescription) notesParts.push(cleanedDescription);
     if (location) notesParts.push(`Local: ${location}`);
     if (sourceEvent.htmlLink) notesParts.push(`Google: ${sourceEvent.htmlLink}`);
 
@@ -8674,6 +8698,156 @@ class ConsultorioApp {
     }
   }
 
+  switchAgendaSubtab(mode) {
+    const normalized = mode === 'por-dia' ? 'por-dia' : 'geral';
+    this.agendaSubtab = normalized;
+
+    const btnGeral = document.getElementById('btn-agenda-subtab-geral');
+    const btnPorDia = document.getElementById('btn-agenda-subtab-por-dia');
+    const panelGeral = document.getElementById('agenda-subtab-geral');
+    const panelPorDia = document.getElementById('agenda-subtab-por-dia');
+
+    if (btnGeral) btnGeral.classList.toggle('active', normalized === 'geral');
+    if (btnPorDia) btnPorDia.classList.toggle('active', normalized === 'por-dia');
+    if (panelGeral) panelGeral.style.display = normalized === 'geral' ? '' : 'none';
+    if (panelPorDia) panelPorDia.style.display = normalized === 'por-dia' ? '' : 'none';
+
+    if (normalized === 'por-dia') {
+      this.initAgendaDayMiniCalendar();
+      this.renderAgendaDayList();
+    }
+  }
+
+  toggleAgendaDayMiniCalendar() {
+    const view = document.querySelector('.agenda-day-view');
+    if (view) view.classList.toggle('is-collapsed');
+  }
+
+  initAgendaDayMiniCalendar() {
+    const el = document.getElementById('agenda-day-mini-calendar');
+    if (!el || typeof window.flatpickr !== 'function') return;
+
+    if (this.agendaDayMiniPicker) {
+      this.refreshAgendaDayMiniCalendarMarks();
+      return;
+    }
+
+    const selected = this.agendaDaySelectedDate || getTodayStr();
+    this.agendaDaySelectedDate = selected;
+
+    this.agendaDayMiniPicker = window.flatpickr(el, {
+      inline: true,
+      appendTo: el,
+      locale: 'pt',
+      defaultDate: selected,
+      onChange: (selectedDates, dateStr) => {
+        this.agendaDaySelectedDate = dateStr;
+        this.renderAgendaDayList();
+      },
+      onDayCreate: (selectedDates, dateStr, fp, dayElem) => {
+        this.markAgendaDayCell(dayElem);
+      },
+      onMonthChange: () => window.setTimeout(() => this.refreshAgendaDayMiniCalendarMarks(), 0),
+      onYearChange: () => window.setTimeout(() => this.refreshAgendaDayMiniCalendarMarks(), 0)
+    });
+  }
+
+  refreshAgendaDayMiniCalendarMarks() {
+    const el = document.getElementById('agenda-day-mini-calendar');
+    if (!el) return;
+    el.querySelectorAll('.flatpickr-day').forEach((dayElem) => this.markAgendaDayCell(dayElem));
+  }
+
+  markAgendaDayCell(dayElem) {
+    if (!dayElem) return;
+    const dateObj = dayElem.dateObj;
+    if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return;
+    const iso = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+    const hasSession = this.appointments.some((a) => a.date === iso);
+    dayElem.classList.toggle('has-session', hasSession);
+  }
+
+  getClientInitials(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  renderAgendaDayList() {
+    const listBody = document.getElementById('agenda-day-list-body');
+    const titleEl = document.getElementById('agenda-day-list-title');
+    if (!listBody) return;
+
+    const selected = this.agendaDaySelectedDate || getTodayStr();
+    if (titleEl) {
+      titleEl.textContent = `Sessões do dia ${formatDateBR(selected)} (${weekdayLongPt(selected)})`;
+    }
+
+    const dayAppointments = this.appointments
+      .filter((a) => a.date === selected)
+      .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
+
+    if (!dayAppointments.length) {
+      listBody.innerHTML = '<div class="agenda-day-list-empty">Nenhuma sessão agendada para este dia.</div>';
+      return;
+    }
+
+    listBody.innerHTML = dayAppointments.map((a) => {
+      const initials = this.getClientInitials(a.clientName || '-');
+      const paymentStatus = String(a.paymentStatus || '').toLowerCase();
+      const metaClass = paymentStatus.includes('pago') ? 'is-pago' : (paymentStatus.includes('parcial') ? 'is-parcial' : 'is-pendente');
+      const metaLabel = a.paymentStatus || 'Pendente';
+      return `
+        <div class="agenda-day-session-row" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')">
+          <span class="agenda-day-session-time"><i data-lucide="clock"></i>${safeText(a.time || '--:--')}</span>
+          <span class="agenda-day-avatar">${safeText(initials)}</span>
+          <span class="agenda-day-session-name">${safeText(a.clientName || '-')}</span>
+          <span class="agenda-day-session-meta ${metaClass}">${safeText(metaLabel)}</span>
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  layoutAgendaDayEvents(dayAppointments) {
+    const withMinutes = dayAppointments
+      .map((a) => {
+        const match = /^(\d{1,2}):(\d{2})$/.exec(String(a.time || '').trim());
+        if (!match) return null;
+        const startMin = (Number(match[1]) * 60) + Number(match[2]);
+        return { ...a, startMin, endMin: startMin + AGENDA_EVENT_DURATION_MIN };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+    const positioned = [];
+    let cluster = [];
+    let clusterEnd = -Infinity;
+
+    const flushCluster = () => {
+      cluster.forEach((ev, i) => positioned.push({ ...ev, stackIndex: i, stackSize: cluster.length }));
+      cluster = [];
+    };
+
+    withMinutes.forEach((ev) => {
+      if (cluster.length && ev.startMin < clusterEnd) {
+        cluster.push(ev);
+        clusterEnd = Math.max(clusterEnd, ev.endMin);
+      } else {
+        flushCluster();
+        cluster = [ev];
+        clusterEnd = ev.endMin;
+      }
+    });
+    flushCluster();
+
+    return positioned;
+  }
+
   renderAgendaTable() {
     const tbody = document.getElementById('agenda-table-body');
     const calendarGrid = document.getElementById('agenda-calendar-grid');
@@ -8709,60 +8883,54 @@ class ConsultorioApp {
       const start = agendaStartInput ? (this.normalizeAgendaDateToIso(agendaStartInput.value) || this.agendaCalendarStartDate) : this.agendaCalendarStartDate;
       const days = Array.from({ length: 7 }, (_, idx) => addDaysIso(start, idx));
       const hours = Array.from({ length: 24 }, (_, idx) => idx);
+      const todayIso = getTodayStr();
 
-      const grouped = {};
-      filtered.forEach((a) => {
-        const h = Number(String(a.time || '00:00').split(':')[0] || 0);
-        const key = `${a.date}|${String(h).padStart(2, '0')}`;
-        grouped[key] = grouped[key] || [];
-        grouped[key].push(a);
-      });
+      const headerHtml = `<div class="agenda-header blank" style="grid-column:1; grid-row:1;"></div>`
+        + days.map((date, dayIdx) => `
+          <div class="agenda-header ${date === todayIso ? 'agenda-header-today' : ''}" style="grid-column:${dayIdx + 2}; grid-row:1;">
+            <div>${safeText(weekdayShortPt(date))}</div>
+            <div class="agenda-header-date">${formatDateBR(date)}</div>
+          </div>
+        `).join('');
 
-        const headerHtml = ['<div class="agenda-header blank"></div>']
-          .concat(days.map((date) => `
-            <div class="agenda-header">
-              <div>${safeText(weekdayShortPt(date))}</div>
-              <div class="agenda-header-date">${formatDateBR(date)}</div>
-            </div>
-          `))
-          .join('');
+      const gridHtml = hours.map((hour, hourIdx) => {
+        const hourLabel = `${String(hour).padStart(2, '0')}:00`;
+        const rowLine = hourIdx + 2;
+        const timeAxis = `<div class="agenda-time-axis" style="grid-column:1; grid-row:${rowLine};">${hourLabel}</div>`;
+        const rowCells = days.map((date, dayIdx) => `<div class="agenda-cell ${date === todayIso ? 'agenda-cell-today' : ''}" style="grid-column:${dayIdx + 2}; grid-row:${rowLine};"></div>`).join('');
+        return timeAxis + rowCells;
+      }).join('');
 
-        const bodyHtml = hours.map((hour) => {
-          const hourLabel = `${String(hour).padStart(2, '0')}:00`;
-          const rowCells = days.map((date) => {
-            const key = `${date}|${String(hour).padStart(2, '0')}`;
-            const events = (grouped[key] || []).sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
-            if (!events.length) return '<div class="agenda-cell"></div>';
+      const dayEndRowLine = 2 + hours.length;
 
-            return `
-              <div class="agenda-cell">
-                ${events.map((a) => {
-                  const isReminderTarget = String(this.agendaAttentionAppointmentId || '') === String(a.id || '');
-                  const statusClass = String(a.paymentStatus || '').toLowerCase().includes('pago')
-                    ? 'agenda-event-pago'
-                    : (String(a.paymentStatus || '').toLowerCase().includes('parcial') ? 'agenda-event-parcial' : 'agenda-event-pendente');
-                  return `
-                    <div class="agenda-event ${statusClass} ${isReminderTarget ? 'agenda-reminder-target' : ''}" style="${agendaEventInlineStyle(a.color || DEFAULT_APPOINTMENT_COLOR)}" role="button" tabindex="0" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
-                      <div class="agenda-event-time">${safeText(a.time || '--:--')}</div>
-                      <div class="agenda-event-title-row">
-                        <div class="agenda-event-title">${safeText(a.clientName || '-')}</div>
-                        <button class="agenda-event-whatsapp" type="button" title="Enviar confirmação no WhatsApp" onclick="event.stopPropagation();app.sendAppointmentWhatsApp('${a.id}')">
-                          <i data-lucide="message-circle"></i>
-                        </button>
-                      </div>
-                      <div class="agenda-event-procedure">${safeText(a.procedure || 'Consulta')}</div>
-                      <div class="agenda-event-payment">${safeText(a.paymentStatus || 'Pendente')}</div>
-                    </div>
-                  `;
-                }).join('')}
+      const eventsHtml = days.map((date, dayIdx) => {
+        const dayAppointments = filtered.filter((a) => a.date === date);
+        const positioned = this.layoutAgendaDayEvents(dayAppointments);
+
+        return positioned.map((a) => {
+          const isReminderTarget = String(this.agendaAttentionAppointmentId || '') === String(a.id || '');
+          const statusClass = String(a.paymentStatus || '').toLowerCase().includes('pago')
+            ? 'agenda-event-pago'
+            : (String(a.paymentStatus || '').toLowerCase().includes('parcial') ? 'agenda-event-parcial' : 'agenda-event-pendente');
+          const cascadeLeft = -10 + (a.stackIndex * AGENDA_CASCADE_STEP_PX);
+          const cardHeight = Math.max(34, a.endMin - a.startMin);
+          const positionStyle = `grid-column:${dayIdx + 2}; grid-row:2 / ${dayEndRowLine}; margin-top:${a.startMin}px; margin-left:${cascadeLeft}px; height:${cardHeight}px; z-index:${15 + a.stackIndex};`;
+          return `
+            <div class="agenda-event ${statusClass} ${isReminderTarget ? 'agenda-reminder-target' : ''} ${a.stackSize > 1 ? 'agenda-event-cascade' : ''}" style="${agendaEventInlineStyle(a.color || DEFAULT_APPOINTMENT_COLOR)} ${positionStyle}" role="button" tabindex="0" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
+              <div class="agenda-event-header">
+                <span class="agenda-event-time">${safeText(a.time || '--:--')}</span>
+                <button class="agenda-event-whatsapp" type="button" title="Enviar confirmação no WhatsApp" onclick="event.stopPropagation();app.sendAppointmentWhatsApp('${a.id}')">
+                  <i data-lucide="message-circle"></i>
+                </button>
               </div>
-            `;
-          }).join('');
-
-          return `<div class="agenda-time-axis">${hourLabel}</div>${rowCells}`;
+              <div class="agenda-event-title">${safeText(a.clientName || '-')}</div>
+              <div class="agenda-event-meta">${safeText(a.procedure || 'Consulta')}</div>
+            </div>
+          `;
         }).join('');
+      }).join('');
 
-      calendarGrid.innerHTML = headerHtml + bodyHtml;
+      calendarGrid.innerHTML = headerHtml + gridHtml + eventsHtml;
     }
 
     if (!tbody) return;
@@ -8820,6 +8988,11 @@ class ConsultorioApp {
     }
 
     this.focusAgendaReminderTarget();
+
+    if (this.agendaSubtab === 'por-dia') {
+      this.refreshAgendaDayMiniCalendarMarks();
+      this.renderAgendaDayList();
+    }
   }
 
   startAgendaRowLongPress(event, appointmentId) {
@@ -11197,7 +11370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260801-17', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260805-1', 'app-root')
       ]);
     }
   } catch (err) {
@@ -11224,7 +11397,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260804-48')
+    navigator.serviceWorker.register('./sw.js?v=20260805-1')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

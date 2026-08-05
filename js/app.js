@@ -41,6 +41,52 @@ const LOGIN_USERS_FIRESTORE_COLLECTION = 'login_users';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
 const CLIENT_CATEGORIES_STORAGE_KEY = 'consultorio_client_categories';
 const DEFAULT_CLIENT_CATEGORIES = ['Paciente', 'Medico', 'Yoga', 'Limpeza'];
+
+const CLIENT_MANAGED_LISTS = {
+  convenio: {
+    stateKey: 'convenioOptions',
+    storageKey: 'consultorio_client_convenio_options',
+    defaults: ['Particular', 'Convênio'],
+    clientField: 'convenio',
+    fallback: '',
+    label: 'Convênio',
+    selectId: 'client-convenio',
+    filterId: 'clientes-convenio-filter',
+    modalId: 'modal-client-convenio',
+    listId: 'client-convenio-list',
+    addBtnId: 'btn-add-convenio',
+    addInputId: 'new-convenio-input'
+  },
+  planoFinanceiro: {
+    stateKey: 'planoFinanceiroOptions',
+    storageKey: 'consultorio_client_plano_financeiro_options',
+    defaults: ['Por sessão', 'Pacote mensal', 'Pacote fechado', 'Por mês (mensalista)', 'Convênio', 'Isento'],
+    clientField: 'planoFinanceiro',
+    fallback: '',
+    label: 'Plano financeiro',
+    selectId: 'client-plano-financeiro',
+    filterId: 'clientes-plano-financeiro-filter',
+    modalId: 'modal-client-plano-financeiro',
+    listId: 'client-plano-financeiro-list',
+    addBtnId: 'btn-add-plano-financeiro',
+    addInputId: 'new-plano-financeiro-input'
+  },
+  tags: {
+    stateKey: 'clientTagsOptions',
+    storageKey: 'consultorio_client_tags_options',
+    defaults: [],
+    clientField: 'tags',
+    fallback: '',
+    label: 'Tags',
+    selectId: '',
+    filterId: 'clientes-tags-filter',
+    modalId: 'modal-client-tags',
+    listId: 'client-tags-list',
+    addBtnId: 'btn-add-tag',
+    addInputId: 'new-tag-input',
+    multi: true
+  }
+};
 const WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_template';
 const WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_template';
 const WHATSAPP_CONFIRM_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_confirm_templates';
@@ -603,6 +649,9 @@ class ConsultorioApp {
     this.syncAuditEvents = [];
     this.deletedAppointmentTombstones = {};
     this.clientCategories = DEFAULT_CLIENT_CATEGORIES.slice();
+    this.convenioOptions = CLIENT_MANAGED_LISTS.convenio.defaults.slice();
+    this.planoFinanceiroOptions = CLIENT_MANAGED_LISTS.planoFinanceiro.defaults.slice();
+    this.clientTagsOptions = CLIENT_MANAGED_LISTS.tags.defaults.slice();
     this.firebaseDeviceId = this.getOrCreateFirebaseDeviceId();
     this.lastRealtimeSyncMillis = 0;
     this.lastRemoteStateSeenMillis = 0;
@@ -677,6 +726,7 @@ class ConsultorioApp {
       this.clientCategories = Array.isArray(categories) ? categories.filter((item) => String(item || '').trim()) : [];
       this.clientGroups = Array.isArray(g) ? g.filter((item) => String(item || '').trim()) : [];
       this.deletedAppointmentTombstones = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
+      this.loadManagedListsFromStorage();
       this.clients = this.clients.map((client) => ({
         ...client,
         category: this.normalizeClientCategory(client && client.category)
@@ -926,6 +976,7 @@ class ConsultorioApp {
     localStorage.setItem(CLIENT_GROUPS_STORAGE_KEY, JSON.stringify(this.clientGroups));
     localStorage.setItem(CLIENT_CATEGORIES_STORAGE_KEY, JSON.stringify(this.clientCategories));
     localStorage.setItem(APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY, JSON.stringify(this.deletedAppointmentTombstones || {}));
+    this.saveManagedListsToStorage();
   }
 
   pruneDeletedAppointmentTombstones(ttlMs = 6 * 60 * 60 * 1000) {
@@ -5693,6 +5744,23 @@ class ConsultorioApp {
     if (clientesPhoneFilter) clientesPhoneFilter.addEventListener('change', () => this.renderClientsTable());
     if (clientesCategoryFilter) clientesCategoryFilter.addEventListener('change', () => this.renderClientsTable());
 
+    Object.keys(CLIENT_MANAGED_LISTS).forEach((type) => {
+      const cfg = CLIENT_MANAGED_LISTS[type];
+
+      const filterEl = document.getElementById(cfg.filterId);
+      if (filterEl) filterEl.addEventListener('change', () => this.renderClientsTable());
+
+      const manageBtn = document.getElementById(`btn-manage-client-${type === 'planoFinanceiro' ? 'plano-financeiro' : type}`);
+      if (manageBtn) manageBtn.addEventListener('click', () => this.openManagedListModal(type));
+
+      const modal = document.getElementById(cfg.modalId);
+      if (modal) {
+        modal.querySelectorAll('[data-close-managed-modal]').forEach((btn) => {
+          btn.addEventListener('click', () => this.closeManagedListModal(type));
+        });
+      }
+    });
+
     const financeiroSearch = document.getElementById('financeiro-search');
     if (financeiroSearch) financeiroSearch.addEventListener('input', () => this.renderFinanceiroTable());
 
@@ -9214,10 +9282,14 @@ class ConsultorioApp {
     });
 
     this.populateClientCategoryFilterOptions();
+    this.populateAllManagedSelectsAndFilters();
 
     const search = String((document.getElementById('clientes-search') || {}).value || '').toLowerCase().trim();
     const phoneFilter = (document.getElementById('clientes-phone-filter') || {}).value || 'todos';
     const categoryFilter = String((document.getElementById('clientes-category-filter') || {}).value || 'paciente').trim().toLowerCase();
+    const convenioFilter = String((document.getElementById('clientes-convenio-filter') || {}).value || 'todos');
+    const planoFinanceiroFilter = String((document.getElementById('clientes-plano-financeiro-filter') || {}).value || 'todos');
+    const tagsFilter = String((document.getElementById('clientes-tags-filter') || {}).value || 'todos');
 
     let filtered = this.clients.slice();
     if (categoryFilter !== 'todos') {
@@ -9235,6 +9307,19 @@ class ConsultorioApp {
       filtered = filtered.filter((c) => Boolean(this.normalizeWhatsAppPhone(c.phone || '')));
     } else if (phoneFilter === 'invalidos') {
       filtered = filtered.filter((c) => !this.normalizeWhatsAppPhone(c.phone || ''));
+    }
+
+    if (convenioFilter !== 'todos') {
+      const key = this.normalizeManagedOptionKey(convenioFilter);
+      filtered = filtered.filter((c) => this.normalizeManagedOptionKey(c.convenio) === key);
+    }
+    if (planoFinanceiroFilter !== 'todos') {
+      const key = this.normalizeManagedOptionKey(planoFinanceiroFilter);
+      filtered = filtered.filter((c) => this.normalizeManagedOptionKey(c.planoFinanceiro) === key);
+    }
+    if (tagsFilter !== 'todos') {
+      const key = this.normalizeManagedOptionKey(tagsFilter);
+      filtered = filtered.filter((c) => this.parseClientTags(c.tags).some((tag) => this.normalizeManagedOptionKey(tag) === key));
     }
 
     this.sortClientRows(filtered);
@@ -9859,6 +9944,7 @@ class ConsultorioApp {
     if (title) title.textContent = 'Cadastrar Novo Paciente';
     this.populateClientGroupOptions();
     this.populateClientCategoryOptions();
+    this.populateAllManagedSelectsAndFilters();
     const categoryInput = document.getElementById('client-category');
     if (categoryInput) categoryInput.value = 'Paciente';
 
@@ -9897,8 +9983,12 @@ class ConsultorioApp {
         set('client-emergency-relation', c.emergencyRelation);
         set('client-referral-source', c.referralSource);
         set('client-referral-notes', c.referralNotes);
+        set('client-tags', c.tags);
         this.populateClientGroupOptions(c.group);
         this.populateClientCategoryOptions(this.normalizeClientCategory(c.category));
+        this.populateManagedSelect('convenio', c.convenio);
+        this.populateManagedSelect('planoFinanceiro', c.planoFinanceiro);
+        this.populateManagedSelect('tags');
         if (title) title.textContent = 'Editar Dados do Paciente';
       }
     }
@@ -9968,6 +10058,249 @@ class ConsultorioApp {
 
   closeClientGroupsModal() {
     const modal = document.getElementById('modal-client-groups');
+    if (modal) modal.classList.remove('active');
+  }
+
+  loadManagedListsFromStorage() {
+    Object.keys(CLIENT_MANAGED_LISTS).forEach((type) => {
+      const cfg = CLIENT_MANAGED_LISTS[type];
+      let stored = [];
+      try {
+        stored = JSON.parse(localStorage.getItem(cfg.storageKey) || '[]');
+      } catch (err) {
+        stored = [];
+      }
+      this[cfg.stateKey] = Array.isArray(stored) ? stored.filter((item) => String(item || '').trim()) : [];
+      if (!this[cfg.stateKey].length) this[cfg.stateKey] = cfg.defaults.slice();
+    });
+  }
+
+  saveManagedListsToStorage() {
+    Object.keys(CLIENT_MANAGED_LISTS).forEach((type) => {
+      const cfg = CLIENT_MANAGED_LISTS[type];
+      localStorage.setItem(cfg.storageKey, JSON.stringify(this[cfg.stateKey] || []));
+    });
+  }
+
+  normalizeManagedOptionValue(value) {
+    return String(value || '').trim();
+  }
+
+  normalizeManagedOptionKey(value) {
+    return this.normalizeManagedOptionValue(value).toLowerCase();
+  }
+
+  parseClientTags(value) {
+    return String(value || '').split(',').map((t) => t.trim()).filter(Boolean);
+  }
+
+  rememberManagedOption(type, value) {
+    const cfg = CLIENT_MANAGED_LISTS[type];
+    if (!cfg) return;
+    const normalized = this.normalizeManagedOptionValue(value);
+    if (!normalized) return;
+    const key = this.normalizeManagedOptionKey(normalized);
+    this[cfg.stateKey] = (this[cfg.stateKey] || []).filter((item) => this.normalizeManagedOptionKey(item) !== key);
+    this[cfg.stateKey].unshift(normalized);
+    this[cfg.stateKey] = this[cfg.stateKey].slice(0, 60);
+    this.populateManagedSelect(type);
+    this.populateManagedFilterSelect(type);
+  }
+
+  renameManagedOption(type, oldValue, newValue) {
+    const cfg = CLIENT_MANAGED_LISTS[type];
+    if (!cfg) return;
+    const oldNorm = this.normalizeManagedOptionValue(oldValue);
+    const newNorm = this.normalizeManagedOptionValue(newValue);
+    const oldKey = this.normalizeManagedOptionKey(oldNorm);
+    const newKey = this.normalizeManagedOptionKey(newNorm);
+    if (!oldNorm) return;
+    if (!newNorm) {
+      this.showToast(`Informe um nome válido para ${cfg.label}.`, 'warning');
+      return;
+    }
+    if (oldKey === newKey) return;
+
+    let updated = 0;
+    this.clients = this.clients.map((client) => {
+      if (cfg.multi) {
+        const tagsList = this.parseClientTags(client[cfg.clientField]);
+        if (!tagsList.some((t) => this.normalizeManagedOptionKey(t) === oldKey)) return client;
+        updated += 1;
+        const nextTags = tagsList.map((t) => (this.normalizeManagedOptionKey(t) === oldKey ? newNorm : t));
+        return { ...client, [cfg.clientField]: nextTags.join(', ') };
+      }
+      const currentKey = this.normalizeManagedOptionKey(client[cfg.clientField]);
+      if (currentKey !== oldKey) return client;
+      updated += 1;
+      return { ...client, [cfg.clientField]: newNorm };
+    });
+
+    this[cfg.stateKey] = (this[cfg.stateKey] || []).filter((item) => this.normalizeManagedOptionKey(item) !== oldKey);
+    this.rememberManagedOption(type, newNorm);
+    this.saveManagedListsToStorage();
+    this.saveStore();
+    this.renderManagedListManager(type);
+    this.render();
+    this.showToast(`${cfg.label} atualizado. ${updated} cadastro(s) ajustado(s).`, 'success');
+  }
+
+  deleteManagedOption(type, value) {
+    const cfg = CLIENT_MANAGED_LISTS[type];
+    if (!cfg) return;
+    const normalized = this.normalizeManagedOptionValue(value);
+    const key = this.normalizeManagedOptionKey(normalized);
+    if (!key) return;
+
+    let affected = 0;
+    this.clients = this.clients.map((client) => {
+      if (cfg.multi) {
+        const tagsList = this.parseClientTags(client[cfg.clientField]);
+        if (!tagsList.some((t) => this.normalizeManagedOptionKey(t) === key)) return client;
+        affected += 1;
+        const nextTags = tagsList.filter((t) => this.normalizeManagedOptionKey(t) !== key);
+        return { ...client, [cfg.clientField]: nextTags.join(', ') };
+      }
+      const currentKey = this.normalizeManagedOptionKey(client[cfg.clientField]);
+      if (currentKey !== key) return client;
+      affected += 1;
+      return { ...client, [cfg.clientField]: cfg.fallback };
+    });
+
+    this[cfg.stateKey] = (this[cfg.stateKey] || []).filter((item) => this.normalizeManagedOptionKey(item) !== key);
+    this.saveManagedListsToStorage();
+    this.saveStore();
+    this.populateManagedSelect(type);
+    this.populateManagedFilterSelect(type);
+    this.renderManagedListManager(type);
+    this.render();
+    this.showToast(`${cfg.label} removido. ${affected} cadastro(s) ajustado(s).`, 'success');
+  }
+
+  populateManagedSelect(type, preferredValue) {
+    const cfg = CLIENT_MANAGED_LISTS[type];
+    if (!cfg) return;
+
+    if (cfg.multi) {
+      const datalist = document.getElementById('client-tags-options');
+      if (!datalist) return;
+      datalist.innerHTML = (this[cfg.stateKey] || [])
+        .map((item) => `<option value="${safeText(item)}"></option>`)
+        .join('');
+      return;
+    }
+
+    const select = document.getElementById(cfg.selectId);
+    if (!select) return;
+    const options = (this[cfg.stateKey] || []).slice().sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    const preferred = this.normalizeManagedOptionValue(preferredValue !== undefined ? preferredValue : select.value);
+    const preferredKey = this.normalizeManagedOptionKey(preferred);
+    if (preferred && !options.some((item) => this.normalizeManagedOptionKey(item) === preferredKey)) {
+      options.unshift(preferred);
+    }
+    select.innerHTML = '<option value="">Selecione</option>'
+      + options.map((item) => `<option value="${safeText(item)}">${safeText(item)}</option>`).join('');
+    select.value = preferred || '';
+  }
+
+  populateManagedFilterSelect(type) {
+    const cfg = CLIENT_MANAGED_LISTS[type];
+    if (!cfg) return;
+    const select = document.getElementById(cfg.filterId);
+    if (!select) return;
+    const currentValue = select.value;
+    const options = (this[cfg.stateKey] || []).slice().sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    select.innerHTML = `<option value="todos">${safeText(cfg.label)}: Selecione</option>`
+      + options.map((item) => `<option value="${safeText(item)}">${safeText(item)}</option>`).join('');
+    if (currentValue && options.some((item) => item === currentValue)) select.value = currentValue;
+  }
+
+  populateAllManagedSelectsAndFilters() {
+    Object.keys(CLIENT_MANAGED_LISTS).forEach((type) => {
+      this.populateManagedSelect(type);
+      this.populateManagedFilterSelect(type);
+    });
+  }
+
+  renderManagedListManager(type) {
+    const cfg = CLIENT_MANAGED_LISTS[type];
+    if (!cfg) return;
+    const container = document.getElementById(cfg.listId);
+    if (!container) return;
+
+    const addBtn = document.getElementById(cfg.addBtnId);
+    const addInput = document.getElementById(cfg.addInputId);
+    if (addBtn) {
+      addBtn.onclick = () => {
+        const name = this.normalizeManagedOptionValue((addInput || {}).value || '');
+        if (!name) { this.showToast(`Informe um nome para ${cfg.label}.`, 'warning'); return; }
+        if ((this[cfg.stateKey] || []).some((item) => this.normalizeManagedOptionKey(item) === this.normalizeManagedOptionKey(name))) {
+          this.showToast(`"${name}" já existe em ${cfg.label}.`, 'warning'); return;
+        }
+        this.rememberManagedOption(type, name);
+        this.saveManagedListsToStorage();
+        if (addInput) addInput.value = '';
+        this.renderManagedListManager(type);
+        this.showToast(`"${name}" adicionado em ${cfg.label}.`, 'success');
+      };
+    }
+    if (addInput) {
+      addInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (addBtn) addBtn.click(); } };
+    }
+
+    const items = (this[cfg.stateKey] || []).slice().sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    if (!items.length) {
+      container.innerHTML = '<div class="empty-state"><p>Nenhuma opção salva ainda.</p></div>';
+      return;
+    }
+
+    container.innerHTML = items.map((item) => `
+      <div class="group-manager-card" data-managed-row="${safeText(item)}">
+        <i data-lucide="tag"></i>
+        <input type="text" class="form-control group-manager-input" value="${safeText(item)}" data-managed-edit aria-label="Nome">
+        <div class="group-manager-actions">
+          <button type="button" class="btn btn-sm btn-secondary" data-managed-action="rename" data-managed-value="${safeText(item)}"><i data-lucide="check"></i> Salvar</button>
+          <button type="button" class="btn btn-sm btn-ghost group-manager-delete" data-managed-action="delete" data-managed-value="${safeText(item)}"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('[data-managed-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = String(btn.getAttribute('data-managed-action') || '');
+        const value = this.normalizeManagedOptionValue(btn.getAttribute('data-managed-value') || '');
+        if (!value) return;
+        if (action === 'rename') {
+          const row = btn.closest('[data-managed-row]');
+          const input = row ? row.querySelector('[data-managed-edit]') : null;
+          const nextValue = input ? String(input.value || '') : '';
+          this.renameManagedOption(type, value, nextValue);
+          return;
+        }
+        if (action === 'delete') {
+          this.deleteManagedOption(type, value);
+        }
+      });
+    });
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  openManagedListModal(type) {
+    const cfg = CLIENT_MANAGED_LISTS[type];
+    if (!cfg) return;
+    const modal = document.getElementById(cfg.modalId);
+    if (!modal) return;
+    this.renderManagedListManager(type);
+    modal.classList.add('active');
+  }
+
+  closeManagedListModal(type) {
+    const cfg = CLIENT_MANAGED_LISTS[type];
+    if (!cfg) return;
+    const modal = document.getElementById(cfg.modalId);
     if (modal) modal.classList.remove('active');
   }
 
@@ -10287,10 +10620,17 @@ class ConsultorioApp {
       emergencyRelation: String((document.getElementById('client-emergency-relation') || {}).value || '').trim(),
       referralSource: String((document.getElementById('client-referral-source') || {}).value || '').trim(),
       referralNotes: String((document.getElementById('client-referral-notes') || {}).value || '').trim(),
+      convenio: this.normalizeManagedOptionValue((document.getElementById('client-convenio') || {}).value || ''),
+      planoFinanceiro: this.normalizeManagedOptionValue((document.getElementById('client-plano-financeiro') || {}).value || ''),
+      tags: this.parseClientTags((document.getElementById('client-tags') || {}).value || '').join(', '),
       anamnese: this.getAnamneseData()
     };
 
     this.rememberClientCategory(category);
+    if (payload.convenio) this.rememberManagedOption('convenio', payload.convenio);
+    if (payload.planoFinanceiro) this.rememberManagedOption('planoFinanceiro', payload.planoFinanceiro);
+    this.parseClientTags(payload.tags).forEach((tag) => this.rememberManagedOption('tags', tag));
+    this.saveManagedListsToStorage();
 
     if (window.clientModule && typeof window.clientModule.saveClient === 'function') {
       window.clientModule.saveClient(this, payload, id || '');

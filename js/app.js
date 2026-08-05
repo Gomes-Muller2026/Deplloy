@@ -6218,6 +6218,7 @@ class ConsultorioApp {
     }
 
     this.applyLandscapeSidebarState();
+    void this.tryAutoConnectGoogleCalendar();
   }
 
   logoutSession() {
@@ -6768,6 +6769,7 @@ class ConsultorioApp {
         this.appointments.push(normalizedIncoming);
         insertedAppointments += 1;
         touched = true;
+        this.logSyncAudit('info', `Google -> Agenda inserido: "${raw.clientName}" em ${raw.date} ${raw.time} (googleEventId=${raw.googleEventId}).`);
         return;
       }
 
@@ -6784,19 +6786,12 @@ class ConsultorioApp {
         return;
       }
 
-      const fieldsToUpdate = [
-        'clientId',
-        'clientName',
-        'date',
-        'time',
-        'procedure',
-        'notes',
-        'status',
-        'color',
-        'googleEventId',
-        'googleCalendarUpdatedAt',
-        'source'
-      ];
+      // Appointments originally created locally and synced to Google: only sync logistics fields back.
+      // Appointments originally imported from Google: sync all non-clinical fields.
+      const isLocalOrigin = String(existingAppointment.source || '').toLowerCase() !== 'google-calendar';
+      const fieldsToUpdate = isLocalOrigin
+        ? ['date', 'time', 'googleEventId', 'googleCalendarUpdatedAt']
+        : ['clientId', 'clientName', 'date', 'time', 'procedure', 'notes', 'color', 'googleEventId', 'googleCalendarUpdatedAt', 'source'];
 
       let hasDiff = false;
       fieldsToUpdate.forEach((field) => {
@@ -6851,6 +6846,26 @@ class ConsultorioApp {
     } catch (err) {
       const apiError = err && err.result && err.result.error ? err.result.error : null;
       const message = String((apiError && apiError.message) || (err && err.message) || 'Erro desconhecido').trim();
+      const projectMatch = message.match(/project\s+(\d+)/);
+      if (message.toLowerCase().includes('has not been used') || message.toLowerCase().includes('it is disabled')) {
+        const projectId = projectMatch ? projectMatch[1] : null;
+        const enableUrl = projectId
+          ? `https://console.developers.google.com/apis/api/calendar-json.googleapis.com/overview?project=${projectId}`
+          : 'https://console.developers.google.com/apis/library/calendar-json.googleapis.com';
+        const hint = `A API do Google Calendar não está ativada. Acesse o Console e ative: ${enableUrl}`;
+        this.updateGoogleCalendarStatus('error', hint);
+        this.logSyncAudit('error', `Falha Google -> Agenda: ${hint}`);
+        if (showToast) this.showToast(hint, 'warning');
+        return;
+      }
+      const lowered = message.toLowerCase();
+      if (lowered.includes('insufficient authentication scopes') || lowered.includes('insufficient permissions')
+          || lowered.includes('invalid credentials') || (apiError && apiError.code === 401)) {
+        this.googleCalendarAuthorized = false;
+        this.updateGoogleCalendarStatus('error', 'Sessão expirada ou permissão insuficiente. Clique em Conectar Google Calendar e autorize novamente.');
+        if (showToast) this.showToast('Reautorize o Google Calendar e tente importar novamente.', 'warning');
+        return;
+      }
       this.updateGoogleCalendarStatus('error', `Falha ao importar para Agenda: ${message}`);
       this.logSyncAudit('error', `Falha Google -> Agenda: ${message}`);
       if (showToast) this.showToast(`Falha ao importar Google para Agenda: ${message}`, 'warning');
@@ -6983,6 +6998,19 @@ class ConsultorioApp {
         return;
       }
 
+      if (lowered.includes('has not been used') || lowered.includes('it is disabled')) {
+        const projectMatch = message.match(/project\s+(\d+)/);
+        const projectId = projectMatch ? projectMatch[1] : null;
+        const enableUrl = projectId
+          ? `https://console.developers.google.com/apis/api/calendar-json.googleapis.com/overview?project=${projectId}`
+          : 'https://console.developers.google.com/apis/library/calendar-json.googleapis.com';
+        const hint = `A API do Google Calendar não está ativada. Acesse o Console e ative: ${enableUrl}`;
+        this.updateGoogleCalendarStatus('error', hint);
+        this.showToast(hint, 'warning');
+        this.logSyncAudit('error', `Falha no sync do Google Calendar: ${hint}`);
+        return;
+      }
+
       this.updateGoogleCalendarStatus('error', `Falha ao enviar agenda: ${message}`);
       this.showToast(`Falha ao enviar agenda ao Google Calendar: ${message}`, 'warning');
       this.logSyncAudit('error', `Falha no sync do Google Calendar: ${message}`);
@@ -7093,6 +7121,7 @@ class ConsultorioApp {
       if (window.gapi && window.gapi.client) {
         window.gapi.client.setToken({ access_token: this.googleCalendarAccessToken });
       }
+      try { localStorage.setItem('googleCalendarAutoConnect', 'true'); } catch (_) {}
       this.updateGoogleCalendarStatus('ok', 'Google Calendar conectado e autorizado.');
       this.showToast('Google Calendar conectado com sucesso.', 'success');
       this.scheduleGoogleCalendarAutoSync();
@@ -7122,11 +7151,44 @@ class ConsultorioApp {
 
     this.googleCalendarAuthorized = false;
     this.googleCalendarAccessToken = '';
+    try { localStorage.removeItem('googleCalendarAutoConnect'); } catch (_) {}
     this.clearGoogleCalendarAutoSyncSchedule();
     this.updateGoogleCalendarStatus(this.googleCalendarClientId ? 'ready' : 'offline', this.googleCalendarClientId
       ? 'Client ID salvo. Clique em Conectar para autorizar acesso ao calendário.'
       : 'Google Calendar desconectado.');
     this.showToast('Google Calendar desconectado.', 'info');
+  }
+
+  async tryAutoConnectGoogleCalendar() {
+    try {
+      const shouldAuto = localStorage.getItem('googleCalendarAutoConnect') === 'true';
+      if (!shouldAuto) return;
+    } catch (_) { return; }
+
+    const initialized = await this.initGoogleCalendarClient();
+    if (!initialized || !this.googleCalendarTokenClient) return;
+
+    this.updateGoogleCalendarStatus('pending', 'Reconectando Google Calendar automaticamente...');
+
+    this.googleCalendarTokenClient.callback = async (resp) => {
+      if (resp && resp.error) {
+        // Silent auth failed (user needs to interact) — reset to ready state, do not show error toast.
+        this.googleCalendarAuthorized = false;
+        this.updateGoogleCalendarStatus('ready', 'Clique em Conectar Google Calendar para autorizar.');
+        return;
+      }
+      this.googleCalendarAuthorized = true;
+      this.googleCalendarAccessToken = String((resp && resp.access_token) || '').trim();
+      if (window.gapi && window.gapi.client) {
+        window.gapi.client.setToken({ access_token: this.googleCalendarAccessToken });
+      }
+      this.updateGoogleCalendarStatus('ok', 'Google Calendar reconectado automaticamente.');
+      this.scheduleGoogleCalendarAutoSync();
+      void this.syncAppointmentsToGoogleCalendar({ showToast: false });
+    };
+
+    // prompt: '' attempts silent token refresh — no popup if already authorized.
+    this.googleCalendarTokenClient.requestAccessToken({ prompt: '' });
   }
 
   async listGoogleCalendarEvents() {

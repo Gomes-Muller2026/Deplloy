@@ -6147,6 +6147,7 @@ class ConsultorioApp {
     document.body.classList.toggle('whatsapp-view', this.currentTab === 'whatsapp');
     document.body.classList.toggle('senha-view', this.currentTab === 'senha');
     document.body.classList.toggle('graficos-view', this.currentTab === 'graficos');
+    document.body.classList.toggle('config-view', this.currentTab === 'config');
 
     if (this.currentTab !== 'agenda') this.agendaReturnTab = null;
     const btnAgendaReturn = document.getElementById('btn-agenda-return-clientes');

@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260805-41">
+  <link rel="stylesheet" href="css/styles.css?v=20260805-45">
 </head>
 <body>
   <div id="login-root">
@@ -29,7 +29,7 @@
       <div class="login-card">
         <div class="login-brand">
           <div class="login-logo-wrap">
-            <img src="assets/images/Patricia.avif" alt="Logo da clínica" class="login-logo">
+            <img src="assets/images/login-logo.png" alt="Logo da clínica" class="login-logo">
           </div>
           <div>
             <h2>Patricia Grando Muller</h2>
@@ -74,7 +74,6 @@
         </div>
 
         <nav class="sidebar-nav">
-          <button type="button" class="nav-item active" data-tab="dashboard" onclick="app.switchTab('dashboard')"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button>
           <button type="button" class="nav-item nav-back-btn" id="btn-header-back" style="display:none;"><i data-lucide="arrow-left"></i><span>Voltar</span></button>
           <button type="button" class="nav-item" data-tab="agenda" onclick="app.switchTab('agenda')"><i data-lucide="calendar"></i><span>Agenda</span></button>
           <button type="button" class="nav-item" data-tab="clientes" onclick="app.switchTab('clientes')"><i data-lucide="users"></i><span>Clientes</span></button>
@@ -84,6 +83,7 @@
           <button type="button" class="nav-item" data-tab="senha" onclick="app.switchTab('senha')"><i data-lucide="key-round"></i><span>Senha</span></button>
           <button type="button" class="nav-item" data-tab="graficos" onclick="app.switchTab('graficos')"><i data-lucide="bar-chart-3"></i><span>Gráficos</span></button>
           <button type="button" class="nav-item" data-tab="config" onclick="app.switchTab('config')"><i data-lucide="settings"></i><span>Configurações</span></button>
+          <button type="button" class="nav-item nav-item-logout" onclick="app.logoutSession()"><i data-lucide="log-out"></i><span>Sair</span></button>
         </nav>
       </aside>
 
@@ -728,13 +728,13 @@
                 <div id="firebase-validation-panel" class="firebase-validation-panel">
                   <p class="firebase-validation-summary">Clique em Revalidar Firebase para executar checklist de conexão.</p>
                 </div>
-                <p id="firebase-origin-hint" class="firebase-validation-summary" style="margin-top:0.5rem; margin-bottom:0.85rem; opacity:0.85;">Origem atual: aguardando carregamento...</p>
+                <p id="firebase-origin-hint" class="firebase-validation-summary" style="margin-top:0.5rem; margin-bottom:0.85rem;">Origem atual: aguardando carregamento...</p>
 
                 <div class="card" style="margin-top:1rem;">
                   <div class="card-header"><h3><i data-lucide="calendar-heart"></i> Google Calendar</h3></div>
                   <div class="card-body">
                     <p>Use um Client ID OAuth do tipo Web com origem JavaScript autorizada (por exemplo http://127.0.0.1:8000 ou https://...).</p>
-                    <p id="google-calendar-origin-hint" class="firebase-validation-summary" style="margin-top:-0.25rem; margin-bottom:0.75rem; opacity:0.85;">Origem atual: aguardando carregamento...</p>
+                    <p id="google-calendar-origin-hint" class="firebase-validation-summary" style="margin-top:-0.25rem; margin-bottom:0.75rem;">Origem atual: aguardando carregamento...</p>
                     <div class="form-group">
                       <label for="cfg-google-calendar-client-id">Google Client ID</label>
                       <input type="text" id="cfg-google-calendar-client-id" class="form-control" placeholder="xxx.apps.googleusercontent.com">
@@ -1386,6 +1386,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260801-3"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260805-18"></script>
+  <script src="js/app.js?v=20260805-20"></script>
 </body>
 </html>

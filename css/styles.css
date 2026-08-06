@@ -316,6 +316,12 @@ img {
   color: #1d4ed8;
 }
 
+.sidebar-nav .nav-item-logout:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #dc2626;
+}
+
 /* Botão voltar na sidebar */
 .nav-back-btn {
   color: #1e40af !important;
@@ -423,7 +429,8 @@ body.financeiro-view .header-actions > *,
 body.despesas-view .header-actions > *,
 body.whatsapp-view .header-actions > *,
 body.senha-view .header-actions > *,
-body.graficos-view .header-actions > * {
+body.graficos-view .header-actions > *,
+body.config-view .header-actions > * {
   display: none !important;
 }
 
@@ -840,9 +847,9 @@ body.agenda-view .header-actions #btn-open-birthdays {
 
 .firebase-validation-panel {
   margin-top: 0.9rem;
-  border: 1px solid rgba(191, 210, 229, 0.28);
+  border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 12px;
-  background: rgba(7, 14, 26, 0.72);
+  background: #f8fafc;
   padding: 0.7rem 0.8rem;
 }
 
@@ -876,7 +883,7 @@ body.agenda-view .header-actions #btn-open-birthdays {
 .sync-audit-head p {
   margin: 0.25rem 0 0;
   font-size: 0.78rem;
-  color: var(--text-muted);
+  color: rgba(226, 232, 240, 0.78);
 }
 
 .sync-audit-panel {
@@ -888,7 +895,7 @@ body.agenda-view .header-actions #btn-open-birthdays {
 
 .sync-audit-empty {
   margin: 0;
-  color: var(--text-muted);
+  color: rgba(226, 232, 240, 0.78);
   font-size: 0.8rem;
 }
 
@@ -2745,6 +2752,14 @@ input[type="date"]:focus {
   min-width: 200px;
 }
 
+#tab-clientes .filter-group,
+#tab-financeiro .filter-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
 #tab-agenda .filter-group .input-icon,
 #tab-financeiro .filter-group .input-icon {
   flex: 1 1 280px;
@@ -4493,14 +4508,7 @@ button.money-pill:active {
 }
 
 .analytics-chart-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background:
-    radial-gradient(220px 84px at 18% 8%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0)),
-    linear-gradient(132deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 22%, rgba(255, 255, 255, 0) 48%);
+  display: none;
 }
 
 .analytics-card:hover .analytics-chart-panel,
@@ -4565,7 +4573,7 @@ button.money-pill:active {
 }
 
 .chart-grid-line {
-  stroke: rgba(148, 163, 184, 0.16);
+  stroke: rgba(100, 116, 139, 0.35);
   stroke-width: 1;
 }
 

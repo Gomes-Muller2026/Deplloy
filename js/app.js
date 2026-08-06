@@ -2179,9 +2179,47 @@ class ConsultorioApp {
 
   normalizeAppointmentStatus(value) {
     const raw = String(value || '').trim().toLowerCase();
-    if (raw.includes('cancel')) return 'Cancelado';
-    if (raw.includes('concl') || raw.includes('finaliz') || raw.includes('realiz')) return 'Concluido';
+    if (!raw) return 'Agendado';
+
+    // Termos específicos primeiro, para não cair em fallbacks genéricos por engano.
+    if (raw.includes('ausente') || raw.includes('faltou') || raw.includes('falta') || raw.includes('no-show') || raw.includes('no show')) {
+      return 'Ausente';
+    }
+
+    if (raw.includes('confirm')) return 'Confirmado';
+
+    if (raw.includes('cancel')) {
+      if (raw.includes('profissional') || raw.includes('clinica') || raw.includes('clínica') || raw.includes('medico') || raw.includes('médico') || raw.includes('terapeuta') || raw.includes('psicolog')) {
+        return 'CanceladoProfissional';
+      }
+      if (raw.includes('cliente') || raw.includes('paciente')) {
+        return 'CanceladoCliente';
+      }
+      // Legado ("Cancelado" puro, sem indicar quem cancelou): não há como recuperar essa
+      // informação de dados antigos, então a decisão pragmática é migrar para
+      // "CanceladoCliente" por padrão (é o cenário estatisticamente mais comum).
+      return 'CanceladoCliente';
+    }
+
+    // Legado "Concluido" e variações de comparecimento migram para "Presente".
+    if (raw.includes('presente') || raw.includes('concl') || raw.includes('finaliz') || raw.includes('realiz') || raw.includes('atendid') || raw.includes('compareceu')) {
+      return 'Presente';
+    }
+
     return 'Agendado';
+  }
+
+  getAppointmentStatusMeta(value) {
+    const normalized = this.normalizeAppointmentStatus(value);
+    const table = {
+      Agendado: { label: 'Agendado', badgeClass: 'badge-agendado', chipClass: 'is-info', bucket: 'agendadas' },
+      Confirmado: { label: 'Confirmado', badgeClass: 'badge-confirmado', chipClass: 'is-info', bucket: 'confirmadas' },
+      Presente: { label: 'Presente', badgeClass: 'badge-presente', chipClass: 'is-success', bucket: 'presentes' },
+      Ausente: { label: 'Ausente', badgeClass: 'badge-ausente', chipClass: 'is-warning', bucket: 'ausentes' },
+      CanceladoCliente: { label: 'Cancelado pelo Cliente', badgeClass: 'badge-cancelado-cliente', chipClass: 'is-danger', bucket: 'canceladasCliente' },
+      CanceladoProfissional: { label: 'Cancelado pelo Profissional', badgeClass: 'badge-cancelado-profissional', chipClass: 'is-danger', bucket: 'canceladasProfissional' }
+    };
+    return table[normalized] || table.Agendado;
   }
 
   normalizeAppointmentPaymentStatus(value) {
@@ -3766,8 +3804,9 @@ class ConsultorioApp {
   }
 
   isReminderBlockedByStatus(appointment) {
-    const status = String((appointment && appointment.status) || '').toLowerCase();
-    return status.includes('cancel') || status.includes('conclu') || status.includes('realiz');
+    return ['Presente', 'CanceladoCliente', 'CanceladoProfissional'].includes(
+      this.normalizeAppointmentStatus(appointment && appointment.status)
+    );
   }
 
   buildReminderKey(appointment) {
@@ -6105,6 +6144,13 @@ class ConsultorioApp {
     document.body.classList.toggle('clientes-view', this.currentTab === 'clientes');
     document.body.classList.toggle('financeiro-view', this.currentTab === 'financeiro');
     document.body.classList.toggle('despesas-view', this.currentTab === 'despesas');
+    document.body.classList.toggle('whatsapp-view', this.currentTab === 'whatsapp');
+    document.body.classList.toggle('senha-view', this.currentTab === 'senha');
+    document.body.classList.toggle('graficos-view', this.currentTab === 'graficos');
+
+    if (this.currentTab !== 'agenda') this.agendaReturnTab = null;
+    const btnAgendaReturn = document.getElementById('btn-agenda-return-clientes');
+    if (btnAgendaReturn) btnAgendaReturn.style.display = (this.currentTab === 'agenda' && this.agendaReturnTab === 'clientes') ? 'inline-flex' : 'none';
 
     if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
       const main = document.querySelector('.main-content');
@@ -8675,7 +8721,11 @@ class ConsultorioApp {
 
     if (start) filtered = filtered.filter((a) => String(a.date || '') >= start);
     if (end) filtered = filtered.filter((a) => String(a.date || '') <= end);
-    if (status !== 'todos') filtered = filtered.filter((a) => String(a.status || '') === status);
+    if (status === 'todos_cancelados') {
+      filtered = filtered.filter((a) => this.normalizeAppointmentStatus(a.status).startsWith('Cancelado'));
+    } else if (status !== 'todos') {
+      filtered = filtered.filter((a) => this.normalizeAppointmentStatus(a.status) === status);
+    }
 
     return filtered.sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
   }
@@ -8683,7 +8733,7 @@ class ConsultorioApp {
   renderDashboard() {
     const today = getTodayStr();
     const todayApps = this.appointments.filter((a) => a.date === today);
-    const doneToday = todayApps.filter((a) => String(a.status || '').toLowerCase() === 'concluido').length;
+    const doneToday = todayApps.filter((a) => this.normalizeAppointmentStatus(a.status) === 'Presente').length;
 
     const periodAppointments = this.filterItemsByTopRange(this.appointments, 'date');
     const periodExpenses = this.filterItemsByTopRange(this.expenses, 'date');
@@ -8743,7 +8793,7 @@ class ConsultorioApp {
               <strong>${safeText(a.clientName || '-')}</strong>
               <p>${safeText(a.procedure || 'Consulta')} - Total ${formatCurrency(a.price || 0)}</p>
             </div>
-            <span class="dash-status-chip ${String(a.status || '').toLowerCase().includes('concl') ? 'is-success' : (String(a.status || '').toLowerCase().includes('cancel') ? 'is-danger' : 'is-info')}">${safeText(a.status || 'Agendado')}</span>
+            <span class="dash-status-chip ${this.getAppointmentStatusMeta(a.status).chipClass}">${safeText(this.getAppointmentStatusMeta(a.status).label)}</span>
           </div>
         `).join('');
       }
@@ -9021,7 +9071,8 @@ class ConsultorioApp {
     tbody.innerHTML = filtered.map((a) => {
       const isReminderTarget = String(this.agendaAttentionAppointmentId || '') === String(a.id || '');
       const payment = String(a.paymentStatus || 'Pendente');
-      const status = String(a.status || 'Agendado');
+      const meta = this.getAppointmentStatusMeta(a.status);
+      const isCancelledStatus = meta.bucket === 'canceladasCliente' || meta.bucket === 'canceladasProfissional';
       const effectivePrice = this.getEffectiveAppointmentPrice(a);
       const pendingBalance = Math.max(0, effectivePrice - toNumber(a.amountPaid));
       const paymentAction = pendingBalance > 0
@@ -9030,9 +9081,6 @@ class ConsultorioApp {
       const paymentTitle = pendingBalance > 0
         ? 'Clique para dar baixa'
         : 'Pagamento quitado';
-      const statusClass = String(status).toLowerCase().includes('concl')
-        ? 'badge-concluido'
-        : (String(status).toLowerCase().includes('cancel') ? 'badge-cancelado' : 'badge-agendado');
       const paymentClass = String(payment).toLowerCase().includes('pago')
         ? 'badge-pago'
         : (String(payment).toLowerCase().includes('parcial') ? 'badge-parcial' : 'badge-pendente');
@@ -9042,7 +9090,10 @@ class ConsultorioApp {
           <td>${safeText(a.clientName || '-')}</td>
           <td>${safeText(a.procedure || '-')}</td>
           <td><strong>${formatCurrency(effectivePrice)}</strong></td>
-          <td><button type="button" class="badge ${statusClass}" onclick="app.cycleAppointmentStatus('${a.id}')" title="Clique para alterar status">${safeText(status)}</button></td>
+          <td>${isCancelledStatus
+            ? `<span class="badge ${meta.badgeClass}" title="Abra o agendamento para alterar o status">${safeText(meta.label)}</span>`
+            : `<button type="button" class="badge ${meta.badgeClass}" onclick="app.cycleAppointmentStatus('${a.id}')" title="Clique para alterar status">${safeText(meta.label)}</button>`
+          }</td>
           <td><button type="button" class="badge ${paymentClass}" onclick="${paymentAction}" title="${paymentTitle}">${safeText(payment)}</button></td>
           <td class="agenda-actions-cell">
             <button class="btn btn-sm btn-secondary" type="button" onclick="app.openAppointmentModal('${a.id}')"><i data-lucide="pencil"></i> Editar</button>
@@ -9187,8 +9238,13 @@ class ConsultorioApp {
   cycleAppointmentStatus(id) {
     const appt = this.appointments.find((a) => a.id === id);
     if (!appt) return;
-    const cycle = ['Agendado', 'Concluido', 'Cancelado'];
-    const next = cycle[(cycle.indexOf(appt.status) + 1) % cycle.length];
+    // Cicla só entre os 4 estados operacionais. Os 2 estados de cancelamento exigem
+    // contexto (quem cancelou) e só devem ser escolhidos pelo modal de agendamento.
+    const cycle = ['Agendado', 'Confirmado', 'Presente', 'Ausente'];
+    const currentIndex = cycle.indexOf(this.normalizeAppointmentStatus(appt.status));
+    // Se o status atual não está no ciclo (ex.: um dos 2 cancelamentos, chamado por
+    // segurança fora do fluxo normal da badge), recomeça do início em vez de quebrar.
+    const next = cycle[currentIndex === -1 ? 0 : (currentIndex + 1) % cycle.length];
     appt.status = next;
     this.saveData();
     this.renderAgendaTable();
@@ -9274,7 +9330,80 @@ class ConsultorioApp {
     });
   }
 
+  renderClientsReportSummaryCard() {
+    const grid = document.getElementById('clients-report-summary-grid');
+    if (!grid) return;
+
+    const scoped = this.filterItemsByTopRange(this.appointments || [], 'date');
+    const counts = { agendadas: 0, confirmadas: 0, presentes: 0, ausentes: 0, canceladasCliente: 0, canceladasProfissional: 0 };
+    scoped.forEach((a) => {
+      const bucket = this.getAppointmentStatusMeta(a.status).bucket;
+      if (counts[bucket] !== undefined) counts[bucket] += 1;
+    });
+
+    const cards = [
+      { key: 'agendadas', label: 'Sessões Agendadas', icon: 'calendar', color: 'card-blue' },
+      { key: 'confirmadas', label: 'Sessões Confirmadas', icon: 'badge-check', color: 'card-cyan' },
+      { key: 'presentes', label: 'Presentes', icon: 'check-circle-2', color: 'card-green' },
+      { key: 'ausentes', label: 'Ausentes', icon: 'alert-triangle', color: 'card-amber' },
+      { key: 'canceladasCliente', label: 'Cliente Cancelou', icon: 'x-circle', color: 'card-red' },
+      { key: 'canceladasProfissional', label: 'Profissional Cancelou', icon: 'x-octagon', color: 'card-purple' }
+    ];
+
+    grid.innerHTML = cards.map((c) => `
+      <button type="button" class="stat-card ${c.color}" onclick="app.openClientsReportBucket('${c.key}')" title="Ver estes agendamentos na Agenda">
+        <div class="stat-icon"><i data-lucide="${c.icon}"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">${c.label}</span>
+          <h3 class="stat-value">${counts[c.key]}</h3>
+        </div>
+      </button>
+    `).join('');
+
+    const rangeLabel = document.getElementById('clients-report-range-label');
+    if (rangeLabel) {
+      const { start, end } = this.getTopRange();
+      rangeLabel.textContent = (start || end) ? `Período: ${start ? formatDateBR(start) : '...'} até ${end ? formatDateBR(end) : '...'}` : 'Todo o período';
+    }
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+  }
+
+  openClientsReportBucket(bucket) {
+    const bucketToStatus = {
+      agendadas: 'Agendado',
+      confirmadas: 'Confirmado',
+      presentes: 'Presente',
+      ausentes: 'Ausente',
+      canceladasCliente: 'CanceladoCliente',
+      canceladasProfissional: 'CanceladoProfissional'
+    };
+    const status = bucketToStatus[bucket];
+    if (!status) return;
+
+    const { start, end } = this.getTopRange();
+    const agendaSearch = document.getElementById('agenda-search');
+    const agendaStart = document.getElementById('agenda-filter-start');
+    const agendaEnd = document.getElementById('agenda-filter-end');
+    const agendaStatus = document.getElementById('agenda-filter-status');
+
+    if (agendaSearch) agendaSearch.value = '';
+    if (agendaStart) agendaStart.value = start || '';
+    if (agendaEnd) agendaEnd.value = end || '';
+    if (agendaStatus) agendaStatus.value = status;
+
+    this.agendaReturnTab = 'clientes';
+    this.switchAgendaSubtab('geral');
+    this.switchTab('agenda');
+    this.renderAgendaTable();
+  }
+
+  returnToClientsFromAgenda() {
+    this.switchTab('clientes');
+  }
+
   renderClientsTable() {
+    this.renderClientsReportSummaryCard();
     const tbody = document.getElementById('clientes-table-body');
     if (!tbody) return;
 
@@ -10054,6 +10183,7 @@ class ConsultorioApp {
     }
 
     this.loadAnamneseData(_anamneseData);
+    this.renderClientReportCard(clientId);
     modal.classList.add('active');
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
   }
@@ -11181,6 +11311,49 @@ class ConsultorioApp {
       .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
   }
 
+  renderClientReportCard(clientId) {
+    const wrapper = document.getElementById('client-report-card-wrapper');
+    const grid = document.getElementById('client-report-summary-grid');
+    if (!wrapper || !grid) return;
+
+    if (!clientId) {
+      wrapper.style.display = 'none';
+      return;
+    }
+    wrapper.style.display = '';
+
+    const scoped = this.filterItemsByTopRange(this.getPatientAppointments(clientId), 'date');
+    const counts = { agendadas: 0, confirmadas: 0, presentes: 0, ausentes: 0, canceladasCliente: 0, canceladasProfissional: 0 };
+    scoped.forEach((a) => {
+      const bucket = this.getAppointmentStatusMeta(a.status).bucket;
+      if (counts[bucket] !== undefined) counts[bucket] += 1;
+    });
+
+    const total = scoped.length;
+    const clientName = (this.clients.find((c) => c.id === clientId) || {}).name || 'Cliente';
+
+    const cards = [
+      { key: 'total', label: `${clientName} possui`, value: `${total} agendamento${total === 1 ? '' : 's'}`, icon: 'calendar-days', color: 'card-blue' },
+      { key: 'presentes', label: 'Presentes', value: counts.presentes, icon: 'check-circle-2', color: 'card-green' },
+      { key: 'ausentes', label: 'Ausentes', value: counts.ausentes, icon: 'alert-triangle', color: 'card-amber' },
+      { key: 'canceladasCliente', label: 'Cliente Cancelou', value: counts.canceladasCliente, icon: 'x-circle', color: 'card-red' },
+      { key: 'canceladasProfissional', label: 'Profissional Cancelou', value: counts.canceladasProfissional, icon: 'x-octagon', color: 'card-purple' },
+      { key: 'confirmadas', label: 'Confirmadas', value: counts.confirmadas, icon: 'badge-check', color: 'card-cyan' }
+    ];
+
+    grid.innerHTML = cards.map((c) => `
+      <div class="stat-card ${c.color}">
+        <div class="stat-icon"><i data-lucide="${c.icon}"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">${c.label}</span>
+          <h3 class="stat-value">${c.value}</h3>
+        </div>
+      </div>
+    `).join('');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+  }
+
   buildPacienteIndividualReportLines(patient) {
     const patientAppointments = this.getPatientAppointments(patient.id);
     const fullAddress = [
@@ -11576,8 +11749,7 @@ class ConsultorioApp {
       if (!scheduledByDate[date]) scheduledByDate[date] = new Set();
       if (clientKey) scheduledByDate[date].add(clientKey);
 
-      const status = String(appt.status || '').toLowerCase();
-      if (!(status.includes('conclu') || status.includes('realiz'))) return;
+      if (this.normalizeAppointmentStatus(appt.status) !== 'Presente') return;
       attendedByDate[date] = (attendedByDate[date] || 0) + 1;
     });
 

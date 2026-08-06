@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260805-47">
+  <link rel="stylesheet" href="css/styles.css?v=20260805-51">
 </head>
 <body>
   <div id="login-root">
@@ -75,6 +75,7 @@
 
         <nav class="sidebar-nav">
           <button type="button" class="nav-item nav-back-btn" id="btn-header-back" style="display:none;"><i data-lucide="arrow-left"></i><span>Voltar</span></button>
+          <button type="button" class="nav-item" data-tab="dashboard" onclick="app.switchTab('dashboard')"><i data-lucide="layout-dashboard"></i><span>Consultório Control</span></button>
           <button type="button" class="nav-item" data-tab="agenda" onclick="app.switchTab('agenda')"><i data-lucide="calendar"></i><span>Agenda</span></button>
           <button type="button" class="nav-item" data-tab="clientes" onclick="app.switchTab('clientes')"><i data-lucide="users"></i><span>Clientes</span></button>
           <button type="button" class="nav-item" data-tab="financeiro" onclick="app.switchTab('financeiro')"><i data-lucide="wallet"></i><span>Financeiro</span><span class="badge-pending-count" id="nav-pending-badge">0</span></button>
@@ -158,6 +159,7 @@
               </button>
             </div>
 
+            <div class="header-actions-break" aria-hidden="true"></div>
             <button class="btn btn-secondary btn-icon-text" id="btn-refresh-firebase-top" data-action="refresh-firebase" title="Atualizar dados agora do Firebase">
               <i data-lucide="refresh-cw"></i>
               <span>Atualizar Agora</span>

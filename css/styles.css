@@ -434,6 +434,21 @@ body.config-view .header-actions > * {
   display: none !important;
 }
 
+.header-actions-break {
+  flex-basis: 100%;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+body.panil-view .header-actions .top-date-picker,
+body.panil-view .header-actions .header-finance-pending-pill,
+body.panil-view .header-actions #btn-logout-session,
+body.panil-view .header-actions #btn-header-new-appointment {
+  display: none !important;
+}
+
 body.financeiro-view .header-actions .header-finance-pending-pill,
 body.despesas-view .header-actions .header-finance-pending-pill {
   display: inline-flex !important;
@@ -2300,7 +2315,7 @@ input[type="date"]:focus {
 
 .dash-bubble-content p {
   margin: 0.08rem 0 0;
-  color: var(--text-muted);
+  color: #334155;
   font-size: 0.78rem;
   line-height: 1.25;
   word-break: break-word;
@@ -4160,6 +4175,40 @@ button.badge:active {
 #tab-financeiro .data-table td:nth-child(4) .money-pill,
 #tab-financeiro .data-table td:nth-child(5) .money-pill {
   margin: 0 auto;
+}
+
+/* Letra 20% maior na aba Financeiro (busca, filtros, tabela e botões) */
+#tab-financeiro .data-table th {
+  font-size: 0.96rem;
+}
+
+#tab-financeiro .data-table td {
+  font-size: 1.08rem;
+}
+
+#tab-financeiro .money-pill {
+  font-size: 1.08rem;
+}
+
+#tab-financeiro .filter-group .input-icon input {
+  font-size: 1.18rem;
+}
+
+#tab-financeiro .filter-bar .btn {
+  font-size: 1.08rem;
+}
+
+#tab-financeiro .data-table .btn-sm {
+  font-size: 0.96rem;
+}
+
+#tab-financeiro .finance-filter-indicator {
+  font-size: 1.08rem;
+}
+
+#tab-financeiro .finance-client-link,
+#tab-financeiro .finance-status-link {
+  font-size: 1.08rem;
 }
 
 #finance-recent-card .card-body {

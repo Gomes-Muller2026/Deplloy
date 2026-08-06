@@ -18,7 +18,7 @@
       <button type="button" class="nav-item" data-tab="despesas" onclick="app.switchTab('despesas')"><i data-lucide="receipt"></i><span>Despesas</span></button>
       <button type="button" class="nav-item" data-tab="whatsapp" onclick="app.switchTab('whatsapp')"><i data-lucide="message-circle"></i><span>WhatsApp</span></button>
       <button type="button" class="nav-item" data-tab="senha" onclick="app.switchTab('senha')"><i data-lucide="key-round"></i><span>Senha</span></button>
-      <button type="button" class="nav-item active" data-tab="panil" onclick="app.switchTab('panil')"><i data-lucide="layout-dashboard"></i><span>Panil</span></button>
+      <button type="button" class="nav-item active" data-tab="panil" onclick="app.switchTab('panil')"><i data-lucide="layout-dashboard"></i><span>Consultório Control</span></button>
       <button type="button" class="nav-item" data-tab="graficos" onclick="app.switchTab('graficos')"><i data-lucide="bar-chart-3"></i><span>Gráficos</span></button>
       <button type="button" class="nav-item" data-tab="config" onclick="app.switchTab('config')"><i data-lucide="settings"></i><span>Configurações</span></button>
       <button type="button" class="nav-item nav-item-logout" onclick="app.logoutSession()"><i data-lucide="log-out"></i><span>Sair</span></button>
@@ -96,6 +96,7 @@
           </button>
         </div>
 
+        <div class="header-actions-break" aria-hidden="true"></div>
         <button class="btn btn-secondary btn-icon-text" id="btn-refresh-firebase-top" data-action="refresh-firebase" title="Atualizar dados agora do Firebase">
           <i data-lucide="refresh-cw"></i>
           <span>Atualizar Agora</span>

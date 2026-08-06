@@ -9836,21 +9836,26 @@ class ConsultorioApp {
     this.updateHeaderFinanceKpiPills();
     if (!tbody) return;
 
-    if (!this.expenses.length) {
+    const periodExpenses = this.filterItemsByTopRange(this.expenses, 'date');
+
+    if (!periodExpenses.length) {
+      const emptyMessage = this.expenses.length
+        ? 'Nenhuma despesa cadastrada no período selecionado.'
+        : 'Nenhuma despesa cadastrada.';
       tbody.innerHTML = `
         <tr>
-          <td colspan="5"><div class="empty-state"><p>Nenhuma despesa cadastrada.</p></div></td>
+          <td colspan="5"><div class="empty-state"><p>${emptyMessage}</p></div></td>
         </tr>
       `;
       return;
     }
 
-    const sorted = this.expenses.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const sorted = periodExpenses.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     tbody.innerHTML = sorted.map((e) => `
       <tr>
         <td>${safeText(e.description || '-')}</td>
         <td>${safeText(e.category || '-')}</td>
-        <td>${formatCurrency(e.amount || 0)}</td>
+        <td><span class="money-pill money-pill-expense">${formatCurrency(e.amount || 0)}</span></td>
         <td>${formatDateBR(e.date || '')}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="app.openExpenseModal('${e.id}')">Editar</button>

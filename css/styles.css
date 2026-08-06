@@ -3983,6 +3983,34 @@ button.badge:active {
   background: rgba(245, 158, 11, 0.2);
 }
 
+.money-pill-expense {
+  color: #9f1239;
+  border-color: rgba(251, 113, 133, 0.5);
+  background: rgba(251, 113, 133, 0.18);
+}
+
+#despesas-table-body .btn {
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+#despesas-table-body .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.16);
+}
+
+#despesas-table-body .btn.btn-secondary {
+  color: #1d4ed8;
+  background: #ffffff;
+}
+
+#despesas-table-body .btn.btn-ghost {
+  background: #ffffff;
+}
+
 #tab-financeiro .data-table th:nth-child(3),
 #tab-financeiro .data-table th:nth-child(4),
 #tab-financeiro .data-table th:nth-child(5),

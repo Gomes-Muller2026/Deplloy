@@ -113,8 +113,8 @@ img {
   width: 100%;
   height: 100%;
   padding: 0;
-  object-fit: cover;
-  object-position: left center;
+  object-fit: contain;
+  object-position: center;
 }
 
 .login-brand h2 {
@@ -2015,70 +2015,77 @@ input[type="date"]:focus {
 }
 
 .stat-label {
+  font-size: 0.8rem;
   color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
 }
 
 .stat-value {
+  font-size: 1.4rem;
+  font-weight: 900;
+  margin: 2px 0;
   color: #0f172a;
 }
 
 .stat-sub {
+  font-size: 0.75rem;
   color: #475569;
+  opacity: 0.85;
 }
 
+/* Variantes de cor do .stat-card: gradiente diagonal saturado nas duas pontas (não pastel
+   esmaecendo em navy) sobre base branca, para funcionar em fundo de página claro sem depender
+   dele. Ícone usa tom escuro da mesma família de cor sobre círculo translúcido (mesma fórmula
+   de contraste do .money-pill-*/.badge-confirmado) para garantir legibilidade. */
 .card-blue {
   background: linear-gradient(145deg,
-    rgba(110, 143, 74, 0.38) 0%,
-    rgba(69, 93, 46, 0.28) 55%,
-    rgba(7, 17, 31, 0.62) 100%);
+    rgba(190, 242, 100, 0.32) 0%,
+    rgba(134, 179, 91, 0.46) 100%), #ffffff;
 }
-.card-blue::after { background: radial-gradient(circle, rgba(110,143,74,0.9), transparent 65%); }
-.card-blue .stat-icon { background: rgba(110,143,74,0.24); color: #d9f99d; }
+.card-blue::after { background: radial-gradient(circle, rgba(134,179,91,0.55), transparent 65%); }
+.card-blue .stat-icon { background: rgba(134,179,91,0.24); color: #3f6212; }
 
 .card-green {
   background: linear-gradient(145deg,
-    rgba(52, 211, 153, 0.38) 0%,
-    rgba(6, 95, 70, 0.24) 55%,
-    rgba(7, 17, 31, 0.62) 100%);
+    rgba(110, 231, 183, 0.34) 0%,
+    rgba(16, 185, 129, 0.48) 100%), #ffffff;
 }
-.card-green::after { background: radial-gradient(circle, rgba(52,211,153,0.9), transparent 65%); }
-.card-green .stat-icon { background: rgba(16,185,129,0.22); color: #6ee7b7; }
+.card-green::after { background: radial-gradient(circle, rgba(16,185,129,0.5), transparent 65%); }
+.card-green .stat-icon { background: rgba(16,185,129,0.22); color: #065f46; }
 
 .card-amber {
   background: linear-gradient(145deg,
-    rgba(251, 191, 36, 0.4) 0%,
-    rgba(146, 64, 14, 0.24) 55%,
-    rgba(7, 17, 31, 0.62) 100%);
+    rgba(253, 224, 71, 0.36) 0%,
+    rgba(245, 158, 11, 0.5) 100%), #ffffff;
 }
-.card-amber::after { background: radial-gradient(circle, rgba(251,191,36,0.9), transparent 65%); }
-.card-amber .stat-icon { background: rgba(245,158,11,0.24); color: #fcd34d; }
+.card-amber::after { background: radial-gradient(circle, rgba(245,158,11,0.5), transparent 65%); }
+.card-amber .stat-icon { background: rgba(245,158,11,0.22); color: #92400e; }
 
 .card-red {
   background: linear-gradient(145deg,
-    rgba(248, 113, 113, 0.38) 0%,
-    rgba(127, 29, 29, 0.26) 55%,
-    rgba(7, 17, 31, 0.62) 100%);
+    rgba(252, 165, 165, 0.34) 0%,
+    rgba(239, 68, 68, 0.46) 100%), #ffffff;
 }
-.card-red::after { background: radial-gradient(circle, rgba(248,113,113,0.9), transparent 65%); }
-.card-red .stat-icon { background: rgba(239,68,68,0.22); color: #fca5a5; }
+.card-red::after { background: radial-gradient(circle, rgba(239,68,68,0.5), transparent 65%); }
+.card-red .stat-icon { background: rgba(239,68,68,0.2); color: #991b1b; }
 
 .card-purple {
   background: linear-gradient(145deg,
-    rgba(167, 139, 250, 0.38) 0%,
-    rgba(91, 33, 182, 0.24) 55%,
-    rgba(7, 17, 31, 0.62) 100%);
+    rgba(196, 181, 253, 0.34) 0%,
+    rgba(139, 92, 246, 0.46) 100%), #ffffff;
 }
-.card-purple::after { background: radial-gradient(circle, rgba(167,139,250,0.9), transparent 65%); }
-.card-purple .stat-icon { background: rgba(139,92,246,0.24); color: #c4b5fd; }
+.card-purple::after { background: radial-gradient(circle, rgba(139,92,246,0.5), transparent 65%); }
+.card-purple .stat-icon { background: rgba(139,92,246,0.22); color: #5b21b6; }
 
 .card-cyan {
   background: linear-gradient(145deg,
-    rgba(34, 211, 238, 0.32) 0%,
-    rgba(14, 116, 144, 0.24) 55%,
-    rgba(7, 17, 31, 0.62) 100%);
+    rgba(165, 243, 252, 0.36) 0%,
+    rgba(6, 182, 212, 0.46) 100%), #ffffff;
 }
-.card-cyan::after { background: radial-gradient(circle, rgba(34,211,238,0.9), transparent 65%); }
-.card-cyan .stat-icon { background: rgba(6,182,212,0.24); color: #a5f3fc; }
+.card-cyan::after { background: radial-gradient(circle, rgba(6,182,212,0.5), transparent 65%); }
+.card-cyan .stat-icon { background: rgba(6,182,212,0.22); color: #155e75; }
 
 #dash-current-user {
   font-size: clamp(1rem, 2vw, 1.3rem);
@@ -2087,55 +2094,31 @@ input[type="date"]:focus {
 }
 
 .stat-card.result-positive {
-  background: linear-gradient(145deg, rgba(34,197,94,0.32) 0%, rgba(6,78,59,0.22) 55%, rgba(7,17,31,0.72) 100%);
+  background: linear-gradient(145deg, rgba(134,239,172,0.36) 0%, rgba(34,197,94,0.48) 100%), #ffffff;
 }
-.stat-card.result-positive::after { background: radial-gradient(circle, rgba(52,211,153,0.9), transparent 65%); }
-.stat-card.result-positive .stat-icon { background: var(--success-light); color: var(--success); }
-.stat-card.result-positive .stat-value { color: #bbf7d0; }
-.stat-card.result-positive .stat-sub { color: #86efac; opacity: 1; }
+.stat-card.result-positive::after { background: radial-gradient(circle, rgba(34,197,94,0.5), transparent 65%); }
+.stat-card.result-positive .stat-icon { background: rgba(34,197,94,0.2); color: #15803d; }
+.stat-card.result-positive .stat-value { color: #166534; }
+.stat-card.result-positive .stat-sub { color: #15803d; opacity: 1; }
 
 .stat-card.result-negative {
-  background: linear-gradient(145deg, rgba(239,68,68,0.32) 0%, rgba(127,29,29,0.22) 55%, rgba(7,17,31,0.72) 100%);
+  background: linear-gradient(145deg, rgba(252,165,165,0.34) 0%, rgba(239,68,68,0.46) 100%), #ffffff;
 }
-.stat-card.result-negative::after { background: radial-gradient(circle, rgba(248,113,113,0.9), transparent 65%); }
-.stat-card.result-negative .stat-icon { background: rgba(239,68,68,0.18); color: #fca5a5; }
-.stat-card.result-negative .stat-value { color: #fecaca; }
-.stat-card.result-negative .stat-sub { color: #fca5a5; opacity: 1; }
+.stat-card.result-negative::after { background: radial-gradient(circle, rgba(239,68,68,0.5), transparent 65%); }
+.stat-card.result-negative .stat-icon { background: rgba(239,68,68,0.2); color: #991b1b; }
+.stat-card.result-negative .stat-value { color: #991b1b; }
+.stat-card.result-negative .stat-sub { color: #b91c1c; opacity: 1; }
 
 .stat-card.result-neutral {
-  background: linear-gradient(145deg, rgba(148,163,184,0.26) 0%, rgba(51,65,85,0.22) 55%, rgba(7,17,31,0.72) 100%);
+  background: linear-gradient(145deg, rgba(203,213,225,0.4) 0%, rgba(100,116,139,0.32) 100%), #ffffff;
 }
-.stat-card.result-neutral::after { background: radial-gradient(circle, rgba(148,163,184,0.7), transparent 65%); }
-.stat-card.result-neutral .stat-icon { background: rgba(148,163,184,0.2); color: #94a3b8; }
+.stat-card.result-neutral::after { background: radial-gradient(circle, rgba(100,116,139,0.4), transparent 65%); }
+.stat-card.result-neutral .stat-icon { background: rgba(100,116,139,0.2); color: #334155; }
 
 
 .stat-info {
   display: flex;
   flex-direction: column;
-}
-
-.stat-label {
-  font-size: 0.8rem;
-  color: var(--text-main);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 700;
-
-}
-
-.stat-value {
-  font-size: 1.4rem;
-  font-weight: 900;
-  margin: 2px 0;
-  color: var(--text-main);
-
-}
-
-.stat-sub {
-  font-size: 0.75rem;
-  color: var(--text-main);
-  opacity: 0.85;
-
 }
 
 /* Dashboard Layout Grid */

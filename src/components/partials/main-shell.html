@@ -111,6 +111,21 @@
         <button class="btn btn-secondary btn-icon-text" id="btn-open-birthdays"><i data-lucide="cake"></i><span>Aniversários</span><span class="btn-notification-badge">0</span></button>
         <button class="btn btn-secondary btn-icon-text" id="btn-logout-session"><i data-lucide="log-out"></i><span>Sair</span></button>
         <button class="btn btn-primary btn-icon-text" id="btn-header-new-appointment" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="calendar-plus"></i><span>Agendar Consulta</span></button>
+        <button type="button" class="header-finance-pending-pill" id="header-finance-pending-pill" onclick="app.openFinancePendingGroup()" title="Abrir Financeiro filtrado por pendentes">
+          <i data-lucide="alert-circle"></i>
+          <span>Pacientes em aberto: <strong id="header-finance-pending-count">0</strong></span>
+          <span class="header-finance-pending-amount" id="header-finance-pending-amount">R$ 0,00</span>
+        </button>
+        <button type="button" class="header-finance-pending-pill header-finance-pending-pill--expense" id="header-despesas-pill" onclick="app.openDespesasGroup()" title="Abrir Despesas">
+          <i data-lucide="receipt"></i>
+          <span>Despesas: <strong id="header-despesas-count">0</strong></span>
+          <span class="header-finance-pending-amount" id="header-despesas-amount">R$ 0,00</span>
+        </button>
+        <button type="button" class="header-finance-pending-pill header-finance-pending-pill--result is-positive" id="header-resultado-pill" onclick="app.openResultadoGroup()" title="Abrir Financeiro (resultado do período)">
+          <i data-lucide="trending-up"></i>
+          <span>Resultado:</span>
+          <span class="header-finance-pending-amount" id="header-resultado-amount">R$ 0,00</span>
+        </button>
       </div>
     </header>
 
@@ -333,7 +348,7 @@
                   <th aria-sort="none"><button class="client-sort-button" type="button" data-client-sort="name" data-sort-label="Nome" onclick="app.setClientSort('name')"><span>Nome</span><i data-lucide="arrow-up"></i></button></th>
                   <th aria-sort="none"><button class="client-sort-button" type="button" data-client-sort="category" data-sort-label="Categoria" onclick="app.setClientSort('category')"><span>Categoria</span><i data-lucide="arrow-up"></i></button></th>
                   <th>Telefone</th>
-                  <th>E-mail</th>
+                  <th aria-sort="none"><button class="client-sort-button" type="button" data-client-sort="dob" data-sort-label="Aniversário" onclick="app.setClientSort('dob')"><span>Aniversário</span><i data-lucide="arrow-up"></i></button></th>
                   <th aria-sort="none"><button class="client-sort-button" type="button" data-client-sort="createdAt" data-sort-label="Cadastro" onclick="app.setClientSort('createdAt')"><span>Cadastro</span><i data-lucide="arrow-up"></i></button></th>
                   <th>Ações</th>
                 </tr>

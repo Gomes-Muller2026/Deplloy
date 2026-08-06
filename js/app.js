@@ -6103,6 +6103,8 @@ class ConsultorioApp {
 
     document.body.classList.toggle('agenda-view', this.currentTab === 'agenda');
     document.body.classList.toggle('clientes-view', this.currentTab === 'clientes');
+    document.body.classList.toggle('financeiro-view', this.currentTab === 'financeiro');
+    document.body.classList.toggle('despesas-view', this.currentTab === 'despesas');
 
     if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
       const main = document.querySelector('.main-content');
@@ -9219,7 +9221,7 @@ class ConsultorioApp {
   }
 
   setClientSort(field) {
-    const allowedFields = ['registrationNumber', 'name', 'category', 'createdAt'];
+    const allowedFields = ['registrationNumber', 'name', 'category', 'createdAt', 'dob'];
     if (!allowedFields.includes(field)) return;
 
     if (this.clientSortField === field) {
@@ -9351,7 +9353,7 @@ class ConsultorioApp {
         <td>${safeText(c.name || '-')}</td>
         <td>${safeText(this.normalizeClientCategory(c.category))}</td>
         <td>${safeText(c.phone || '-')}</td>
-        <td>${safeText(c.email || '-')}</td>
+        <td>${formatDateBR(c.dob || '')}</td>
         <td>${formatDateBR(c.createdAt || '')}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="app.printClientIndividualReport('${c.id}')">Imprimir</button>
@@ -9447,11 +9449,63 @@ class ConsultorioApp {
     });
   }
 
+  updateFinancePendingClientsCard() {
+    this.updateHeaderFinanceKpiPills();
+  }
+
+  updateHeaderFinanceKpiPills() {
+    const periodAppointments = this.getFinanceScopeAppointments();
+    const periodExpenses = this.filterItemsByTopRange(this.expenses, 'date');
+
+    const pendingAppointments = periodAppointments.filter((a) => this.getEffectiveAppointmentPrice(a) - toNumber(a.amountPaid) > 0);
+    const pendingClientsCount = new Set(pendingAppointments.map((a) => this.getFinanceGroupingKey(a))).size;
+    const pendingTotal = pendingAppointments.reduce((sum, a) => sum + Math.max(0, this.getEffectiveAppointmentPrice(a) - toNumber(a.amountPaid)), 0);
+
+    const pendingCountEl = document.getElementById('header-finance-pending-count');
+    const pendingAmountEl = document.getElementById('header-finance-pending-amount');
+    if (pendingCountEl) pendingCountEl.textContent = String(pendingClientsCount);
+    if (pendingAmountEl) pendingAmountEl.textContent = formatCurrency(pendingTotal);
+
+    const expensesCount = periodExpenses.length;
+    const expensesTotal = periodExpenses.reduce((sum, e) => sum + toNumber(e.amount), 0);
+    const expensesCountEl = document.getElementById('header-despesas-count');
+    const expensesAmountEl = document.getElementById('header-despesas-amount');
+    if (expensesCountEl) expensesCountEl.textContent = String(expensesCount);
+    if (expensesAmountEl) expensesAmountEl.textContent = formatCurrency(expensesTotal);
+
+    const periodReceived = periodAppointments.reduce((sum, a) => sum + toNumber(a.amountPaid), 0);
+    const result = periodReceived - expensesTotal;
+    const resultAmountEl = document.getElementById('header-resultado-amount');
+    const resultPillEl = document.getElementById('header-resultado-pill');
+    if (resultAmountEl) resultAmountEl.textContent = formatCurrency(result);
+    if (resultPillEl) {
+      resultPillEl.classList.remove('is-positive', 'is-negative');
+      resultPillEl.classList.add(result < 0 ? 'is-negative' : 'is-positive');
+    }
+  }
+
+  openFinancePendingGroup() {
+    this.switchTab('financeiro');
+    this.financeViewFilter = 'pending';
+    this.renderFinanceiroTable();
+  }
+
+  openDespesasGroup() {
+    this.switchTab('despesas');
+  }
+
+  openResultadoGroup() {
+    this.switchTab('financeiro');
+    this.financeViewFilter = 'all';
+    this.renderFinanceiroTable();
+  }
+
   renderFinanceiroTable() {
     const tbody = document.getElementById('financeiro-table-body');
     if (!tbody) return;
     const recentContainer = document.getElementById('finance-recent-appointments');
     this.updateFinanceViewModeUI();
+    this.updateFinancePendingClientsCard();
 
     const filterIndicator = document.getElementById('finance-filter-indicator');
     const filterLabel = document.getElementById('finance-filter-label');
@@ -9779,6 +9833,7 @@ class ConsultorioApp {
 
   renderDespesasTable() {
     const tbody = document.getElementById('despesas-table-body');
+    this.updateHeaderFinanceKpiPills();
     if (!tbody) return;
 
     if (!this.expenses.length) {

@@ -4960,7 +4960,7 @@ class ConsultorioApp {
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-      const textarea = document.getElementById('appt-notes');
+      const textarea = document.getElementById('appt-session-narrative');
       if (!textarea) return;
 
       let finalChunk = '';
@@ -5038,7 +5038,7 @@ class ConsultorioApp {
 
     const client = this.clients.find((c) => c.id === appointment.clientId);
     const clientName = String(appointment.clientName || (client && client.name) || 'Paciente').trim() || 'Paciente';
-    const notes = String(appointment.notes || '').trim();
+    const narrative = this.getSessionNarrativeDisplay(appointment).text;
 
     const lines = [
       'SESSÃO INDIVIDUAL',
@@ -5049,8 +5049,8 @@ class ConsultorioApp {
       `Procedimento: ${appointment.procedure || '-'}`,
       `Status: ${appointment.status || '-'}`,
       '',
-      'Observações da sessão:',
-      notes || '(sem observações registradas)'
+      'Narrativa da sessão:',
+      narrative || '(sem narrativa registrada)'
     ];
 
     this.openReportWindow(`Sessão - ${clientName} - ${formatDateBR(appointment.date)}`, lines.join('\n'), true);
@@ -11749,6 +11749,7 @@ class ConsultorioApp {
         set('appt-amount-paid', a.amountPaid || 0);
         set('appt-recurrence-type', this.normalizeAppointmentRecurrenceType(a.recurrenceType));
         set('appt-notes', a.notes || '');
+        set('appt-session-narrative', a.sessionNarrative || '');
         this.selectAppointmentColor(a.color || DEFAULT_APPOINTMENT_COLOR);
         if (title) title.textContent = 'Editar Consulta/Financeiro';
         if (deleteBtn) deleteBtn.style.display = 'inline-flex';
@@ -11945,7 +11946,8 @@ class ConsultorioApp {
       amountPaid: toNumber((document.getElementById('appt-amount-paid') || {}).value || 0),
       recurrenceType: this.normalizeAppointmentRecurrenceType((document.getElementById('appt-recurrence-type') || {}).value || ''),
       bulkUpdateMode: String((document.getElementById('appt-bulk-update-mode') || {}).value || 'nao_aplicar'),
-      notes: String((document.getElementById('appt-notes') || {}).value || '').trim()
+      notes: String((document.getElementById('appt-notes') || {}).value || '').trim(),
+      sessionNarrative: String((document.getElementById('appt-session-narrative') || {}).value || '').trim()
     };
 
     if (window.agendaModule && typeof window.agendaModule.saveAppointment === 'function') {
@@ -12203,8 +12205,11 @@ class ConsultorioApp {
       { key: 'confirmadas', label: 'Confirmadas', value: counts.confirmadas, icon: 'badge-check', color: 'card-cyan' }
     ];
 
+    const activeBucket = this.clientNarrativeFilterBucket;
     grid.innerHTML = cards.map((c) => `
-      <div class="stat-card ${c.color}">
+      <div class="stat-card ${c.color}${activeBucket === c.key ? ' active' : ''}" data-bucket="${c.key}" tabindex="0" role="button"
+        onclick="app.toggleClientNarrativeFilter('${c.key}', '${clientId}')"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.toggleClientNarrativeFilter('${c.key}', '${clientId}');}">
         <div class="stat-icon"><i data-lucide="${c.icon}"></i></div>
         <div class="stat-info">
           <span class="stat-label">${c.label}</span>
@@ -12216,9 +12221,31 @@ class ConsultorioApp {
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
   }
 
+  // Deriva o texto de narrativa a ser exibido para uma sessão. Prioriza o campo dedicado
+  // appointment.sessionNarrative (nunca tocado pela sincronização do Google). Quando esse
+  // campo está vazio (sessões antigas, antes da separação de campos), cai para um fallback
+  // somente de exibição: reaproveita appointment.notes removendo as linhas de metadados de
+  // sincronização ("Google:"/"Local:") — nunca grava esse fallback de volta nos dados.
+  getSessionNarrativeDisplay(appointment) {
+    const a = appointment || {};
+    const dedicated = String(a.sessionNarrative || '').trim();
+    if (dedicated) return { text: dedicated, migrated: false };
+
+    const rawNotes = String(a.notes || '');
+    const filtered = rawNotes
+      .split('\n')
+      .filter((line) => !/^\s*(Google|Local)\s*:/i.test(line))
+      .join('\n')
+      .trim();
+
+    if (filtered) return { text: filtered, migrated: true };
+    return { text: '', migrated: false };
+  }
+
   // Mostra a narrativa (transcrição por voz) de cada sessão do cliente, organizada
   // individualmente por atendimento — cada agendamento guarda sua própria narrativa em
-  // appointment.notes, então aqui apenas listamos essas notas por sessão dentro do cadastro.
+  // appointment.sessionNarrative, então aqui apenas listamos essas notas por sessão dentro
+  // do cadastro. Respeita o filtro de status opcional em this.clientNarrativeFilterBucket.
   renderClientSessionsNarrative(clientId) {
     const wrapper = document.getElementById('client-sessions-narrative-wrapper');
     const list = document.getElementById('client-sessions-narrative-list');
@@ -12231,16 +12258,24 @@ class ConsultorioApp {
     }
     wrapper.style.display = '';
 
-    const sessions = this.getPatientAppointments(clientId).slice().reverse();
+    let sessions = this.getPatientAppointments(clientId).slice().reverse();
+
+    const activeBucket = this.clientNarrativeFilterBucket;
+    if (activeBucket && activeBucket !== 'total') {
+      sessions = sessions.filter((a) => this.getAppointmentStatusMeta(a.status).bucket === activeBucket);
+    }
 
     if (!sessions.length) {
-      list.innerHTML = '<p class="text-muted" style="font-size:0.85rem;margin:0;">Nenhuma sessão registrada para este paciente ainda.</p>';
+      list.innerHTML = activeBucket && activeBucket !== 'total'
+        ? '<p class="text-muted" style="font-size:0.85rem;margin:0;">Nenhuma sessão encontrada para o filtro selecionado.</p>'
+        : '<p class="text-muted" style="font-size:0.85rem;margin:0;">Nenhuma sessão registrada para este paciente ainda.</p>';
       return;
     }
 
     list.innerHTML = sessions.map((a) => {
-      const notes = String(a.notes || '').trim();
-      const hasNotes = Boolean(notes);
+      const { text: narrative, migrated } = this.getSessionNarrativeDisplay(a);
+      const hasNarrative = Boolean(narrative);
+      const migratedHint = (hasNarrative && migrated) ? ' <em class="client-session-narrative-migrated-hint">(migrado de Observações)</em>' : '';
       return `
         <div class="client-session-narrative-item">
           <div class="client-session-narrative-header">
@@ -12253,7 +12288,7 @@ class ConsultorioApp {
               <i data-lucide="printer"></i> Imprimir sessão
             </button>
           </div>
-          <p class="client-session-narrative-text${hasNotes ? '' : ' is-empty'}">${hasNotes ? escapeHtml(notes).replace(/\n/g, '<br>') : 'Nenhuma narrativa registrada nesta sessão.'}</p>
+          <p class="client-session-narrative-text${hasNarrative ? '' : ' is-empty'}">${hasNarrative ? `${escapeHtml(narrative).replace(/\n/g, '<br>')}${migratedHint}` : 'Nenhuma narrativa registrada nesta sessão.'}</p>
         </div>
       `;
     }).join('');

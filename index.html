@@ -755,7 +755,7 @@
                       <div id="firebase-validation-panel" class="firebase-validation-panel">
                         <p class="firebase-validation-summary">Clique em Revalidar Firebase para executar checklist de conexão.</p>
                       </div>
-                      <p id="firebase-origin-hint" class="firebase-validation-summary" style="margin-top:0.5rem; margin-bottom:0;">Origem atual: aguardando carregamento...</p>
+                      <p id="firebase-origin-hint" class="firebase-validation-summary" style="margin-top:0.5rem; margin-bottom:0; opacity:0.85;">Origem atual: aguardando carregamento...</p>
                     </div>
                   </div>
 
@@ -763,7 +763,7 @@
                     <div class="card-header"><h3><i data-lucide="calendar-heart"></i> Google Calendar</h3></div>
                     <div class="card-body">
                       <p>Use um Client ID OAuth do tipo Web com origem JavaScript autorizada (por exemplo http://127.0.0.1:8000 ou https://...).</p>
-                      <p id="google-calendar-origin-hint" class="firebase-validation-summary" style="margin-top:-0.25rem; margin-bottom:0.75rem;">Origem atual: aguardando carregamento...</p>
+                      <p id="google-calendar-origin-hint" class="firebase-validation-summary" style="margin-top:-0.25rem; margin-bottom:0.75rem; opacity:0.85;">Origem atual: aguardando carregamento...</p>
                       <div class="form-group">
                         <label for="cfg-google-calendar-client-id">Google Client ID</label>
                         <input type="text" id="cfg-google-calendar-client-id" class="form-control" placeholder="xxx.apps.googleusercontent.com">
@@ -791,7 +791,7 @@
                 </div>
 
                 <div class="settings-cards-row">
-                  <div class="card" style="margin-top:1rem;">
+                  <div class="card">
                     <div class="card-header"><h3><i data-lucide="refresh-ccw"></i> Resetar Agenda Local</h3></div>
                     <div class="card-body">
                       <p>Apaga todos os agendamentos deste sistema local (o Google Calendar não é alterado) e reimporta tudo do zero direto do Google. Use se a agenda local acumulou duplicatas ou ficou incompleta. Um backup em JSON é baixado automaticamente antes de apagar.</p>
@@ -799,7 +799,7 @@
                     </div>
                   </div>
 
-                  <div class="card" style="margin-top:1rem;">
+                  <div class="card">
                     <div class="card-header"><h3><i data-lucide="mic"></i> Narração por Voz</h3></div>
                     <div class="card-body">
                       <p>Quando ativado, um botão de microfone aparece no campo Observações ao editar uma consulta, permitindo narrar em voz alta e transformar a fala em texto automaticamente (requer permissão do navegador e conexão com a internet).</p>

@@ -78,10 +78,15 @@
       "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" remote -v)",
       "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" check-ignore -v css/styles.css js/app.js index.html sw.js)",
       "Bash(echo \"exit:$?\")",
-      "Bash(git hash-object *)"
+      "Bash(git hash-object *)",
+      "Bash(git show *)",
+      "Bash('/c/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --no-sandbox --window-size=1920,1300 '--screenshot=C:\\\\Users\\\\rafae\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\\\931f8da1-6d61-46c5-8d1a-9415b1fef4a1\\\\scratchpad/shot_1920.png' --virtual-time-budget=2000 --hide-scrollbars 'file:///C:\\\\Users\\\\rafae\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\\\931f8da1-6d61-46c5-8d1a-9415b1fef4a1\\\\scratchpad/harness.html')",
+      "Bash(SCRATCH=\"C:\\\\Users\\\\rafae\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\\\931f8da1-6d61-46c5-8d1a-9415b1fef4a1\\\\scratchpad\" *)",
+      "Bash(git pull *)"
     ],
     "additionalDirectories": [
-      "\\tmp"
+      "\\tmp",
+      "C:\\Users\\rafae\\AppData\\Local\\Temp\\claude\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\931f8da1-6d61-46c5-8d1a-9415b1fef4a1\\scratchpad"
     ]
   },
   "hooks": {
@@ -90,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -n \"$(git status --porcelain 2>/dev/null)\" ]; then echo '{\"decision\":\"block\",\"reason\":\"Há mudanças não commitadas. Invoque o subagente commit-agent (Agent tool, subagent_type: commit-agent) para revisar o diff, gerar uma mensagem de commit adequada, commitar e dar push para o branch remoto atual antes de finalizar a resposta.\"}'; else echo '{}'; fi",
+            "command": "if [ -n \"$(git status --porcelain -- . ':!.claude/settings.json' 2>/dev/null)\" ]; then echo '{\"decision\":\"block\",\"reason\":\"Há mudanças não commitadas. Invoque o subagente commit-agent (Agent tool, subagent_type: commit-agent) para revisar o diff, gerar uma mensagem de commit adequada, commitar e dar push para o branch remoto atual antes de finalizar a resposta.\"}'; else echo '{}'; fi",
             "timeout": 15,
             "statusMessage": "Verificando mudanças pendentes para commit..."
           }

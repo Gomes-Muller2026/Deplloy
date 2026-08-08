@@ -21,17 +21,14 @@ const FIREBASE_LAST_PUSH_MILLIS_STORAGE_KEY = 'consultorio_firebase_last_push_mi
 const FIREBASE_PUSH_SHADOW_STORAGE_KEY = 'consultorio_firebase_push_shadow';
 const GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY = 'consultorio_google_calendar_client_id';
 const GOOGLE_CALENDAR_REQUIRED_CLIENT_ID = '210238418315-lavm9rn9vpne0hqa3fgt77oj1e0cvvis.apps.googleusercontent.com';
-const GOOGLE_CALENDAR_LAST_SENT_STORAGE_KEY = 'consultorio_google_calendar_last_sent';
 const GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY = 'consultorio_google_calendar_last_imported';
-// calendar.events sozinho só permite ler/escrever eventos de agendas cujo ID já se conhece
-// (efetivamente só "primary" sem outra forma de descobrir o resto). calendar.calendarlist.readonly
-// é necessário para listar as demais agendas do Google (ex.: "CONSULTÓRIO", "PsicoManager",
-// agendas secundárias/compartilhadas) e trazer os compromissos que estão nelas — sem esse escopo,
-// a importação só via a agenda principal do usuário e "perdia" compromissos que existem no Google
-// mas foram criados/importados em outra agenda. Usuários já conectados precisam clicar em
-// "Conectar Google Calendar" de novo para conceder esse escopo adicional (o app força a tela de
-// consentimento em connectGoogleCalendar via prompt: 'select_account consent').
-const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly';
+// O app só importa (lê) do Google Calendar — nunca cria/edita/apaga eventos lá — por isso usa
+// escopos somente-leitura: calendar.events.readonly para os eventos e calendar.calendarlist.readonly
+// para listar as demais agendas do usuário (ex.: "CONSULTÓRIO", "PsicoManager", agendas
+// secundárias/compartilhadas), sem o qual a importação só enxergava a agenda "primary". Usuários
+// já conectados com o escopo de escrita antigo precisam clicar em "Conectar Google Calendar" de
+// novo para trocar de escopo (o app força a tela de consentimento via prompt: 'select_account consent').
+const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.calendarlist.readonly';
 const GOOGLE_CALENDAR_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 const GOOGLE_CALENDAR_ALLOWED_ORIGINS = [
   'http://127.0.0.1:8000',
@@ -6488,7 +6485,6 @@ class ConsultorioApp {
   }
 
   renderGoogleCalendarSyncTimes() {
-    const sentElement = document.getElementById('google-calendar-last-sent');
     const importedElement = document.getElementById('google-calendar-last-imported');
     const formatStoredTime = (storageKey, emptyLabel) => {
       try {
@@ -6502,16 +6498,12 @@ class ConsultorioApp {
       }
     };
 
-    if (sentElement) sentElement.textContent = formatStoredTime(GOOGLE_CALENDAR_LAST_SENT_STORAGE_KEY, 'Ainda não enviado');
     if (importedElement) importedElement.textContent = formatStoredTime(GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY, 'Ainda não importado');
   }
 
-  recordGoogleCalendarSyncTime(kind) {
-    const storageKey = kind === 'imported'
-      ? GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY
-      : GOOGLE_CALENDAR_LAST_SENT_STORAGE_KEY;
+  recordGoogleCalendarSyncTime() {
     try {
-      localStorage.setItem(storageKey, new Date().toISOString());
+      localStorage.setItem(GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY, new Date().toISOString());
     } catch (err) {
       console.log('Falha ao salvar horário da sincronização do Google Calendar:', err);
     }
@@ -6640,7 +6632,6 @@ class ConsultorioApp {
     this.clearGoogleCalendarAutoSyncSchedule();
 
     if (!this.googleCalendarAuthorized) return;
-    if (typeof this.syncAppointmentsToGoogleCalendar !== 'function') return;
     if (typeof this.importGoogleCalendarIntoLocalAgenda !== 'function') return;
 
     const runAutoSync = async () => {
@@ -7048,7 +7039,7 @@ class ConsultorioApp {
       await this.listGoogleCalendarEvents();
 
       const message = `Importação concluída. Eventos Google: ${stats.totalGoogleEvents} | Novos na Agenda: ${stats.insertedAppointments} | Atualizados na Agenda: ${stats.updatedAppointments} | Clientes criados: ${stats.createdClients}.`;
-      this.recordGoogleCalendarSyncTime('imported');
+      this.recordGoogleCalendarSyncTime();
       this.updateGoogleCalendarStatus('ok', message);
       this.logSyncAudit('info', `Google -> Agenda: total=${stats.totalGoogleEvents}, inserted=${stats.insertedAppointments}, updated=${stats.updatedAppointments}, clientsCreated=${stats.createdClients}.`);
       if (showToast) this.showToast(message, 'success');

@@ -1186,6 +1186,7 @@
             <div class="form-group grid-col-span-2"><label for="appt-notes">Observações</label><textarea id="appt-notes" class="form-control" rows="3"></textarea></div>
           </div>
           <div class="modal-footer">
+            <button class="btn btn-ghost" type="button" id="btn-delete-appointment" style="color:var(--danger); margin-right:auto; display:none;"><i data-lucide="trash-2"></i> Excluir Consulta</button>
             <button class="btn btn-secondary" type="button" id="btn-cancel-appointment">Cancelar</button>
             <button class="btn btn-primary" type="submit">Salvar Consulta</button>
           </div>
@@ -1203,15 +1204,7 @@
           <input type="hidden" id="expense-id">
           <div class="modal-body grid-2">
             <div class="form-group grid-col-span-2"><label for="expense-description">Descrição *</label><input type="text" id="expense-description" class="form-control" required></div>
-            <div class="form-group"><label for="expense-category">Categoria</label><select id="expense-category" class="form-control">
-              <option value="Outros">Outros</option>
-              <option value="Aluguel">Aluguel</option>
-              <option value="Internet">Internet</option>
-              <option value="Material">Material</option>
-              <option value="Folha">Folha</option>
-              <option value="Transporte">Transporte</option>
-              <option value="Software">Software</option>
-            </select></div>
+            <div class="form-group"><label for="expense-category">Categoria</label><select id="expense-category" class="form-control"></select><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-expense-categories">Gerenciar categorias</button></div></div>
             <div class="form-group"><label for="expense-amount">Valor (R$) *</label><input type="number" step="0.01" min="0" id="expense-amount" class="form-control" required></div>
             <div class="form-group"><label for="expense-date">Data *</label><input type="text" id="expense-date" class="form-control date-input" required></div>
           </div>
@@ -1220,6 +1213,26 @@
             <button class="btn btn-primary" type="submit">Salvar Despesa</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="modal-expense-categories">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Gerenciar Categorias de Despesa</h3>
+          <button class="btn-close" id="btn-close-expense-categories"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-top:0; color:var(--text-muted);">Adicione, renomeie ou exclua categorias de despesa.</p>
+          <div class="groups-add-row">
+            <input type="text" id="new-expense-category-input" class="form-control" placeholder="Nome da nova categoria...">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-add-expense-category"><i data-lucide="plus"></i> Adicionar</button>
+          </div>
+          <div id="expense-categories-list"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-close-expense-categories-footer">Fechar</button>
+        </div>
       </div>
     </div>
 
@@ -1399,6 +1412,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260801-3"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260807-26"></script>
+  <script src="js/app.js?v=20260807-29"></script>
 </body>
 </html>

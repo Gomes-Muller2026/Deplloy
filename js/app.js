@@ -658,6 +658,10 @@ class ConsultorioApp {
     this.googleCalendarAutoSyncIntervalId = null;
     this.googleCalendarAutoSyncEveryMs = 6 * 60 * 60 * 1000;
     this.googleCalendarAutoSyncInFlight = false;
+    // Trava de execução única do envio local -> Google (ver syncAppointmentsToGoogleCalendar):
+    // impede que duas chamadas concorrentes (auto-connect + clique manual, duplo clique, etc.)
+    // insiram o mesmo agendamento duas vezes no Google.
+    this.googleCalendarSyncInFlight = false;
     this.googleCalendarRateLimitUntil = 0;
     this.googleCalendarLastSyncAt = 0;
     this.googleCalendarSyncCooldownMs = 30 * 1000;
@@ -5123,6 +5127,22 @@ class ConsultorioApp {
         return;
       }
 
+      const appointmentDeleteTrigger = target.closest('#btn-delete-appointment');
+      if (appointmentDeleteTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        const idInput = document.getElementById('appointment-id');
+        const appointmentId = idInput ? idInput.value : '';
+        if (appointmentId) {
+          Promise.resolve(this.deleteAppointment(appointmentId)).then(() => {
+            if (!this.appointments.some((a) => a.id === appointmentId)) {
+              this.closeAppointmentModal();
+            }
+          });
+        }
+        return;
+      }
+
       const expenseCloseTrigger = target.closest('#btn-cancel-expense, #btn-close-expense');
       if (expenseCloseTrigger) {
         event.preventDefault();
@@ -5545,6 +5565,17 @@ class ConsultorioApp {
 
     const formExpense = document.getElementById('form-expense');
     if (formExpense) formExpense.addEventListener('submit', (e) => { e.preventDefault(); this.saveExpenseForm(); });
+
+    const manageExpenseCategoriesBtn = document.getElementById('btn-manage-expense-categories');
+    if (manageExpenseCategoriesBtn) {
+      manageExpenseCategoriesBtn.addEventListener('click', () => this.openExpenseCategoriesModal());
+    }
+
+    const closeExpenseCategoriesButtons = ['btn-close-expense-categories', 'btn-close-expense-categories-footer'];
+    closeExpenseCategoriesButtons.forEach((id) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', () => this.closeExpenseCategoriesModal());
+    });
 
     const closeClientButtons = ['btn-cancel-client', 'btn-close-client'];
     closeClientButtons.forEach((id) => {
@@ -7354,6 +7385,7 @@ class ConsultorioApp {
       this.updateGoogleCalendarStatus('error', `Falha ao enviar agenda: ${message}`);
       this.showToast(`Falha ao enviar agenda ao Google Calendar: ${message}`, 'warning');
       this.logSyncAudit('error', `Falha no sync do Google Calendar: ${message}`);
+    }
     } finally {
       this.googleCalendarSyncInFlight = false;
     }
@@ -10266,6 +10298,8 @@ class ConsultorioApp {
     if (idInput) idInput.value = '';
     if (title) title.textContent = 'Nova Despesa';
 
+    this.populateExpenseCategoryOptions('Outros');
+
     const dateInput = document.getElementById('expense-date');
     if (dateInput && dateInput._flatpickr) {
       dateInput._flatpickr.setDate(getTodayStr(), false, 'Y-m-d');
@@ -10282,7 +10316,7 @@ class ConsultorioApp {
           if (el) el.value = val == null ? '' : val;
         };
         set('expense-description', expense.description || '');
-        set('expense-category', expense.category || 'Outros');
+        this.populateExpenseCategoryOptions(this.normalizeExpenseCategory(expense.category || 'Outros'));
         set('expense-amount', toNumber(expense.amount));
         if (dateInput && dateInput._flatpickr && expense.date) {
           dateInput._flatpickr.setDate(expense.date, false, 'Y-m-d');
@@ -11345,6 +11379,8 @@ class ConsultorioApp {
     const colorInput = document.getElementById('appt-color');
     const recurrenceSelect = document.getElementById('appt-recurrence-type');
     const bulkUpdateModeSelect = document.getElementById('appt-bulk-update-mode');
+    const deleteBtn = document.getElementById('btn-delete-appointment');
+    if (deleteBtn) deleteBtn.style.display = 'none';
     if (idInput) idInput.value = '';
     if (title) title.textContent = 'Agendar Consulta';
     if (colorInput) colorInput.value = DEFAULT_APPOINTMENT_COLOR;
@@ -11385,6 +11421,7 @@ class ConsultorioApp {
         set('appt-notes', a.notes || '');
         this.selectAppointmentColor(a.color || DEFAULT_APPOINTMENT_COLOR);
         if (title) title.textContent = 'Editar Consulta/Financeiro';
+        if (deleteBtn) deleteBtn.style.display = 'inline-flex';
       }
     }
 
@@ -11589,10 +11626,10 @@ class ConsultorioApp {
 
   deleteAppointment(appointmentId) {
     if (window.agendaModule && typeof window.agendaModule.deleteAppointment === 'function') {
-      window.agendaModule.deleteAppointment(this, appointmentId);
-    } else {
-      this.showToast('Módulo de agenda não carregado.', 'warning');
+      return window.agendaModule.deleteAppointment(this, appointmentId);
     }
+    this.showToast('Módulo de agenda não carregado.', 'warning');
+    return Promise.resolve();
   }
 
   deleteExpense(expenseId) {
@@ -12462,7 +12499,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260807-3')
+    navigator.serviceWorker.register('./sw.js?v=20260807-4')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

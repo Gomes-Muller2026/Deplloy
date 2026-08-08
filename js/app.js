@@ -6710,12 +6710,32 @@ class ConsultorioApp {
     };
   }
 
+  async fetchAllGoogleCalendarEvents(params) {
+    const events = [];
+    let pageToken = '';
+
+    do {
+      const requestParams = pageToken ? { ...params, pageToken } : { ...params };
+      const response = await window.gapi.client.calendar.events.list(requestParams);
+      const items = Array.isArray(response && response.result && response.result.items)
+        ? response.result.items
+        : [];
+      events.push(...items);
+      pageToken = String((response && response.result && response.result.nextPageToken) || '').trim();
+    } while (pageToken);
+
+    return events;
+  }
+
   async listGoogleManagedCalendarEvents() {
     const now = new Date();
     const timeMin = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString();
     const timeMax = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate()).toISOString();
 
-    const response = await window.gapi.client.calendar.events.list({
+    // maxResults é o tamanho da página, não um teto: fetchAllGoogleCalendarEvents segue
+    // nextPageToken até esgotar. Sem isso, contas com muitos eventos (ex.: duplicatas
+    // acumuladas por bugs antigos) tinham a busca cortada em 2500 eventos silenciosamente.
+    return this.fetchAllGoogleCalendarEvents({
       calendarId: 'primary',
       timeMin,
       timeMax,
@@ -6725,10 +6745,6 @@ class ConsultorioApp {
       privateExtendedProperty: ['consultorioSource=consultorio-control'],
       orderBy: 'startTime'
     });
-
-    return Array.isArray(response && response.result && response.result.items)
-      ? response.result.items
-      : [];
   }
 
   parseGoogleCalendarEventToLocalAppointmentRaw(event) {
@@ -6878,7 +6894,7 @@ class ConsultorioApp {
     const timeMin = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString();
     const timeMax = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate()).toISOString();
 
-    const response = await window.gapi.client.calendar.events.list({
+    const events = await this.fetchAllGoogleCalendarEvents({
       calendarId: 'primary',
       timeMin,
       timeMax,
@@ -6887,10 +6903,6 @@ class ConsultorioApp {
       maxResults: 2500,
       orderBy: 'startTime'
     });
-
-    const events = Array.isArray(response && response.result && response.result.items)
-      ? response.result.items
-      : [];
 
     let createdClients = 0;
     let insertedAppointments = 0;
@@ -7061,6 +7073,10 @@ class ConsultorioApp {
         .filter((appointment) => {
           const status = String((appointment && appointment.status) || '').toLowerCase();
           if (status.includes('cancel')) return false;
+          // Agendamentos originados do próprio Google (source === 'google-calendar') já existem
+          // lá — o evento original nunca recebe nossa tag extendedProperties.private, então
+          // reenviá-lo cria um evento duplicado a cada sync (nunca é encontrado em managedByAppointmentId).
+          if (String((appointment && appointment.source) || '').toLowerCase() === 'google-calendar') return false;
           return /^\d{4}-\d{2}-\d{2}$/.test(String((appointment && appointment.date) || '').trim());
         })
         .sort((a, b) => {
@@ -7073,6 +7089,7 @@ class ConsultorioApp {
       let updated = 0;
       let removed = 0;
       let unchanged = 0;
+      let linkedAppointments = false;
       const activeAppointmentIds = new Set();
 
       for (const appointment of validAppointments) {
@@ -7083,10 +7100,20 @@ class ConsultorioApp {
         const existing = managedByAppointmentId.get(payload.appointmentId);
 
         if (!existing) {
-          await window.gapi.client.calendar.events.insert({
+          const insertResponse = await window.gapi.client.calendar.events.insert({
             calendarId: 'primary',
             resource: payload.resource
           });
+          // Grava o googleEventId retornado imediatamente: sem isso, a importação seguinte não
+          // consegue casar este agendamento pelo googleEventId nem pelo id (não tem prefixo
+          // gcal-) e cai no fallback data+hora+nome — se esse fallback falhar, o agendamento
+          // que já existia localmente é importado de novo como duplicata.
+          const insertedEventId = String((insertResponse && insertResponse.result && insertResponse.result.id) || '').trim();
+          if (insertedEventId) {
+            appointment.googleEventId = insertedEventId;
+            appointment.googleCalendarUpdatedAt = String((insertResponse.result && insertResponse.result.updated) || '').trim();
+            linkedAppointments = true;
+          }
           inserted += 1;
           await new Promise((resolve) => window.setTimeout(resolve, 120));
           continue;
@@ -7125,6 +7152,13 @@ class ConsultorioApp {
         });
         removed += 1;
         await new Promise((resolve) => window.setTimeout(resolve, 120));
+      }
+
+      // Persistir o googleEventId agora, antes de importar: assim, se importFromGoogle importar
+      // de volta o próprio evento recém-criado nesta mesma execução, a importação já encontra o
+      // agendamento pelo googleEventId (não precisa do fallback data+hora+nome).
+      if (linkedAppointments) {
+        this.saveData();
       }
 
       let importStats = null;

@@ -38,7 +38,28 @@
       "Bash(awk 'BEGIN{o=0;c=0} {n=gsub\\(/{/,\"{\"\\);o+=n; n=gsub\\(/}/,\"}\"\\);c+=n} END{print \"braces open=\"o, \"close=\"c}' js/app.js)",
       "Bash(awk 'BEGIN{o=0;c=0} {n=gsub\\(/\\\\\\(/,\"\\(\"\\);o+=n; n=gsub\\(/\\\\\\)/,\"\\)\"\\);c+=n} END{print \"parens open=\"o, \"close=\"c}' js/app.js)",
       "Skill(update-config)",
-      "Skill(update-config:*)"
+      "Skill(update-config:*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push*)",
+      "Bash(git log*)",
+      "Bash(awk 'BEGIN{o=0;c=0} {n=gsub\\(/{/,\"{\"\\);o+=n; n=gsub\\(/}/,\"}\"\\);c+=n} END{print \"braces open=\"o, \"close=\"c}' .claude/settings.json)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -n \"$(git status --porcelain 2>/dev/null)\" ]; then echo '{\"decision\":\"block\",\"reason\":\"Há mudanças não commitadas. Invoque o subagente commit-agent (Agent tool, subagent_type: commit-agent) para revisar o diff, gerar uma mensagem de commit adequada, commitar e dar push para o branch remoto atual antes de finalizar a resposta.\"}'; else echo '{}'; fi",
+            "timeout": 15,
+            "statusMessage": "Verificando mudanças pendentes para commit..."
+          }
+        ]
+      }
     ]
   }
 }

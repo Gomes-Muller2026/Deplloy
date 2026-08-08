@@ -3459,8 +3459,8 @@ input[type="time"].agenda-hour-range-input {
 
 .agenda-day-confirm-row {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  flex-direction: column;
+  gap: 0.35rem;
   padding: 0.6rem 0.5rem;
   border-radius: 12px;
 }
@@ -3473,6 +3473,20 @@ input[type="time"].agenda-hour-range-input {
   opacity: 0.55;
 }
 
+.agenda-day-confirm-row-main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.agenda-day-confirm-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: calc(16px + 0.6rem + 44px + 0.6rem);
+}
+
 .agenda-day-confirm-time {
   min-width: 44px;
   font-size: 0.82rem;
@@ -3481,6 +3495,8 @@ input[type="time"].agenda-hour-range-input {
 }
 
 .agenda-day-confirm-name {
+  flex: 1 1 auto;
+  min-width: 0;
   font-weight: 700;
   color: #312e81;
   overflow: hidden;
@@ -3488,7 +3504,11 @@ input[type="time"].agenda-hour-range-input {
   white-space: nowrap;
 }
 
-.agenda-day-confirm-row .agenda-confirm-badge {
+.agenda-day-confirm-row-meta .agenda-confirm-badge {
+  margin-left: 0;
+}
+
+.agenda-day-confirm-row-meta .agenda-confirm-resend-btn {
   margin-left: auto;
 }
 

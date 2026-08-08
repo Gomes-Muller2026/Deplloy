@@ -9551,13 +9551,17 @@ class ConsultorioApp {
 
       return `
         <div class="agenda-day-confirm-row ${hasPhone ? '' : 'is-disabled'}" ${rowTitle}>
-          <input type="checkbox" class="agenda-confirm-row-checkbox" data-appointment-id="${safeText(a.id || '')}" ${checked} ${disabled} onchange="app.toggleAgendaConfirmSelection('${a.id}', this.checked)">
-          <span class="agenda-day-confirm-time">${safeText(a.time || '--:--')}</span>
-          <span class="agenda-day-confirm-name">${safeText(a.clientName || '-')}</span>
-          ${badgeHtml}
-          <button type="button" class="agenda-confirm-resend-btn" title="Enviar confirmação" onclick="app.resendAgendaConfirmation('${a.id}')" ${hasPhone ? '' : 'disabled'}>
-            <i data-lucide="send"></i>
-          </button>
+          <div class="agenda-day-confirm-row-main">
+            <input type="checkbox" class="agenda-confirm-row-checkbox" data-appointment-id="${safeText(a.id || '')}" ${checked} ${disabled} onchange="app.toggleAgendaConfirmSelection('${a.id}', this.checked)">
+            <span class="agenda-day-confirm-time">${safeText(a.time || '--:--')}</span>
+            <span class="agenda-day-confirm-name">${safeText(a.clientName || '-')}</span>
+          </div>
+          <div class="agenda-day-confirm-row-meta">
+            ${badgeHtml}
+            <button type="button" class="agenda-confirm-resend-btn" title="Enviar confirmação" onclick="app.resendAgendaConfirmation('${a.id}')" ${hasPhone ? '' : 'disabled'}>
+              <i data-lucide="send"></i>
+            </button>
+          </div>
         </div>
       `;
     }).join('');

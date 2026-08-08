@@ -7580,7 +7580,7 @@ class ConsultorioApp {
       const isLocalOrigin = String(existingAppointment.source || '').toLowerCase() !== 'google-calendar';
       const fieldsToUpdate = isLocalOrigin
         ? ['date', 'time', 'googleEventId', 'googleCalendarUpdatedAt']
-        : ['clientId', 'clientName', 'date', 'time', 'procedure', 'notes', 'color', 'googleEventId', 'googleCalendarUpdatedAt', 'source'];
+        : ['clientId', 'clientName', 'date', 'time', 'procedure', 'notes', 'googleEventId', 'googleCalendarUpdatedAt', 'source'];
 
       let hasDiff = false;
       fieldsToUpdate.forEach((field) => {

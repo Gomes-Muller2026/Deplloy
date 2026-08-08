@@ -13,6 +13,7 @@ const LOGIN_ACTIVE_USER_STORAGE_KEY = 'consultorio_login_active_user';
 const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
 const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
 const REMINDER_INTENSITY_STORAGE_KEY = 'consultorio_reminder_intensity';
+const AGENDA_HOUR_RANGE_STORAGE_KEY = 'consultorio_agenda_hour_range';
 const FIREBASE_CONFIG_STORAGE_KEY = 'consultorio_firebase_config';
 const FIREBASE_SYNC_DIRTY_STORAGE_KEY = 'consultorio_firebase_sync_dirty';
 const FIREBASE_DEVICE_ID_STORAGE_KEY = 'consultorio_firebase_device_id';
@@ -49,6 +50,8 @@ const LOGIN_USERS_FIRESTORE_COLLECTION = 'login_users';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
 const CLIENT_CATEGORIES_STORAGE_KEY = 'consultorio_client_categories';
 const DEFAULT_CLIENT_CATEGORIES = ['Paciente', 'Medico', 'Yoga', 'Limpeza'];
+const EXPENSE_CATEGORIES_STORAGE_KEY = 'consultorio_expense_categories';
+const DEFAULT_EXPENSE_CATEGORIES = ['Outros', 'Aluguel', 'Internet', 'Material', 'Folha', 'Transporte', 'Software'];
 
 const CLIENT_MANAGED_LISTS = {
   convenio: {
@@ -342,6 +345,8 @@ const safeText = (value) => String(value == null ? '' : value)
 const DEFAULT_APPOINTMENT_COLOR = '#0ea5e9';
 const AGENDA_EVENT_DURATION_MIN = 50;
 const AGENDA_CASCADE_STEP_PX = 26;
+const AGENDA_HOUR_RANGE_DEFAULT_START = 7;
+const AGENDA_HOUR_RANGE_DEFAULT_END = 21;
 
 const normalizeHexColor = (value, fallback = DEFAULT_APPOINTMENT_COLOR) => {
   const raw = String(value || '').trim();
@@ -574,6 +579,9 @@ class ConsultorioApp {
     this.reminderIntensity = 'strong';
     this.agendaViewMode = 'calendar';
     this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
+    this.agendaHourRangeStart = AGENDA_HOUR_RANGE_DEFAULT_START;
+    this.agendaHourRangeEnd = AGENDA_HOUR_RANGE_DEFAULT_END;
+    this.loadAgendaHourRangePreference();
     this.topDateRangeUserSelected = false;
     this.firebaseConfig = null;
     this.firebaseApp = null;
@@ -657,6 +665,7 @@ class ConsultorioApp {
     this.syncAuditEvents = [];
     this.deletedAppointmentTombstones = {};
     this.clientCategories = DEFAULT_CLIENT_CATEGORIES.slice();
+    this.expenseCategories = DEFAULT_EXPENSE_CATEGORIES.slice();
     this.convenioOptions = CLIENT_MANAGED_LISTS.convenio.defaults.slice();
     this.planoFinanceiroOptions = CLIENT_MANAGED_LISTS.planoFinanceiro.defaults.slice();
     this.clientTagsOptions = CLIENT_MANAGED_LISTS.tags.defaults.slice();
@@ -727,11 +736,13 @@ class ConsultorioApp {
       const e = JSON.parse(localStorage.getItem('consultorio_expenses') || '[]');
       const g = JSON.parse(localStorage.getItem(CLIENT_GROUPS_STORAGE_KEY) || '[]');
       const categories = JSON.parse(localStorage.getItem(CLIENT_CATEGORIES_STORAGE_KEY) || '[]');
+      const expenseCategories = JSON.parse(localStorage.getItem(EXPENSE_CATEGORIES_STORAGE_KEY) || '[]');
       const t = JSON.parse(localStorage.getItem(APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY) || '{}');
       this.clients = Array.isArray(c) ? c : [];
       this.appointments = this.normalizeAppointmentsCollection(Array.isArray(a) ? a : [], 'local-store');
       this.expenses = Array.isArray(e) ? e : [];
       this.clientCategories = Array.isArray(categories) ? categories.filter((item) => String(item || '').trim()) : [];
+      this.expenseCategories = Array.isArray(expenseCategories) ? expenseCategories.filter((item) => String(item || '').trim()) : [];
       this.clientGroups = Array.isArray(g) ? g.filter((item) => String(item || '').trim()) : [];
       this.deletedAppointmentTombstones = (t && typeof t === 'object' && !Array.isArray(t)) ? t : {};
       this.loadManagedListsFromStorage();
@@ -747,6 +758,7 @@ class ConsultorioApp {
       if (!this.clientCategories.length) {
         this.clientCategories = this.collectClientCategoriesFromClients();
       }
+      this.expenseCategories = this.collectExpenseCategoriesFromExpenses();
       const reconciled = this.reconcileAppointmentsClientLinks();
       if (reconciled) this.saveStore();
     } catch (err) {
@@ -756,6 +768,7 @@ class ConsultorioApp {
       this.expenses = [];
       this.clientGroups = [];
       this.clientCategories = DEFAULT_CLIENT_CATEGORIES.slice();
+      this.expenseCategories = DEFAULT_EXPENSE_CATEGORIES.slice();
       this.deletedAppointmentTombstones = {};
     }
   }
@@ -791,6 +804,7 @@ class ConsultorioApp {
 
       this.clientGroups = this.collectClientGroupsFromClients();
       this.clientCategories = this.collectClientCategoriesFromClients();
+      this.expenseCategories = this.collectExpenseCategoriesFromExpenses();
       this.applyStableDataOrdering();
       this.reconcileAppointmentsClientLinks();
 
@@ -983,6 +997,7 @@ class ConsultorioApp {
     localStorage.setItem('consultorio_expenses', JSON.stringify(this.expenses));
     localStorage.setItem(CLIENT_GROUPS_STORAGE_KEY, JSON.stringify(this.clientGroups));
     localStorage.setItem(CLIENT_CATEGORIES_STORAGE_KEY, JSON.stringify(this.clientCategories));
+    localStorage.setItem(EXPENSE_CATEGORIES_STORAGE_KEY, JSON.stringify(this.expenseCategories));
     localStorage.setItem(APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY, JSON.stringify(this.deletedAppointmentTombstones || {}));
     this.saveManagedListsToStorage();
   }
@@ -4339,6 +4354,7 @@ class ConsultorioApp {
     this.populateClientGroupOptions();
     this.populateClientCategoryOptions();
     this.populateClientCategoryFilterOptions();
+    this.populateExpenseCategoryOptions();
     this.prefillSenhaTabFields();
     this.prefillFirebaseConfig();
     this.prefillGoogleCalendarConfig();
@@ -5784,6 +5800,26 @@ class ConsultorioApp {
       btnAgendaDayCollapse.addEventListener('click', () => this.toggleAgendaDayMiniCalendar());
     }
 
+    const agendaHourRangeStartInput = document.getElementById('agenda-hour-range-start');
+    const agendaHourRangeEndInput = document.getElementById('agenda-hour-range-end');
+    const btnAgendaHourRangeReset = document.getElementById('btn-agenda-hour-range-reset');
+    const applyAgendaHourRangeFromInputs = () => {
+      const parseHour = (value) => {
+        const match = /^(\d{1,2}):/.exec(String(value || '').trim());
+        return match ? Number(match[1]) : NaN;
+      };
+      const startHour = parseHour(agendaHourRangeStartInput && agendaHourRangeStartInput.value);
+      const endHour = parseHour(agendaHourRangeEndInput && agendaHourRangeEndInput.value);
+      if (Number.isNaN(startHour) || Number.isNaN(endHour)) return;
+      this.setAgendaHourRange(startHour, endHour);
+    };
+    if (agendaHourRangeStartInput) agendaHourRangeStartInput.addEventListener('change', applyAgendaHourRangeFromInputs);
+    if (agendaHourRangeEndInput) agendaHourRangeEndInput.addEventListener('change', applyAgendaHourRangeFromInputs);
+    if (btnAgendaHourRangeReset) {
+      btnAgendaHourRangeReset.addEventListener('click', () => this.resetAgendaHourRange());
+    }
+    this.updateAgendaHourRangeInputsUI();
+
     const clientesSearch = document.getElementById('clientes-search');
     const clientesPhoneFilter = document.getElementById('clientes-phone-filter');
     const clientesCategoryFilter = document.getElementById('clientes-category-filter');
@@ -7116,6 +7152,20 @@ class ConsultorioApp {
   }
 
   async syncAppointmentsToGoogleCalendar(options = {}) {
+    // Trava de execução única: sem isso, dois disparos concorrentes desta função (ex.: o
+    // auto-connect silencioso chamando sync logo após reconectar enquanto o usuário clica no
+    // botão "Enviar", ou um duplo clique no mesmo botão) listam os eventos gerenciados ao
+    // mesmo tempo, nenhuma das duas execuções enxerga o insert da outra, e ambas concluem que
+    // o mesmo agendamento precisa de um events.insert -> dois eventos duplicados no Google
+    // para o mesmo agendamento. Isso é diferente do cooldown de 30s abaixo (que só se aplica a
+    // chamadas automáticas e não impede duas execuções concorrentes).
+    if (this.googleCalendarSyncInFlight) {
+      this.logSyncAudit('info', 'Google Calendar sync ignorado: outra sincronização já está em andamento (evita duplicar eventos).');
+      return;
+    }
+    this.googleCalendarSyncInFlight = true;
+
+    try {
     const initialized = await this.initGoogleCalendarClient();
     if (!initialized) return;
 
@@ -7304,6 +7354,8 @@ class ConsultorioApp {
       this.updateGoogleCalendarStatus('error', `Falha ao enviar agenda: ${message}`);
       this.showToast(`Falha ao enviar agenda ao Google Calendar: ${message}`, 'warning');
       this.logSyncAudit('error', `Falha no sync do Google Calendar: ${message}`);
+    } finally {
+      this.googleCalendarSyncInFlight = false;
     }
   }
 
@@ -9119,8 +9171,19 @@ class ConsultorioApp {
     if (calendarGrid) {
       const start = agendaStartInput ? (this.normalizeAgendaDateToIso(agendaStartInput.value) || this.agendaCalendarStartDate) : this.agendaCalendarStartDate;
       const days = Array.from({ length: 7 }, (_, idx) => addDaysIso(start, idx));
-      const hours = Array.from({ length: 24 }, (_, idx) => idx);
       const todayIso = getTodayStr();
+
+      const rangeStartHour = Math.max(0, Math.min(23, Number.isInteger(this.agendaHourRangeStart) ? this.agendaHourRangeStart : AGENDA_HOUR_RANGE_DEFAULT_START));
+      const rangeEndHour = Math.max(rangeStartHour + 1, Math.min(23, Number.isInteger(this.agendaHourRangeEnd) ? this.agendaHourRangeEnd : AGENDA_HOUR_RANGE_DEFAULT_END));
+      this.agendaHourRangeStart = rangeStartHour;
+      this.agendaHourRangeEnd = rangeEndHour;
+      this.updateAgendaHourRangeInputsUI();
+
+      const hours = Array.from({ length: (rangeEndHour - rangeStartHour) + 1 }, (_, idx) => rangeStartHour + idx);
+      const visibleStartMin = rangeStartHour * 60;
+      const visibleEndMin = (rangeEndHour + 1) * 60;
+
+      calendarGrid.style.gridTemplateRows = `auto repeat(${hours.length}, 60px)`;
 
       const headerHtml = `<div class="agenda-header blank" style="grid-column:1; grid-row:1;"></div>`
         + days.map((date, dayIdx) => `
@@ -9140,18 +9203,28 @@ class ConsultorioApp {
 
       const dayEndRowLine = 2 + hours.length;
 
+      let outOfRangeCount = 0;
+
       const eventsHtml = days.map((date, dayIdx) => {
         const dayAppointments = filtered.filter((a) => a.date === date);
         const positioned = this.layoutAgendaDayEvents(dayAppointments);
 
         return positioned.map((a) => {
+          const inRange = a.startMin < visibleEndMin && a.endMin > visibleStartMin;
+          if (!inRange) {
+            outOfRangeCount += 1;
+            return '';
+          }
+
           const isReminderTarget = String(this.agendaAttentionAppointmentId || '') === String(a.id || '');
           const statusClass = String(a.paymentStatus || '').toLowerCase().includes('pago')
             ? 'agenda-event-pago'
             : (String(a.paymentStatus || '').toLowerCase().includes('parcial') ? 'agenda-event-parcial' : 'agenda-event-pendente');
           const cascadeLeft = -10 + (a.stackIndex * AGENDA_CASCADE_STEP_PX);
-          const cardHeight = Math.max(34, a.endMin - a.startMin);
-          const positionStyle = `grid-column:${dayIdx + 2}; grid-row:2 / ${dayEndRowLine}; margin-top:${a.startMin}px; margin-left:${cascadeLeft}px; height:${cardHeight}px; z-index:${15 + a.stackIndex};`;
+          const clippedStartMin = Math.max(a.startMin, visibleStartMin);
+          const relativeStartMin = clippedStartMin - visibleStartMin;
+          const cardHeight = Math.max(34, a.endMin - clippedStartMin);
+          const positionStyle = `grid-column:${dayIdx + 2}; grid-row:2 / ${dayEndRowLine}; margin-top:${relativeStartMin}px; margin-left:${cascadeLeft}px; height:${cardHeight}px; z-index:${15 + a.stackIndex};`;
           return `
             <div class="agenda-event ${statusClass} ${isReminderTarget ? 'agenda-reminder-target' : ''} ${a.stackSize > 1 ? 'agenda-event-cascade' : ''}" style="${agendaEventInlineStyle(a.color || DEFAULT_APPOINTMENT_COLOR)} ${positionStyle}" role="button" tabindex="0" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
               <div class="agenda-event-header">
@@ -9168,6 +9241,21 @@ class ConsultorioApp {
       }).join('');
 
       calendarGrid.innerHTML = headerHtml + gridHtml + eventsHtml;
+
+      const hourRangeNote = document.getElementById('agenda-hour-range-note');
+      if (hourRangeNote) {
+        if (outOfRangeCount > 0) {
+          const plural = outOfRangeCount > 1 ? 's' : '';
+          hourRangeNote.innerHTML = `<i data-lucide="alert-triangle"></i> ${outOfRangeCount} consulta${plural} fora do horário exibido. <button type="button" id="btn-agenda-hour-range-show-all">Ver tudo</button>`;
+          hourRangeNote.style.display = 'inline-flex';
+          const showAllBtn = document.getElementById('btn-agenda-hour-range-show-all');
+          if (showAllBtn) showAllBtn.addEventListener('click', () => this.resetAgendaHourRange());
+          if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+        } else {
+          hourRangeNote.style.display = 'none';
+          hourRangeNote.innerHTML = '';
+        }
+      }
     }
 
     if (!tbody) return;
@@ -9391,6 +9479,61 @@ class ConsultorioApp {
 
     if (btnList) btnList.classList.toggle('active', !isCalendar);
     if (btnCalendar) btnCalendar.classList.toggle('active', isCalendar);
+  }
+
+  loadAgendaHourRangePreference() {
+    try {
+      const raw = localStorage.getItem(AGENDA_HOUR_RANGE_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const start = Number(parsed && parsed.start);
+      const end = Number(parsed && parsed.end);
+      if (Number.isInteger(start) && Number.isInteger(end) && start >= 0 && end <= 23 && start < end) {
+        this.agendaHourRangeStart = start;
+        this.agendaHourRangeEnd = end;
+      }
+    } catch (_) {
+      /* ignore malformed preference */
+    }
+  }
+
+  saveAgendaHourRangePreference() {
+    try {
+      localStorage.setItem(AGENDA_HOUR_RANGE_STORAGE_KEY, JSON.stringify({
+        start: this.agendaHourRangeStart,
+        end: this.agendaHourRangeEnd
+      }));
+    } catch (_) {
+      /* ignore storage errors (private mode, quota, etc.) */
+    }
+  }
+
+  setAgendaHourRange(startHour, endHour) {
+    const start = Math.max(0, Math.min(23, Math.round(Number(startHour))));
+    const end = Math.max(0, Math.min(23, Math.round(Number(endHour))));
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) {
+      this.showToast('Horário inicial deve ser menor que o horário final.', 'warning');
+      this.updateAgendaHourRangeInputsUI();
+      return;
+    }
+    this.agendaHourRangeStart = start;
+    this.agendaHourRangeEnd = end;
+    this.saveAgendaHourRangePreference();
+    this.renderAgendaTable();
+  }
+
+  resetAgendaHourRange() {
+    this.agendaHourRangeStart = 0;
+    this.agendaHourRangeEnd = 23;
+    this.saveAgendaHourRangePreference();
+    this.renderAgendaTable();
+  }
+
+  updateAgendaHourRangeInputsUI() {
+    const startInput = document.getElementById('agenda-hour-range-start');
+    const endInput = document.getElementById('agenda-hour-range-end');
+    if (startInput) startInput.value = `${String(this.agendaHourRangeStart).padStart(2, '0')}:00`;
+    if (endInput) endInput.value = `${String(this.agendaHourRangeEnd).padStart(2, '0')}:00`;
   }
 
   setClientSort(field) {
@@ -10177,6 +10320,239 @@ class ConsultorioApp {
     } else {
       this.showToast('Módulo financeiro não carregado.', 'warning');
     }
+  }
+
+  normalizeExpenseCategory(value) {
+    const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return 'Outros';
+    return normalized
+      .split(' ')
+      .map((part) => part ? (part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()) : '')
+      .join(' ');
+  }
+
+  normalizeExpenseCategoryKey(value) {
+    const label = this.normalizeExpenseCategory(value)
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '');
+    return String(label || '')
+      .toLowerCase()
+      .replace(/\s+/g, '-');
+  }
+
+  collectExpenseCategoriesFromExpenses() {
+    const seen = new Set();
+    const fromStored = Array.isArray(this.expenseCategories) ? this.expenseCategories : [];
+    const fromExpenses = (this.expenses || [])
+      .map((expense) => this.normalizeExpenseCategory(expense && expense.category))
+      .filter((category) => {
+        if (!category) return false;
+        const key = this.normalizeExpenseCategoryKey(category);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+    const all = DEFAULT_EXPENSE_CATEGORIES.concat(fromStored).concat(fromExpenses)
+      .map((category) => this.normalizeExpenseCategory(category))
+      .filter(Boolean);
+
+    const unique = [];
+    const uniqueKeys = new Set();
+    all.forEach((category) => {
+      const key = this.normalizeExpenseCategoryKey(category);
+      if (uniqueKeys.has(key)) return;
+      uniqueKeys.add(key);
+      unique.push(category);
+    });
+
+    return unique;
+  }
+
+  rememberExpenseCategory(categoryName) {
+    const normalized = this.normalizeExpenseCategory(categoryName);
+    if (!normalized) return;
+
+    const existingIndex = this.expenseCategories.findIndex((item) => this.normalizeExpenseCategoryKey(item) === this.normalizeExpenseCategoryKey(normalized));
+    if (existingIndex >= 0) this.expenseCategories.splice(existingIndex, 1);
+    this.expenseCategories.unshift(normalized);
+
+    const requiredDefaults = DEFAULT_EXPENSE_CATEGORIES.map((item) => this.normalizeExpenseCategory(item));
+    requiredDefaults.reverse().forEach((category) => {
+      const key = this.normalizeExpenseCategoryKey(category);
+      if (!this.expenseCategories.some((item) => this.normalizeExpenseCategoryKey(item) === key)) {
+        this.expenseCategories.unshift(category);
+      }
+    });
+
+    this.expenseCategories = this.expenseCategories.slice(0, 60);
+    this.populateExpenseCategoryOptions();
+  }
+
+  populateExpenseCategoryOptions(preferredCategory = '') {
+    const select = document.getElementById('expense-category');
+    if (!select) return;
+
+    const categories = this.expenseCategories.slice()
+      .sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    const preferred = this.normalizeExpenseCategory(preferredCategory || select.value);
+    const preferredKey = this.normalizeExpenseCategoryKey(preferred);
+    if (preferred && !categories.some((item) => this.normalizeExpenseCategoryKey(item) === preferredKey)) {
+      categories.unshift(preferred);
+    }
+
+    select.innerHTML = categories
+      .map((category) => `<option value="${safeText(category)}">${safeText(category)}</option>`)
+      .join('');
+    if (preferred) select.value = preferred;
+  }
+
+  openExpenseCategoriesModal() {
+    const modal = document.getElementById('modal-expense-categories');
+    if (!modal) return;
+    this.renderExpenseCategoriesManager();
+    modal.classList.add('active');
+  }
+
+  closeExpenseCategoriesModal() {
+    const modal = document.getElementById('modal-expense-categories');
+    if (modal) modal.classList.remove('active');
+  }
+
+  renderExpenseCategoriesManager() {
+    const container = document.getElementById('expense-categories-list');
+    if (!container) return;
+
+    const addBtn = document.getElementById('btn-add-expense-category');
+    const addInput = document.getElementById('new-expense-category-input');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        const name = this.normalizeExpenseCategory((addInput || {}).value || '');
+        if (!name) { this.showToast('Informe um nome para a categoria.', 'warning'); return; }
+        if (this.expenseCategories.some((category) => this.normalizeExpenseCategoryKey(category) === this.normalizeExpenseCategoryKey(name))) {
+          this.showToast('Categoria já existe.', 'warning'); return;
+        }
+
+        this.rememberExpenseCategory(name);
+        this.saveStore();
+        if (addInput) addInput.value = '';
+        this.renderExpenseCategoriesManager();
+        this.populateExpenseCategoryOptions(name);
+        this.showToast(`Categoria "${name}" criada.`, 'success');
+      };
+    }
+    if (addInput) {
+      addInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (addBtn) addBtn.click(); } };
+    }
+
+    if (!this.expenseCategories.length) {
+      container.innerHTML = '<div class="empty-state"><p>Nenhuma categoria salva ainda.</p></div>';
+      return;
+    }
+
+    const categories = this.expenseCategories.slice().sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    container.innerHTML = categories.map((category) => `
+      <div class="group-manager-card" data-expense-category-row="${safeText(category)}">
+        <i data-lucide="tag"></i>
+        <input type="text" class="form-control group-manager-input" value="${safeText(category)}" data-expense-category-edit aria-label="Nome da categoria">
+        <div class="group-manager-actions">
+          <button type="button" class="btn btn-sm btn-secondary" data-expense-category-action="rename" data-expense-category="${safeText(category)}"><i data-lucide="check"></i> Salvar</button>
+          <button type="button" class="btn btn-sm btn-ghost group-manager-delete" data-expense-category-action="delete" data-expense-category="${safeText(category)}"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('[data-expense-category-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = String(btn.getAttribute('data-expense-category-action') || '');
+        const categoryName = this.normalizeExpenseCategory(btn.getAttribute('data-expense-category') || '');
+        if (!categoryName) return;
+
+        if (action === 'rename') {
+          const row = btn.closest('[data-expense-category-row]');
+          const input = row ? row.querySelector('[data-expense-category-edit]') : null;
+          const nextName = input ? String(input.value || '') : '';
+          this.renameExpenseCategory(categoryName, nextName);
+          return;
+        }
+
+        if (action === 'delete') {
+          this.deleteExpenseCategory(categoryName);
+        }
+      });
+    });
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  renameExpenseCategory(oldCategory, newCategory) {
+    const oldNormalized = this.normalizeExpenseCategory(oldCategory);
+    const newNormalized = this.normalizeExpenseCategory(newCategory);
+    const oldKey = this.normalizeExpenseCategoryKey(oldNormalized);
+    const newKey = this.normalizeExpenseCategoryKey(newNormalized);
+
+    if (!oldNormalized) return;
+    if (!newNormalized) {
+      this.showToast('Informe um nome válido para a categoria.', 'warning');
+      return;
+    }
+    if (oldKey === newKey) return;
+
+    let updatedExpenses = 0;
+    this.expenses = this.expenses.map((expense) => {
+      const currentKey = this.normalizeExpenseCategoryKey(expense.category);
+      if (currentKey !== oldKey) return expense;
+      updatedExpenses += 1;
+      return { ...expense, category: newNormalized };
+    });
+
+    this.expenseCategories = this.expenseCategories.filter((category) => this.normalizeExpenseCategoryKey(category) !== oldKey);
+    this.rememberExpenseCategory(newNormalized);
+
+    const categoryInput = document.getElementById('expense-category');
+    if (categoryInput && this.normalizeExpenseCategoryKey(categoryInput.value) === oldKey) {
+      categoryInput.value = newNormalized;
+    }
+
+    this.populateExpenseCategoryOptions(newNormalized);
+    this.saveStore();
+    this.renderExpenseCategoriesManager();
+    this.renderDespesasTable();
+    this.showToast(`Categoria atualizada. ${updatedExpenses} despesa(s) ajustada(s).`, 'success');
+  }
+
+  deleteExpenseCategory(categoryName) {
+    const normalized = this.normalizeExpenseCategory(categoryName);
+    const targetKey = this.normalizeExpenseCategoryKey(normalized);
+    if (!targetKey) return;
+    if (targetKey === 'outros') {
+      this.showToast('A categoria Outros não pode ser removida.', 'warning');
+      return;
+    }
+
+    let affectedExpenses = 0;
+    this.expenses = this.expenses.map((expense) => {
+      const currentKey = this.normalizeExpenseCategoryKey(expense.category);
+      if (currentKey !== targetKey) return expense;
+      affectedExpenses += 1;
+      return { ...expense, category: 'Outros' };
+    });
+
+    this.expenseCategories = this.expenseCategories.filter((category) => this.normalizeExpenseCategoryKey(category) !== targetKey);
+    this.rememberExpenseCategory('Outros');
+
+    const categoryInput = document.getElementById('expense-category');
+    if (categoryInput && this.normalizeExpenseCategoryKey(categoryInput.value) === targetKey) {
+      categoryInput.value = 'Outros';
+    }
+
+    this.populateExpenseCategoryOptions('Outros');
+    this.saveStore();
+    this.renderExpenseCategoriesManager();
+    this.renderDespesasTable();
+    this.showToast(`Categoria removida. ${affectedExpenses} despesa(s) voltaram para Outros.`, 'success');
   }
 
   normalizeClientCategory(value) {

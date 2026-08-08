@@ -442,6 +442,80 @@ body.config-view .header-actions > * {
   padding: 0;
 }
 
+/* Agrupa avisos sonoros + status de nuvem/sincronismo/versão/auth numa única
+   linha visual do cabeçalho da view Consultório Control (panil-view). Em
+   outras views este wrapper continua se comportando como "transparente"
+   (ver regras específicas abaixo) para não alterar o layout já existente. */
+.header-actions-group1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  min-width: 0;
+}
+
+/* Aplicado só a partir de telas de desktop: em telas estreitas (<=900px) o
+   layout mobile já existente (sound-control-group empilhado em 100% de
+   largura, etc.) continua valendo sem interferência deste wrapper. */
+@media (min-width: 901px) {
+  body.panil-view .header-actions .header-actions-group1 {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(163, 230, 53, 0.45) transparent;
+    padding-bottom: 6px;
+  }
+
+  body.panil-view .header-actions .header-actions-group1::-webkit-scrollbar {
+    height: 5px;
+  }
+
+  body.panil-view .header-actions .header-actions-group1::-webkit-scrollbar-thumb {
+    background: rgba(163, 230, 53, 0.45);
+    border-radius: 999px;
+  }
+
+  body.panil-view .header-actions .header-actions-group1::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  body.panil-view .header-actions .header-actions-group1 > * {
+    flex: 0 0 auto;
+  }
+
+  /* Reduz um pouco a largura dos badges de status para caber mais conteúdo
+     visível de cara nesta linha antes de precisar rolar horizontalmente. */
+  body.panil-view .header-actions .header-actions-group1 #header-sync-panel {
+    max-width: 230px;
+  }
+
+  body.panil-view .header-actions .header-actions-group1 #app-version-badge {
+    min-width: 112px;
+    max-width: 112px;
+  }
+}
+
+/* No agenda-view o wrapper deve ficar "transparente" (display:contents) para
+   preservar exatamente o comportamento/posicionamento já existente dos itens
+   internos (ex.: header-sync-panel), que são controlados individualmente por
+   regras próprias de body.agenda-view mais abaixo. */
+body.agenda-view .header-actions .header-actions-group1 {
+  display: contents !important;
+}
+
+/* Como o display:contents acima "achata" o wrapper, seus filhos deixam de
+   ser filhos diretos de .header-actions e não são mais alcançados pela regra
+   "body.agenda-view .header-actions > *". Reaplicamos aqui o mesmo
+   comportamento padrão (ocultos), preservando o layout original do
+   agenda-view; os itens que devem continuar visíveis (ex.: header-sync-panel)
+   são reabilitados pelas regras já existentes mais abaixo. */
+body.agenda-view .header-actions .header-actions-group1 > * {
+  display: none !important;
+}
+
 body.panil-view .header-actions .top-date-picker,
 body.panil-view .header-actions .header-finance-pending-pill,
 body.panil-view .header-actions #btn-logout-session,
@@ -2877,6 +2951,7 @@ input[type="date"]:focus {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  flex-wrap: wrap;
   min-height: 58px;
   padding: 0.78rem 1.06rem;
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
@@ -2892,6 +2967,78 @@ input[type="date"]:focus {
   font-weight: 600;
   color: var(--text-muted);
   padding: 0 0.2rem 0 0.35rem;
+}
+
+.agenda-hour-range-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  padding: 0.3rem 0.6rem;
+  background-color: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: var(--radius-md);
+}
+
+.agenda-hour-range-group i {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.agenda-hour-range-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.6);
+  white-space: nowrap;
+}
+
+input[type="time"].agenda-hour-range-input {
+  width: 96px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.agenda-hour-range-reset {
+  padding: 0.4rem 0.7rem !important;
+  font-size: 0.8rem !important;
+}
+
+.agenda-hour-range-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #b45309;
+  background-color: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: var(--radius-md);
+  padding: 0.35rem 0.6rem;
+}
+
+.agenda-hour-range-note i {
+  width: 15px;
+  height: 15px;
+}
+
+.agenda-hour-range-note button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #4f46e5;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 1180px) {
+  .agenda-calendar-range {
+    min-width: 0;
+  }
 }
 
 .agenda-view-toggle .btn {

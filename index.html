@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260805-51">
+  <link rel="stylesheet" href="css/styles.css?v=20260805-53">
 </head>
 <body>
   <div id="login-root">
@@ -101,6 +101,7 @@
           </button>
 
           <div class="header-actions">
+            <div class="header-actions-group1">
             <div class="sound-control-group">
               <button class="btn btn-secondary btn-icon-text active-sound" id="btn-toggle-sound" title="Ativar/Desativar avisos sonoros">
                 <i data-lucide="bell"></i>
@@ -142,6 +143,7 @@
             <span id="app-version-badge" class="cloud-sync-meta local">Versão: v00.00/00000000</span>
             <span id="cloud-sync-last" class="cloud-sync-meta" title="Sem atualização" aria-label="Sem atualização"></span>
             <span id="firebase-auth-status" class="firebase-auth-meta auth-offline" role="button" tabindex="0" title="Clique para ver diagnóstico de autenticação Firebase">Auth Firebase: Desconectado</span>
+            </div>
 
             <div class="top-date-picker">
               <i data-lucide="calendar-range"></i>
@@ -316,6 +318,15 @@
                   <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-today"><i data-lucide="rotate-ccw"></i> Voltar</button>
                   <button class="btn btn-secondary btn-sm" type="button" id="btn-agenda-next">Próxima <i data-lucide="chevron-right"></i></button>
                 </div>
+                <div class="agenda-hour-range-group" id="agenda-hour-range-group" title="Escolha a faixa de horário exibida na grade da agenda">
+                  <i data-lucide="clock"></i>
+                  <span class="agenda-hour-range-label">Exibir de</span>
+                  <input type="time" id="agenda-hour-range-start" class="agenda-hour-range-input" step="3600">
+                  <span class="agenda-hour-range-label">até</span>
+                  <input type="time" id="agenda-hour-range-end" class="agenda-hour-range-input" step="3600">
+                  <button type="button" class="btn btn-secondary btn-sm agenda-hour-range-reset" id="btn-agenda-hour-range-reset" title="Mostrar todas as horas (00:00–23:00)">Ver tudo</button>
+                </div>
+                <span class="agenda-hour-range-note" id="agenda-hour-range-note" style="display:none;"></span>
                 <div class="agenda-calendar-range" id="agenda-calendar-range">Período</div>
               </div>
               <div class="card-body">
@@ -1388,6 +1399,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260801-3"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260807-25"></script>
+  <script src="js/app.js?v=20260807-26"></script>
 </body>
 </html>

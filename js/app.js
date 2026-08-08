@@ -658,13 +658,7 @@ class ConsultorioApp {
     this.googleCalendarAutoSyncIntervalId = null;
     this.googleCalendarAutoSyncEveryMs = 6 * 60 * 60 * 1000;
     this.googleCalendarAutoSyncInFlight = false;
-    // Trava de execução única do envio local -> Google (ver syncAppointmentsToGoogleCalendar):
-    // impede que duas chamadas concorrentes (auto-connect + clique manual, duplo clique, etc.)
-    // insiram o mesmo agendamento duas vezes no Google.
-    this.googleCalendarSyncInFlight = false;
     this.googleCalendarRateLimitUntil = 0;
-    this.googleCalendarLastSyncAt = 0;
-    this.googleCalendarSyncCooldownMs = 30 * 1000;
     this.syncAuditLogLimit = 18;
     this.syncAuditEvents = [];
     this.deletedAppointmentTombstones = {};
@@ -7079,6 +7073,15 @@ class ConsultorioApp {
         this.googleCalendarAuthorized = false;
         this.updateGoogleCalendarStatus('error', 'Sessão expirada ou permissão insuficiente. Clique em Conectar Google Calendar e autorize novamente.');
         if (showToast) this.showToast('Reautorize o Google Calendar e tente importar novamente.', 'warning');
+        return;
+      }
+      if (lowered.includes('rate limit') || lowered.includes('usererrorexceeded') || lowered.includes('ratelimitexceeded') || (apiError && (apiError.code === 429 || apiError.code === 403))) {
+        const backoffMs = 120 * 1000;
+        this.googleCalendarRateLimitUntil = Date.now() + backoffMs;
+        const retryAt = new Date(this.googleCalendarRateLimitUntil).toLocaleTimeString('pt-BR');
+        this.updateGoogleCalendarStatus('error', `Rate Limit do Google Calendar. Próxima tentativa após ${retryAt}.`);
+        this.logSyncAudit('warning', `Google Calendar rate limit: próxima importação após ${retryAt}.`);
+        if (showToast) this.showToast('Limite de requisições do Google Calendar atingido. Aguarde 2 minutos.', 'warning');
         return;
       }
       this.updateGoogleCalendarStatus('error', `Falha ao importar para Agenda: ${message}`);

@@ -4770,9 +4770,9 @@ class ConsultorioApp {
     const disconnectFirebaseBtn = document.getElementById('btn-disconnect-firebase');
     const saveGoogleCalendarBtn = document.getElementById('btn-save-google-calendar');
     const connectGoogleCalendarBtn = document.getElementById('btn-connect-google-calendar');
-    const listGoogleCalendarEventsBtn = document.getElementById('btn-list-google-calendar-events');
     const importGoogleCalendarEventsBtn = document.getElementById('btn-import-google-calendar-events');
     const disconnectGoogleCalendarBtn = document.getElementById('btn-disconnect-google-calendar');
+    const resetLocalAppointmentsBtn = document.getElementById('btn-reset-local-appointments-google');
     const exportSyncAuditBtn = document.getElementById('btn-export-sync-audit');
     const copySyncDiagnosticBtn = document.getElementById('btn-copy-sync-diagnostic');
     const firebaseConfigInput = document.getElementById('cfg-firebase-json');
@@ -4951,15 +4951,15 @@ class ConsultorioApp {
       });
     }
 
-    if (listGoogleCalendarEventsBtn) {
-      listGoogleCalendarEventsBtn.addEventListener('click', () => {
-        void this.syncAppointmentsToGoogleCalendar({ manual: true });
-      });
-    }
-
     if (importGoogleCalendarEventsBtn) {
       importGoogleCalendarEventsBtn.addEventListener('click', () => {
         void this.importGoogleCalendarIntoLocalAgenda();
+      });
+    }
+
+    if (resetLocalAppointmentsBtn) {
+      resetLocalAppointmentsBtn.addEventListener('click', () => {
+        void this.resetLocalAppointmentsFromGoogleOnly();
       });
     }
 
@@ -6659,8 +6659,6 @@ class ConsultorioApp {
 
       this.googleCalendarAutoSyncInFlight = true;
       try {
-        await this.syncAppointmentsToGoogleCalendar({ showToast: false, importFromGoogle: false, skipFinalList: true });
-        if (!this.googleCalendarAuthorized) return;
         await this.importGoogleCalendarIntoLocalAgenda({ showToast: false });
         this.updateGoogleCalendarStatus('ok', 'Sincronização automática executada.');
         this.logSyncAudit('info', 'Sincronização automática Google Calendar executada a cada 6h.');
@@ -6712,79 +6710,6 @@ class ConsultorioApp {
     panel.dataset.count = String(items.length);
   }
 
-  buildGoogleCalendarEventPayload(appointment) {
-    const appt = appointment && typeof appointment === 'object' ? appointment : {};
-    const id = String(appt.id || '').trim();
-    const date = String(appt.date || '').trim();
-    const rawTime = String(appt.time || '').trim();
-    const time = /^\d{2}:\d{2}$/.test(rawTime) ? rawTime : '08:00';
-
-    if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-
-    const startLocal = new Date(`${date}T${time}:00`);
-    if (Number.isNaN(startLocal.getTime())) return null;
-
-    const endLocal = new Date(startLocal.getTime() + (50 * 60 * 1000));
-    const endDate = `${endLocal.getFullYear()}-${String(endLocal.getMonth() + 1).padStart(2, '0')}-${String(endLocal.getDate()).padStart(2, '0')}`;
-    const endTime = `${String(endLocal.getHours()).padStart(2, '0')}:${String(endLocal.getMinutes()).padStart(2, '0')}`;
-
-    const clientName = String(appt.clientName || 'Cliente').trim() || 'Cliente';
-    const procedure = String(appt.procedure || 'Consulta').trim() || 'Consulta';
-    const status = String(appt.status || 'Agendado').trim() || 'Agendado';
-    const paymentStatus = String(appt.paymentStatus || 'Pendente').trim() || 'Pendente';
-    const value = formatCurrency(appt.price || 0);
-    const notes = String(appt.notes || '').trim();
-
-    const fingerprint = [
-      date,
-      time,
-      clientName,
-      procedure,
-      status,
-      paymentStatus,
-      toNumber(appt.price || 0).toFixed(2),
-      notes
-    ].join('|');
-
-    const descriptionLines = [
-      `Paciente: ${clientName}`,
-      `Procedimento: ${procedure}`,
-      `Status: ${status}`,
-      `Pagamento: ${paymentStatus}`,
-      `Valor: ${value}`
-    ];
-
-    if (notes) {
-      descriptionLines.push('', `Observações: ${notes}`);
-    }
-
-    descriptionLines.push('', `ID Consulta (Consultório Control): ${id}`);
-
-    return {
-      appointmentId: id,
-      fingerprint,
-      resource: {
-        summary: `${clientName} · ${procedure}`,
-        description: descriptionLines.join('\n'),
-        start: {
-          dateTime: `${date}T${time}:00`,
-          timeZone: 'America/Sao_Paulo'
-        },
-        end: {
-          dateTime: `${endDate}T${endTime}:00`,
-          timeZone: 'America/Sao_Paulo'
-        },
-        extendedProperties: {
-          private: {
-            consultorioSource: 'consultorio-control',
-            consultorioAppointmentId: id,
-            consultorioFingerprint: fingerprint
-          }
-        }
-      }
-    };
-  }
-
   async fetchAllGoogleCalendarEvents(params) {
     const events = [];
     let pageToken = '';
@@ -6800,26 +6725,6 @@ class ConsultorioApp {
     } while (pageToken);
 
     return events;
-  }
-
-  async listGoogleManagedCalendarEvents() {
-    const now = new Date();
-    const timeMin = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString();
-    const timeMax = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate()).toISOString();
-
-    // maxResults é o tamanho da página, não um teto: fetchAllGoogleCalendarEvents segue
-    // nextPageToken até esgotar. Sem isso, contas com muitos eventos (ex.: duplicatas
-    // acumuladas por bugs antigos) tinham a busca cortada em 2500 eventos silenciosamente.
-    return this.fetchAllGoogleCalendarEvents({
-      calendarId: 'primary',
-      timeMin,
-      timeMax,
-      showDeleted: false,
-      singleEvents: true,
-      maxResults: 2500,
-      privateExtendedProperty: ['consultorioSource=consultorio-control'],
-      orderBy: 'startTime'
-    });
   }
 
   parseGoogleCalendarEventToLocalAppointmentRaw(event) {
@@ -7499,7 +7404,7 @@ class ConsultorioApp {
       this.updateGoogleCalendarStatus('ok', 'Google Calendar conectado e autorizado.');
       this.showToast('Google Calendar conectado com sucesso.', 'success');
       this.scheduleGoogleCalendarAutoSync();
-      void this.syncAppointmentsToGoogleCalendar({ showToast: false, manual: false });
+      void this.importGoogleCalendarIntoLocalAgenda({ showToast: false });
     };
 
     // Always force account picker so the user can select the intended Google account.
@@ -7564,7 +7469,7 @@ class ConsultorioApp {
       this.logSyncAudit('info', 'Auto-connect Google Calendar: reconectado com sucesso. Iniciando sync...');
       this.updateGoogleCalendarStatus('ok', 'Google Calendar reconectado automaticamente. Sincronizando...');
       this.scheduleGoogleCalendarAutoSync();
-      void this.syncAppointmentsToGoogleCalendar({ showToast: true, manual: false });
+      void this.importGoogleCalendarIntoLocalAgenda({ showToast: true });
     };
 
     // prompt: '' attempts silent token refresh — no popup if already authorized.

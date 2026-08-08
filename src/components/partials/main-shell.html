@@ -486,6 +486,17 @@
         <div class="filter-group"></div>
         <button class="btn btn-primary" id="btn-new-expense" type="button" onclick="app.openExpenseModal()" ontouchstart="app.openExpenseModal()"><i data-lucide="plus"></i> Nova Despesa</button>
       </div>
+      <div class="card" id="despesas-print-card" style="margin-bottom:1rem;">
+        <div class="card-body">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap;">
+            <div>
+              <h3 style="margin:0; display:flex; align-items:center; gap:0.4rem;"><i data-lucide="printer"></i> Impressão de Despesas</h3>
+              <p style="margin:0.25rem 0 0; color:var(--text-muted);">Gera um relatório para impressão com as despesas do período selecionado no topo da tela.</p>
+            </div>
+            <button class="btn btn-secondary btn-icon-text" type="button" id="btn-report-despesas"><i data-lucide="printer"></i><span>Imprimir Despesas</span></button>
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-body">
           <div class="table-responsive">

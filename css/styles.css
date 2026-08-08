@@ -3218,17 +3218,18 @@ input[type="time"].agenda-hour-range-input {
 /* Sessões por dia: mini calendar + day list */
 .agenda-day-view {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 380px minmax(240px, 1fr) 300px;
   gap: 1rem;
   align-items: start;
 }
 
 .agenda-day-view.is-collapsed {
-  grid-template-columns: 0 1fr;
+  grid-template-columns: 0 1fr 300px;
 }
 
 .agenda-day-mini-card,
-.agenda-day-list-card {
+.agenda-day-list-card,
+.agenda-day-confirm-card {
   background: #ffffff !important;
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
@@ -3445,11 +3446,20 @@ input[type="time"].agenda-hour-range-input {
 #agenda-day-mini-calendar .flatpickr-weekday {
   color: rgba(15, 23, 42, 0.5) !important;
   font-weight: 700 !important;
+  font-size: 0.85rem !important;
 }
 
 #agenda-day-mini-calendar .flatpickr-day {
   color: #1e293b !important;
   position: relative;
+  height: 42px !important;
+  line-height: 42px !important;
+  font-size: 0.95rem !important;
+}
+
+#agenda-day-mini-calendar .flatpickr-current-month {
+  font-size: 1.05rem !important;
+  padding: 0.4rem 0 !important;
 }
 
 #agenda-day-mini-calendar .flatpickr-day.prevMonthDay,
@@ -5650,6 +5660,101 @@ body.analytics-focus-mode .analytics-grid {
 
 #modal-appointment .modal-body::-webkit-scrollbar-thumb:hover {
   background: rgba(110, 143, 74, 0.72);
+}
+
+/* ── Apple / macOS-style glass treatment ────────────────────────────────
+   Scoped to #modal-appointment only (pilot for "Agendar/Editar Consulta").
+   Keeps the app's dark theme; adds vibrancy blur, deep soft shadows,
+   larger corner radii and SF Pro-ish typography. Not applied globally. ── */
+#modal-appointment .modal-card {
+  width: min(760px, calc(100vw - 48px));
+  border-radius: 26px;
+  background: linear-gradient(165deg, rgba(58, 71, 99, 0.6) 0%, rgba(21, 28, 46, 0.82) 48%, rgba(8, 12, 22, 0.92) 100%);
+  -webkit-backdrop-filter: blur(42px) saturate(190%);
+  backdrop-filter: blur(42px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 36px 80px rgba(2, 6, 23, 0.6),
+    0 14px 32px rgba(2, 6, 23, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
+  letter-spacing: -0.011em;
+}
+
+#modal-appointment .modal-header {
+  padding: 1.3rem 1.6rem 1.05rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+#modal-appointment .modal-header h3 {
+  font-size: 1.22rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+#modal-appointment .btn-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+#modal-appointment .btn-close:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+  transform: scale(1.06);
+}
+
+#modal-appointment .modal-body {
+  padding-top: 1.4rem;
+  padding-left: 1.6rem;
+  padding-right: 1.6rem;
+}
+
+#modal-appointment .form-group label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: -0.003em;
+}
+
+#modal-appointment .form-control,
+#modal-appointment input[type="date"],
+#modal-appointment input[type="time"] {
+  border-radius: 13px;
+  padding: 0.68rem 0.95rem;
+  letter-spacing: -0.006em;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#modal-appointment .form-control:focus,
+#modal-appointment input[type="date"]:focus,
+#modal-appointment input[type="time"]:focus {
+  box-shadow:
+    0 0 0 4px rgba(10, 132, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px rgba(10, 132, 255, 0.16);
+}
+
+#modal-appointment .modal-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 1.15rem 1.6rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 100%);
+}
+
+#modal-appointment .modal-footer .btn {
+  border-radius: 999px;
+  padding: 0.62rem 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.008em;
 }
 
 /* Ensure form controls don't force horizontal overflow inside modal */

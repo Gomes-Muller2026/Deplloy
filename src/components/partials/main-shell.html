@@ -313,6 +313,19 @@
             </div>
             <div class="agenda-day-list-body" id="agenda-day-list-body"></div>
           </div>
+
+          <div class="card agenda-day-confirm-card" id="agenda-day-confirm-card">
+            <div class="agenda-day-confirm-header">
+              <span><i data-lucide="send"></i> Enviar confirmação</span>
+              <label class="agenda-confirm-select-all">
+                <input type="checkbox" id="chk-agenda-confirm-all" onchange="app.toggleAgendaConfirmSelectAll(this.checked)"> Todos
+              </label>
+            </div>
+            <div class="agenda-day-confirm-list" id="agenda-day-confirm-list"></div>
+            <div class="agenda-day-confirm-footer">
+              <button class="btn btn-primary btn-sm" id="btn-send-agenda-confirmations" type="button" disabled onclick="app.sendSelectedAgendaConfirmations()"><i data-lucide="message-circle"></i> Enviar confirmação</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>

@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260805-55">
+  <link rel="stylesheet" href="css/styles.css?v=20260805-56">
 </head>
 <body>
   <div id="login-root">
@@ -784,22 +784,24 @@
                   </div>
                 </div>
 
-                <div class="card" style="margin-top:1rem;">
-                  <div class="card-header"><h3><i data-lucide="refresh-ccw"></i> Resetar Agenda Local</h3></div>
-                  <div class="card-body">
-                    <p>Apaga todos os agendamentos deste sistema local (o Google Calendar não é alterado) e reimporta tudo do zero direto do Google. Use se a agenda local acumulou duplicatas ou ficou incompleta. Um backup em JSON é baixado automaticamente antes de apagar.</p>
-                    <button class="btn btn-ghost" type="button" id="btn-reset-local-appointments-google" style="color:var(--danger);"><i data-lucide="trash-2"></i> Apagar Agenda Local e Reimportar do Google</button>
+                <div class="settings-cards-row">
+                  <div class="card" style="margin-top:1rem;">
+                    <div class="card-header"><h3><i data-lucide="refresh-ccw"></i> Resetar Agenda Local</h3></div>
+                    <div class="card-body">
+                      <p>Apaga todos os agendamentos deste sistema local (o Google Calendar não é alterado) e reimporta tudo do zero direto do Google. Use se a agenda local acumulou duplicatas ou ficou incompleta. Um backup em JSON é baixado automaticamente antes de apagar.</p>
+                      <button class="btn btn-ghost" type="button" id="btn-reset-local-appointments-google" style="color:var(--danger);"><i data-lucide="trash-2"></i> Apagar Agenda Local e Reimportar do Google</button>
+                    </div>
                   </div>
-                </div>
 
-                <div class="card" style="margin-top:1rem;">
-                  <div class="card-header"><h3><i data-lucide="mic"></i> Narração por Voz</h3></div>
-                  <div class="card-body">
-                    <p>Quando ativado, um botão de microfone aparece no campo Observações ao editar uma consulta, permitindo narrar em voz alta e transformar a fala em texto automaticamente (requer permissão do navegador e conexão com a internet).</p>
-                    <button class="btn btn-secondary btn-icon-text active-sound is-off" id="btn-toggle-voice-narration" type="button" title="Ativar/Desativar narração por voz nas observações da consulta">
-                      <i data-lucide="mic"></i>
-                      <span id="voice-narration-status-text">Narração por Voz: OFF</span>
-                    </button>
+                  <div class="card" style="margin-top:1rem;">
+                    <div class="card-header"><h3><i data-lucide="mic"></i> Narração por Voz</h3></div>
+                    <div class="card-body">
+                      <p>Quando ativado, um botão de microfone aparece no campo Observações ao editar uma consulta, permitindo narrar em voz alta e transformar a fala em texto automaticamente (requer permissão do navegador e conexão com a internet).</p>
+                      <button class="btn btn-secondary btn-icon-text active-sound is-off" id="btn-toggle-voice-narration" type="button" title="Ativar/Desativar narração por voz nas observações da consulta">
+                        <i data-lucide="mic"></i>
+                        <span id="voice-narration-status-text">Narração por Voz: OFF</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 

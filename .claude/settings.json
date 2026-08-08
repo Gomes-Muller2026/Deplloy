@@ -47,7 +47,9 @@
       "Bash(git log*)",
       "Bash(awk 'BEGIN{o=0;c=0} {n=gsub\\(/{/,\"{\"\\);o+=n; n=gsub\\(/}/,\"}\"\\);c+=n} END{print \"braces open=\"o, \"close=\"c}' .claude/settings.json)",
       "Bash(echo \"exit: $?\")",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-sandbox --window-size=1400,900 --screenshot=\"C:\\\\Users\\\\rafae\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\\\931f8da1-6d61-46c5-8d1a-9415b1fef4a1\\\\scratchpad\\\\wide.png\" --virtual-time-budget=2000 \"file:///C:/Users/rafae/AppData/Local/Temp/claude/c--Users-rafae-Desktop-ProjetoAPP-Deplloy/931f8da1-6d61-46c5-8d1a-9415b1fef4a1/scratchpad/harness.html\")",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-sandbox --window-size=420,1000 --screenshot=\"C:\\\\Users\\\\rafae\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\\\931f8da1-6d61-46c5-8d1a-9415b1fef4a1\\\\scratchpad\\\\narrow.png\" --virtual-time-budget=2000 \"file:///C:/Users/rafae/AppData/Local/Temp/claude/c--Users-rafae-Desktop-ProjetoAPP-Deplloy/931f8da1-6d61-46c5-8d1a-9415b1fef4a1/scratchpad/harness.html\")"
     ]
   },
   "hooks": {

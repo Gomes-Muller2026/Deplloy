@@ -956,6 +956,24 @@ body.agenda-view .header-actions #btn-open-birthdays {
   gap: 0.45rem;
 }
 
+.settings-cards-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+  margin-top: 1rem;
+}
+
+.settings-cards-row .card {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 900px) {
+  .settings-cards-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .sync-audit-shell {
   margin-top: 0.9rem;
   border: 1px solid rgba(191, 210, 229, 0.28);

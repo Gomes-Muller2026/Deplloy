@@ -5462,13 +5462,16 @@ body.analytics-focus-mode .analytics-grid {
 #modal-appointment input[type="time"],
 #modal-client input[type="date"],
 #modal-client input[type="time"] {
-  background: linear-gradient(165deg, rgba(168, 197, 127, 0.24), rgba(78, 97, 65, 0.52) 56%, rgba(20, 30, 36, 0.96));
-  border: 1px solid rgba(196, 231, 146, 0.52);
-  color: #f8fafc;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03) 42%, rgba(15, 23, 42, 0.72));
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 -8px 12px rgba(2, 6, 23, 0.2),
-    0 1px 0 rgba(2, 6, 23, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 1px 2px rgba(2, 6, 23, 0.35);
 }
 
 #modal-appointment .form-control::placeholder,
@@ -5477,7 +5480,7 @@ body.analytics-focus-mode .analytics-grid {
 #modal-appointment input[type="time"]::placeholder,
 #modal-client input[type="date"]::placeholder,
 #modal-client input[type="time"]::placeholder {
-  color: rgba(241, 245, 249, 0.82);
+  color: rgba(248, 250, 252, 0.58);
 }
 
 #modal-appointment .form-control:focus,
@@ -5486,12 +5489,13 @@ body.analytics-focus-mode .analytics-grid {
 #modal-appointment input[type="time"]:focus,
 #modal-client input[type="date"]:focus,
 #modal-client input[type="time"]:focus {
-  border-color: rgba(190, 242, 100, 0.9);
+  outline: none;
+  border-color: rgba(10, 132, 255, 0.85);
   box-shadow:
-    0 0 0 4px rgba(132, 204, 22, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -10px 14px rgba(2, 6, 23, 0.24);
-  background: linear-gradient(165deg, rgba(176, 206, 132, 0.3), rgba(92, 116, 73, 0.58) 56%, rgba(24, 35, 40, 0.98));
+    0 0 0 4px rgba(10, 132, 255, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px rgba(10, 132, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04) 42%, rgba(15, 23, 42, 0.78));
 }
 
 #modal-appointment input[type="date"]::-webkit-calendar-picker-indicator,
@@ -5505,7 +5509,7 @@ body.analytics-focus-mode .analytics-grid {
 
 #modal-appointment select.form-control,
 #modal-client select.form-control {
-  color: #f8fafc;
+  color: var(--text-main);
   font-weight: 600;
 }
 
@@ -5513,13 +5517,17 @@ body.analytics-focus-mode .analytics-grid {
 #modal-client select.form-control option,
 #modal-appointment select.form-control optgroup,
 #modal-client select.form-control optgroup {
-  background-color: #111827;
+  background-color: #10182b;
   color: #f8fafc;
 }
 
 #modal-appointment select.form-control option:checked,
-#modal-client select.form-control option:checked {
-  background-color: #1d4ed8;
+#modal-client select.form-control option:checked,
+#modal-appointment select.form-control option:hover,
+#modal-client select.form-control option:hover,
+#modal-appointment select.form-control option:focus,
+#modal-client select.form-control option:focus {
+  background-color: #0a84ff;
   color: #ffffff;
 }
 

@@ -82,7 +82,21 @@
       "Bash(git show *)",
       "Bash('/c/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --no-sandbox --window-size=1920,1300 '--screenshot=C:\\\\Users\\\\rafae\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\\\931f8da1-6d61-46c5-8d1a-9415b1fef4a1\\\\scratchpad/shot_1920.png' --virtual-time-budget=2000 --hide-scrollbars 'file:///C:\\\\Users\\\\rafae\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\\\931f8da1-6d61-46c5-8d1a-9415b1fef4a1\\\\scratchpad/harness.html')",
       "Bash(SCRATCH=\"C:\\\\Users\\\\rafae\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\\\931f8da1-6d61-46c5-8d1a-9415b1fef4a1\\\\scratchpad\" *)",
-      "Bash(git pull *)"
+      "Bash(git pull *)",
+      "Bash(command -v node)",
+      "Bash(command -v npx)",
+      "Bash(command -v chrome)",
+      "Bash(command -v google-chrome)",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue)",
+      "Bash(git clone *)",
+      "Bash(docker --version)",
+      "Bash(docker info *)",
+      "Bash(pip --version)",
+      "Bash(pipx --version)",
+      "Bash(command -v python)",
+      "Bash(command -v python3)",
+      "Bash(command -v node.exe)",
+      "Bash(where npx *)"
     ],
     "additionalDirectories": [
       "\\tmp",

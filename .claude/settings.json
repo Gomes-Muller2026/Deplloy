@@ -71,7 +71,14 @@
       "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-sandbox --virtual-time-budget=4000 --dump-dom \"file:///C:/Users/rafae/Desktop/ProjetoAPP/Deplloy/__qa_harness.html\")",
       "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" status --porcelain)",
       "Bash(cd \"C:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" && rm -f \"/tmp/head_settings.json\" && git status --porcelain)",
-      "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" diff --stat)"
+      "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" diff --stat)",
+      "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" status)",
+      "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" diff --stat -- css/styles.css js/app.js index.html sw.js)",
+      "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" rev-parse --show-toplevel)",
+      "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" remote -v)",
+      "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" check-ignore -v css/styles.css js/app.js index.html sw.js)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(git hash-object *)"
     ],
     "additionalDirectories": [
       "\\tmp"

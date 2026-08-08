@@ -7354,6 +7354,7 @@ class ConsultorioApp {
       this.updateGoogleCalendarStatus('error', `Falha ao enviar agenda: ${message}`);
       this.showToast(`Falha ao enviar agenda ao Google Calendar: ${message}`, 'warning');
       this.logSyncAudit('error', `Falha no sync do Google Calendar: ${message}`);
+    }
     } finally {
       this.googleCalendarSyncInFlight = false;
     }

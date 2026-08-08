@@ -1,1 +1,4 @@
 node_modules
+
+# Harness temporários para testes QA via Chrome headless
+__*.html

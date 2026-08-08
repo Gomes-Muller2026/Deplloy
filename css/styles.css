@@ -4579,10 +4579,33 @@ button.money-pill:active {
   background-color: var(--primary-light) !important;
 }
 
-.active-sound.sound-off {
+.active-sound.sound-off,
+.active-sound.is-off {
   border-color: var(--border-color) !important;
   color: var(--text-muted) !important;
   background-color: transparent !important;
+}
+
+/* Voice narration mic button (Observações do agendamento) */
+.voice-narration-mic-btn.is-recording {
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+  background-color: rgba(251, 113, 133, 0.14) !important;
+}
+
+.voice-narration-mic-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  margin-right: 0.35rem;
+  animation: voice-narration-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes voice-narration-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.75); }
 }
 
 /* Finance Summary Bar */

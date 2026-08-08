@@ -743,6 +743,17 @@
               </div>
             </div>
 
+            <div class="card" style="margin-top:1rem;">
+              <div class="card-header"><h3><i data-lucide="mic"></i> Narração por Voz</h3></div>
+              <div class="card-body">
+                <p>Quando ativado, um botão de microfone aparece no campo Observações ao editar uma consulta, permitindo narrar em voz alta e transformar a fala em texto automaticamente (requer permissão do navegador e conexão com a internet).</p>
+                <button class="btn btn-secondary btn-icon-text active-sound is-off" id="btn-toggle-voice-narration" type="button" title="Ativar/Desativar narração por voz nas observações da consulta">
+                  <i data-lucide="mic"></i>
+                  <span id="voice-narration-status-text">Narração por Voz: OFF</span>
+                </button>
+              </div>
+            </div>
+
             <div class="sync-audit-shell">
               <div class="sync-audit-head">
                 <h4>Auditoria de Sincronização</h4>
@@ -948,10 +959,20 @@
         </div>
         <div class="form-group"><label for="appt-payment-status">Status do Pagamento</label><select id="appt-payment-status" class="form-control"><option value="Pendente">Pendente</option><option value="Parcial">Parcial</option><option value="Pago">Pago</option></select></div>
         <div class="form-group"><label for="appt-amount-paid">Valor Pago</label><input type="number" step="0.01" min="0" id="appt-amount-paid" class="form-control"></div>
-        <div class="form-group grid-col-span-2"><label for="appt-notes">Observações</label><textarea id="appt-notes" class="form-control" rows="3"></textarea></div>
+        <div class="form-group grid-col-span-2">
+          <label for="appt-notes">Observações</label>
+          <textarea id="appt-notes" class="form-control" rows="3"></textarea>
+          <div id="voice-narration-controls" class="voice-narration-controls" style="display:none; margin-top:0.5rem; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm voice-narration-mic-btn" id="btn-voice-narration-toggle" title="Narrar observações por voz">
+              <i data-lucide="mic"></i><span id="voice-narration-mic-label">Narrar por voz</span>
+            </button>
+            <span id="voice-narration-live-indicator" class="voice-narration-live-indicator" style="display:none; font-size:0.8rem; color:var(--text-muted); align-items:center;"><span class="voice-narration-mic-dot"></span>Gravando... fale agora</span>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" type="button" id="btn-delete-appointment" style="color:var(--danger); margin-right:auto; display:none;"><i data-lucide="trash-2"></i> Excluir Consulta</button>
+        <button class="btn btn-secondary" type="button" id="btn-print-appointment-session" style="display:none;"><i data-lucide="printer"></i> Imprimir Sessão</button>
         <button class="btn btn-secondary" type="button" id="btn-cancel-appointment">Cancelar</button>
         <button class="btn btn-primary" type="submit">Salvar Consulta</button>
       </div>

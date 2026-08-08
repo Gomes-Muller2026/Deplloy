@@ -9386,6 +9386,7 @@ class ConsultorioApp {
       defaultDate: selected,
       onChange: (selectedDates, dateStr) => {
         this.agendaDaySelectedDate = dateStr;
+        this.agendaConfirmSelectedIds.clear();
         this.renderAgendaDayList();
       },
       onDayCreate: (selectedDates, dateStr, fp, dayElem) => {
@@ -9418,6 +9419,14 @@ class ConsultorioApp {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
+  getAppointmentConfirmationBadge(appointment) {
+    const status = String((appointment && appointment.confirmationStatus) || '').trim();
+    if (status === 'confirmado') return { label: 'Confirmado', className: 'is-confirmado' };
+    if (status === 'nao_confirmado') return { label: 'Não confirmado', className: 'is-nao-confirmado' };
+    if (status === 'pendente') return { label: 'Aguardando resposta', className: 'is-pendente-confirmacao' };
+    return null;
+  }
+
   renderAgendaDayList() {
     const listBody = document.getElementById('agenda-day-list-body');
     const titleEl = document.getElementById('agenda-day-list-title');
@@ -9434,20 +9443,121 @@ class ConsultorioApp {
 
     if (!dayAppointments.length) {
       listBody.innerHTML = '<div class="agenda-day-list-empty">Nenhuma sessão agendada para este dia.</div>';
+    } else {
+      listBody.innerHTML = dayAppointments.map((a) => {
+        const initials = this.getClientInitials(a.clientName || '-');
+        const paymentStatus = String(a.paymentStatus || '').toLowerCase();
+        const metaClass = paymentStatus.includes('pago') ? 'is-pago' : (paymentStatus.includes('parcial') ? 'is-parcial' : 'is-pendente');
+        const metaLabel = a.paymentStatus || 'Pendente';
+        const confirmBadge = this.getAppointmentConfirmationBadge(a);
+        const confirmChip = confirmBadge
+          ? `<span class="agenda-confirm-badge ${confirmBadge.className}">${safeText(confirmBadge.label)}</span>`
+          : '';
+        return `
+          <div class="agenda-day-session-row" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')">
+            <span class="agenda-day-session-time"><i data-lucide="clock"></i>${safeText(a.time || '--:--')}</span>
+            <span class="agenda-day-avatar">${safeText(initials)}</span>
+            <span class="agenda-day-session-name">${safeText(a.clientName || '-')}</span>
+            <span class="agenda-day-session-meta ${metaClass}">${safeText(metaLabel)}</span>
+            ${confirmChip}
+          </div>
+        `;
+      }).join('');
+    }
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+
+    this.renderAgendaDayConfirmPanel(dayAppointments);
+  }
+
+  toggleAgendaConfirmSelection(appointmentId, checked) {
+    if (!this.agendaConfirmSelectedIds) this.agendaConfirmSelectedIds = new Set();
+    if (checked) {
+      this.agendaConfirmSelectedIds.add(appointmentId);
+    } else {
+      this.agendaConfirmSelectedIds.delete(appointmentId);
+    }
+    this.updateAgendaConfirmSendButtonState();
+  }
+
+  toggleAgendaConfirmSelectAll(checked) {
+    if (!this.agendaConfirmSelectedIds) this.agendaConfirmSelectedIds = new Set();
+    document.querySelectorAll('.agenda-confirm-row-checkbox:not(:disabled)').forEach((checkbox) => {
+      checkbox.checked = checked;
+      const appointmentId = checkbox.getAttribute('data-appointment-id');
+      if (!appointmentId) return;
+      if (checked) {
+        this.agendaConfirmSelectedIds.add(appointmentId);
+      } else {
+        this.agendaConfirmSelectedIds.delete(appointmentId);
+      }
+    });
+    this.updateAgendaConfirmSendButtonState();
+  }
+
+  updateAgendaConfirmSendButtonState() {
+    const btn = document.getElementById('btn-send-agenda-confirmations');
+    if (!btn) return;
+    const count = this.agendaConfirmSelectedIds ? this.agendaConfirmSelectedIds.size : 0;
+    btn.disabled = count === 0;
+    btn.innerHTML = count > 0
+      ? `<i data-lucide="message-circle"></i> Enviar confirmação (${count})`
+      : '<i data-lucide="message-circle"></i> Enviar confirmação';
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  resendAgendaConfirmation(appointmentId) {
+    if (window.agendaModule && typeof window.agendaModule.sendAppointmentConfirmationWhatsApp === 'function') {
+      window.agendaModule.sendAppointmentConfirmationWhatsApp(this, appointmentId);
+    }
+  }
+
+  sendSelectedAgendaConfirmations() {
+    if (window.agendaModule && typeof window.agendaModule.sendSelectedAppointmentConfirmations === 'function') {
+      window.agendaModule.sendSelectedAppointmentConfirmations(this, this.agendaConfirmSelectedIds);
+    }
+  }
+
+  renderAgendaDayConfirmPanel(dayAppointments) {
+    const listEl = document.getElementById('agenda-day-confirm-list');
+    if (!listEl) return;
+    if (!this.agendaConfirmSelectedIds) this.agendaConfirmSelectedIds = new Set();
+
+    const validIds = new Set((dayAppointments || []).map((a) => a.id));
+    this.agendaConfirmSelectedIds.forEach((id) => {
+      if (!validIds.has(id)) this.agendaConfirmSelectedIds.delete(id);
+    });
+
+    if (!dayAppointments || !dayAppointments.length) {
+      listEl.innerHTML = '<div class="agenda-day-list-empty">Nenhuma sessão agendada para este dia.</div>';
+      this.updateAgendaConfirmSendButtonState();
       return;
     }
 
-    listBody.innerHTML = dayAppointments.map((a) => {
-      const initials = this.getClientInitials(a.clientName || '-');
-      const paymentStatus = String(a.paymentStatus || '').toLowerCase();
-      const metaClass = paymentStatus.includes('pago') ? 'is-pago' : (paymentStatus.includes('parcial') ? 'is-parcial' : 'is-pendente');
-      const metaLabel = a.paymentStatus || 'Pendente';
+    listEl.innerHTML = dayAppointments.map((a) => {
+      const client = this.clients.find((c) => c.id === a.clientId);
+      const hasPhone = Boolean(this.normalizeWhatsAppPhone((client && client.phone) || ''));
+      const confirmBadge = this.getAppointmentConfirmationBadge(a);
+      const badgeHtml = confirmBadge
+        ? `<span class="agenda-confirm-badge ${confirmBadge.className}">${safeText(confirmBadge.label)}</span>`
+        : '<span class="agenda-confirm-badge is-nunca-enviado">Não enviado</span>';
+      const checked = this.agendaConfirmSelectedIds.has(a.id) ? 'checked' : '';
+      const disabled = hasPhone ? '' : 'disabled';
+      const rowTitle = hasPhone ? '' : 'title="Cliente sem telefone válido para WhatsApp"';
+
       return `
-        <div class="agenda-day-session-row" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')">
-          <span class="agenda-day-session-time"><i data-lucide="clock"></i>${safeText(a.time || '--:--')}</span>
-          <span class="agenda-day-avatar">${safeText(initials)}</span>
-          <span class="agenda-day-session-name">${safeText(a.clientName || '-')}</span>
-          <span class="agenda-day-session-meta ${metaClass}">${safeText(metaLabel)}</span>
+        <div class="agenda-day-confirm-row ${hasPhone ? '' : 'is-disabled'}" ${rowTitle}>
+          <input type="checkbox" class="agenda-confirm-row-checkbox" data-appointment-id="${safeText(a.id || '')}" ${checked} ${disabled} onchange="app.toggleAgendaConfirmSelection('${a.id}', this.checked)">
+          <span class="agenda-day-confirm-time">${safeText(a.time || '--:--')}</span>
+          <span class="agenda-day-confirm-name">${safeText(a.clientName || '-')}</span>
+          ${badgeHtml}
+          <button type="button" class="agenda-confirm-resend-btn" title="Enviar confirmação" onclick="app.resendAgendaConfirmation('${a.id}')" ${hasPhone ? '' : 'disabled'}>
+            <i data-lucide="send"></i>
+          </button>
         </div>
       `;
     }).join('');
@@ -9455,6 +9565,8 @@ class ConsultorioApp {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
       window.lucide.createIcons();
     }
+
+    this.updateAgendaConfirmSendButtonState();
   }
 
   layoutAgendaDayEvents(dayAppointments) {

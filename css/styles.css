@@ -974,6 +974,19 @@ body.agenda-view .header-actions #btn-open-birthdays {
   }
 }
 
+/* Wider variant for cards with denser content (textarea, action rows, event lists)
+   so they don't get squeezed on medium-width screens; stacks earlier than the
+   default .settings-cards-row breakpoint. */
+.settings-cards-row-lg {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 1180px) {
+  .settings-cards-row-lg {
+    grid-template-columns: 1fr;
+  }
+}
+
 .sync-audit-shell {
   margin-top: 0.9rem;
   border: 1px solid rgba(191, 210, 229, 0.28);
@@ -4626,6 +4639,58 @@ button.money-pill:active {
   50% { opacity: 0.35; transform: scale(0.75); }
 }
 
+/* Narrativa por sessão dentro do cadastro do cliente */
+.client-sessions-narrative-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.client-session-narrative-item {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: var(--bg-card);
+}
+
+.client-session-narrative-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.client-session-narrative-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.82rem;
+  color: var(--text-main);
+}
+
+.client-session-narrative-procedure,
+.client-session-narrative-status {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.client-session-narrative-text {
+  margin: 0.55rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.client-session-narrative-text.is-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* Finance Summary Bar */
 .fin-summary-grid {
   display: grid;
@@ -6579,6 +6644,119 @@ input[type="time"] {
 input[type="date"]:focus,
 input[type="time"]:focus {
   background-color: #263449;
+}
+
+/* ==========================================================================
+   Custom Select Dropdown
+   --------------------------------------------------------------------------
+   Native <select> options can't be reliably styled on hover across browsers
+   (Chrome/Edge on Windows draw the open native popup with OS colors,
+   ignoring author CSS for the hovered <option>). The selects listed in
+   CUSTOM_SELECT_IDS (js/app.js) are progressively enhanced at runtime into
+   this fully CSS-controlled dropdown so every state (closed, open, hover,
+   selected) has guaranteed, on-brand contrast. The trigger button reuses
+   the existing .form-control look (including the darker glass styling
+   already scoped to #modal-appointment/#modal-client), so only the popup
+   list itself needs new rules here.
+   ========================================================================== */
+.custom-select {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  font: inherit;
+}
+
+.custom-select-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.custom-select-value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-select-value.is-placeholder {
+  color: rgba(248, 250, 252, 0.58);
+}
+
+.custom-select-caret {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: currentColor;
+  opacity: 0.75;
+  transition: transform 0.16s ease;
+}
+
+.custom-select-caret svg {
+  width: 16px;
+  height: 16px;
+}
+
+.custom-select.is-open .custom-select-caret {
+  transform: rotate(180deg);
+}
+
+.custom-select-list {
+  position: fixed;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background-color: #10182b;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.55), 0 0 0 1px rgba(2, 6, 23, 0.4);
+  overflow-y: auto;
+  z-index: 1300;
+}
+
+.custom-select-list[hidden] {
+  display: none;
+}
+
+.custom-select-option {
+  padding: 0.6rem 0.75rem;
+  border-radius: calc(var(--radius-sm) - 4px);
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.custom-select-option + .custom-select-option {
+  margin-top: 0.15rem;
+}
+
+.custom-select-option.is-active {
+  background-color: #0a84ff;
+  color: #ffffff;
+}
+
+.custom-select-option.is-selected {
+  background-color: rgba(10, 132, 255, 0.28);
+  color: #ffffff;
+}
+
+.custom-select-option.is-selected.is-active {
+  background-color: #0a84ff;
+}
+
+.custom-select-option.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 

@@ -328,6 +328,13 @@ const formatCurrency = (value) => {
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const escapeHtml = (value) => String(value == null ? '' : value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
 const toNumber = (value) => {
   const parsed = parseFloat(String(value || '0').replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -339,6 +346,399 @@ const safeText = (value) => String(value == null ? '' : value)
   .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;');
+
+/* ==========================================================================
+   Custom Select (dropdown) — substitui o popup nativo do <select>
+   --------------------------------------------------------------------------
+   Chrome/Edge no Windows não respeitam de forma confiável CSS de :hover/
+   :focus aplicado a <option> dentro do popup nativo de um <select> aberto
+   (o item sob o mouse é desenhado pelo SO com cores do sistema, ignorando o
+   CSS do autor). Para garantir contraste e identidade visual consistentes
+   em todo estado (fechado, aberto, hover, selecionado), os <select>
+   listados em CUSTOM_SELECT_IDS são "progressivamente aprimorados" em
+   tempo de execução por enhanceSelectAsCustomDropdown(): o <select>
+   original continua no DOM (escondido) e é mantido sincronizado, então
+   todo o restante do app.js que lê/escreve `.value`/`.selectedIndex`
+   desses elementos por id continua funcionando sem alteração.
+   ========================================================================== */
+const CUSTOM_SELECT_IDS = [
+  'appt-client-id',
+  'appt-procedure',
+  'appt-payment-method',
+  'appt-status',
+  'appt-recurrence-type',
+  'appt-bulk-update-mode',
+  'appt-payment-status',
+  'client-category',
+  'client-convenio',
+  'client-plano-financeiro',
+  'expense-category',
+  'pay-method'
+];
+
+const CUSTOM_SELECT_CHEVRON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+
+function cssEscapeId(id) {
+  if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(id);
+  return String(id).replace(/([^a-zA-Z0-9_-])/g, '\\$1');
+}
+
+function buildCustomSelectOptionsHTML(selectEl) {
+  return Array.from(selectEl.options || []).map((opt, idx) => {
+    const label = opt.textContent || '';
+    return `<li role="option" class="custom-select-option${opt.disabled ? ' is-disabled' : ''}" id="${safeText(selectEl.id)}__opt-${idx}" data-index="${idx}" aria-selected="false">${safeText(label)}</li>`;
+  }).join('');
+}
+
+function syncCustomSelectDisplay(selectEl) {
+  const state = selectEl.__customSelect;
+  if (!state) return;
+  const opt = selectEl.options[selectEl.selectedIndex] || null;
+  const label = opt ? (opt.textContent || '') : '';
+  state.valueEl.textContent = label;
+  state.valueEl.classList.toggle('is-placeholder', !!opt && !opt.value);
+  Array.from(state.list.children).forEach((li, idx) => {
+    const isSelected = idx === selectEl.selectedIndex;
+    li.classList.toggle('is-selected', isSelected);
+    li.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+  });
+}
+
+function highlightCustomSelectActive(selectEl) {
+  const state = selectEl.__customSelect;
+  if (!state) return;
+  const children = state.list.children;
+  Array.from(children).forEach((li, idx) => {
+    li.classList.toggle('is-active', idx === state.activeIndex);
+  });
+  const activeLi = children[state.activeIndex];
+  if (activeLi) {
+    state.trigger.setAttribute('aria-activedescendant', activeLi.id);
+    if (typeof activeLi.scrollIntoView === 'function') activeLi.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function rebuildCustomSelectList(selectEl) {
+  const state = selectEl.__customSelect;
+  if (!state) return;
+  state.list.innerHTML = buildCustomSelectOptionsHTML(selectEl);
+  state.activeIndex = Math.max(0, selectEl.selectedIndex);
+  syncCustomSelectDisplay(selectEl);
+}
+
+function positionCustomSelectList(selectEl) {
+  const state = selectEl.__customSelect;
+  if (!state) return;
+  const rect = state.trigger.getBoundingClientRect();
+  const list = state.list;
+  const viewportH = window.innerHeight || document.documentElement.clientHeight;
+  const gap = 6;
+  const preferredMax = 280;
+  const spaceBelow = viewportH - rect.bottom - gap;
+  const spaceAbove = rect.top - gap;
+
+  list.style.left = `${Math.round(rect.left)}px`;
+  list.style.width = `${Math.round(rect.width)}px`;
+
+  if (spaceBelow < 140 && spaceAbove > spaceBelow) {
+    list.style.top = 'auto';
+    list.style.bottom = `${Math.round(viewportH - rect.top + gap)}px`;
+    list.style.maxHeight = `${Math.max(120, Math.min(preferredMax, spaceAbove))}px`;
+    state.wrapper.classList.add('drop-up');
+  } else {
+    list.style.bottom = 'auto';
+    list.style.top = `${Math.round(rect.bottom + gap)}px`;
+    list.style.maxHeight = `${Math.max(120, Math.min(preferredMax, spaceBelow))}px`;
+    state.wrapper.classList.remove('drop-up');
+  }
+}
+
+function closeCustomSelect(selectEl) {
+  const state = selectEl && selectEl.__customSelect;
+  if (!state || !state.open) return;
+  state.open = false;
+  state.wrapper.classList.remove('is-open');
+  state.list.hidden = true;
+  state.trigger.setAttribute('aria-expanded', 'false');
+  state.trigger.removeAttribute('aria-activedescendant');
+}
+
+function closeAllCustomSelects(exceptSelectEl) {
+  document.querySelectorAll('.custom-select.is-open').forEach((wrapper) => {
+    const sel = wrapper.__selectRef;
+    if (sel && sel !== exceptSelectEl) closeCustomSelect(sel);
+  });
+}
+
+function openCustomSelect(selectEl) {
+  const state = selectEl && selectEl.__customSelect;
+  if (!state || state.open || selectEl.disabled) return;
+  closeAllCustomSelects(selectEl);
+  state.open = true;
+  state.activeIndex = selectEl.selectedIndex >= 0 ? selectEl.selectedIndex : 0;
+  state.wrapper.classList.add('is-open');
+  state.list.hidden = false;
+  state.trigger.setAttribute('aria-expanded', 'true');
+  positionCustomSelectList(selectEl);
+  highlightCustomSelectActive(selectEl);
+}
+
+function toggleCustomSelect(selectEl) {
+  const state = selectEl && selectEl.__customSelect;
+  if (!state) return;
+  if (state.open) closeCustomSelect(selectEl); else openCustomSelect(selectEl);
+}
+
+function chooseCustomSelectIndex(selectEl, index, options = {}) {
+  const state = selectEl.__customSelect;
+  if (!state) return;
+  const opts = selectEl.options;
+  if (!opts || index < 0 || index >= opts.length || opts[index].disabled) return;
+  const changed = selectEl.selectedIndex !== index;
+  selectEl.selectedIndex = index;
+  state.activeIndex = index;
+  syncCustomSelectDisplay(selectEl);
+  if (changed && !options.silent) {
+    selectEl.dispatchEvent(new Event('input', { bubbles: true }));
+    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
+let customSelectTypeaheadBuffer = '';
+let customSelectTypeaheadTimer = null;
+
+function customSelectTypeahead(selectEl, char) {
+  customSelectTypeaheadBuffer += char.toLowerCase();
+  window.clearTimeout(customSelectTypeaheadTimer);
+  customSelectTypeaheadTimer = window.setTimeout(() => { customSelectTypeaheadBuffer = ''; }, 700);
+
+  const state = selectEl.__customSelect;
+  const opts = Array.from(selectEl.options || []);
+  if (!opts.length) return;
+  const startFrom = (state.activeIndex + 1) % opts.length;
+  let foundIdx = -1;
+  for (let i = 0; i < opts.length; i++) {
+    const idx = (startFrom + i) % opts.length;
+    const text = String(opts[idx].textContent || '').toLowerCase();
+    if (!opts[idx].disabled && text.indexOf(customSelectTypeaheadBuffer) === 0) {
+      foundIdx = idx;
+      break;
+    }
+  }
+  if (foundIdx === -1) return;
+  if (state.open) {
+    state.activeIndex = foundIdx;
+    highlightCustomSelectActive(selectEl);
+  } else {
+    chooseCustomSelectIndex(selectEl, foundIdx);
+  }
+}
+
+function moveCustomSelectActive(selectEl, delta) {
+  const state = selectEl.__customSelect;
+  const count = selectEl.options.length;
+  if (!count) return;
+  let idx = state.activeIndex;
+  for (let i = 0; i < count; i++) {
+    idx = (idx + delta + count) % count;
+    if (!selectEl.options[idx].disabled) break;
+  }
+  state.activeIndex = idx;
+  highlightCustomSelectActive(selectEl);
+}
+
+function handleCustomSelectTriggerKeydown(evt, selectEl) {
+  const state = selectEl.__customSelect;
+  if (!state) return;
+  const key = evt.key;
+
+  if (!state.open) {
+    if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Enter' || key === ' ' || key === 'Spacebar') {
+      evt.preventDefault();
+      openCustomSelect(selectEl);
+      return;
+    }
+  } else {
+    if (key === 'ArrowDown') { evt.preventDefault(); moveCustomSelectActive(selectEl, 1); return; }
+    if (key === 'ArrowUp') { evt.preventDefault(); moveCustomSelectActive(selectEl, -1); return; }
+    if (key === 'Home') { evt.preventDefault(); selectEl.__customSelect.activeIndex = 0; highlightCustomSelectActive(selectEl); return; }
+    if (key === 'End') { evt.preventDefault(); selectEl.__customSelect.activeIndex = selectEl.options.length - 1; highlightCustomSelectActive(selectEl); return; }
+    if (key === 'Enter' || key === ' ' || key === 'Spacebar') {
+      evt.preventDefault();
+      chooseCustomSelectIndex(selectEl, state.activeIndex);
+      closeCustomSelect(selectEl);
+      return;
+    }
+    if (key === 'Escape') { evt.preventDefault(); closeCustomSelect(selectEl); return; }
+    if (key === 'Tab') { closeCustomSelect(selectEl); return; }
+  }
+
+  if (key && key.length === 1 && /[a-z0-9À-ÿ]/i.test(key)) {
+    customSelectTypeahead(selectEl, key);
+  }
+}
+
+function installCustomSelectValueInterceptor(selectEl) {
+  const valueDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  const selectedIndexDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'selectedIndex');
+  if (valueDesc && valueDesc.configurable) {
+    Object.defineProperty(selectEl, 'value', {
+      configurable: true,
+      enumerable: true,
+      get() { return valueDesc.get.call(selectEl); },
+      set(v) {
+        valueDesc.set.call(selectEl, v);
+        syncCustomSelectDisplay(selectEl);
+        const state = selectEl.__customSelect;
+        if (state) state.activeIndex = Math.max(0, selectEl.selectedIndex);
+      }
+    });
+  }
+  if (selectedIndexDesc && selectedIndexDesc.configurable) {
+    Object.defineProperty(selectEl, 'selectedIndex', {
+      configurable: true,
+      enumerable: true,
+      get() { return selectedIndexDesc.get.call(selectEl); },
+      set(v) {
+        selectedIndexDesc.set.call(selectEl, v);
+        syncCustomSelectDisplay(selectEl);
+        const state = selectEl.__customSelect;
+        if (state) state.activeIndex = Math.max(0, selectEl.selectedIndex);
+      }
+    });
+  }
+}
+
+function installCustomSelectOptionsObserver(selectEl) {
+  const observer = new MutationObserver(() => {
+    rebuildCustomSelectList(selectEl);
+  });
+  observer.observe(selectEl, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['disabled', 'value', 'selected'] });
+  selectEl.__customSelect.observer = observer;
+}
+
+function enhanceSelectAsCustomDropdown(selectEl) {
+  if (!selectEl || selectEl.tagName !== 'SELECT' || selectEl.__customSelect) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'custom-select';
+  wrapper.__selectRef = selectEl;
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'custom-select-trigger form-control';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  if (selectEl.id) trigger.id = `${selectEl.id}__trigger`;
+
+  const valueEl = document.createElement('span');
+  valueEl.className = 'custom-select-value';
+
+  const caret = document.createElement('span');
+  caret.className = 'custom-select-caret';
+  caret.setAttribute('aria-hidden', 'true');
+  caret.innerHTML = CUSTOM_SELECT_CHEVRON_SVG;
+
+  trigger.appendChild(valueEl);
+  trigger.appendChild(caret);
+
+  const list = document.createElement('ul');
+  list.className = 'custom-select-list';
+  list.setAttribute('role', 'listbox');
+  list.hidden = true;
+  if (selectEl.id) {
+    list.id = `${selectEl.id}__listbox`;
+    trigger.setAttribute('aria-controls', list.id);
+  }
+
+  wrapper.appendChild(trigger);
+  selectEl.insertAdjacentElement('afterend', wrapper);
+  document.body.appendChild(list);
+
+  selectEl.hidden = true;
+  selectEl.setAttribute('aria-hidden', 'true');
+  selectEl.tabIndex = -1;
+
+  selectEl.__customSelect = { wrapper, trigger, list, valueEl, open: false, activeIndex: 0 };
+
+  rebuildCustomSelectList(selectEl);
+  installCustomSelectValueInterceptor(selectEl);
+  installCustomSelectOptionsObserver(selectEl);
+
+  trigger.addEventListener('click', (evt) => {
+    evt.preventDefault();
+    toggleCustomSelect(selectEl);
+  });
+  trigger.addEventListener('keydown', (evt) => handleCustomSelectTriggerKeydown(evt, selectEl));
+
+  list.addEventListener('click', (evt) => {
+    const li = evt.target.closest('.custom-select-option');
+    if (!li || li.classList.contains('is-disabled')) return;
+    chooseCustomSelectIndex(selectEl, Number(li.getAttribute('data-index')));
+    closeCustomSelect(selectEl);
+    trigger.focus();
+  });
+
+  list.addEventListener('mousemove', (evt) => {
+    const li = evt.target.closest('.custom-select-option');
+    if (!li) return;
+    const idx = Number(li.getAttribute('data-index'));
+    const state = selectEl.__customSelect;
+    if (Number.isNaN(idx) || state.activeIndex === idx) return;
+    state.activeIndex = idx;
+    highlightCustomSelectActive(selectEl);
+  });
+
+  if (selectEl.id) {
+    const label = document.querySelector(`label[for="${cssEscapeId(selectEl.id)}"]`);
+    if (label) {
+      label.addEventListener('click', (evt) => {
+        evt.preventDefault();
+        trigger.focus();
+        openCustomSelect(selectEl);
+      });
+    }
+  }
+}
+
+function initCustomSelects(ids) {
+  (ids || CUSTOM_SELECT_IDS).forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) enhanceSelectAsCustomDropdown(el);
+  });
+}
+
+function resyncCustomSelectsWithin(root) {
+  if (!root || typeof root.querySelectorAll !== 'function') return;
+  root.querySelectorAll('select').forEach((sel) => {
+    if (sel.__customSelect) syncCustomSelectDisplay(sel);
+  });
+}
+
+document.addEventListener('click', (evt) => {
+  document.querySelectorAll('.custom-select.is-open').forEach((wrapper) => {
+    const sel = wrapper.__selectRef;
+    if (!sel) return;
+    const state = sel.__customSelect;
+    if (!state) return;
+    if (wrapper.contains(evt.target) || state.list.contains(evt.target)) return;
+    closeCustomSelect(sel);
+  });
+}, true);
+
+document.addEventListener('scroll', () => {
+  document.querySelectorAll('.custom-select.is-open').forEach((wrapper) => {
+    const sel = wrapper.__selectRef;
+    if (sel) positionCustomSelectList(sel);
+  });
+}, true);
+
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.custom-select.is-open').forEach((wrapper) => {
+    const sel = wrapper.__selectRef;
+    if (sel) positionCustomSelectList(sel);
+  });
+});
 
 const DEFAULT_APPOINTMENT_COLOR = '#0ea5e9';
 const AGENDA_EVENT_DURATION_MIN = 50;
@@ -4356,6 +4756,7 @@ class ConsultorioApp {
     this.populateClientCategoryOptions();
     this.populateClientCategoryFilterOptions();
     this.populateExpenseCategoryOptions();
+    initCustomSelects();
     this.prefillSenhaTabFields();
     this.prefillFirebaseConfig();
     this.prefillGoogleCalendarConfig();
@@ -10214,6 +10615,7 @@ class ConsultorioApp {
 
     const form = document.getElementById('form-expense');
     if (form) form.reset();
+    resyncCustomSelectsWithin(form);
 
     const idInput = document.getElementById('expense-id');
     const title = document.getElementById('modal-expense-title');
@@ -10573,6 +10975,7 @@ class ConsultorioApp {
 
     const form = document.getElementById('form-client');
     if (form) form.reset();
+    resyncCustomSelectsWithin(form);
     const clientDobInput = document.getElementById('client-dob');
     if (clientDobInput && clientDobInput._flatpickr) clientDobInput._flatpickr.clear();
 
@@ -10633,6 +11036,7 @@ class ConsultorioApp {
 
     this.loadAnamneseData(_anamneseData);
     this.renderClientReportCard(clientId);
+    this.renderClientSessionsNarrative(clientId);
     modal.classList.add('active');
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
   }
@@ -11293,6 +11697,7 @@ class ConsultorioApp {
 
     const form = document.getElementById('form-appointment');
     if (form) form.reset();
+    resyncCustomSelectsWithin(form);
 
     this.populateClientSelectOptions();
 
@@ -11807,6 +12212,51 @@ class ConsultorioApp {
         </div>
       </div>
     `).join('');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+  }
+
+  // Mostra a narrativa (transcrição por voz) de cada sessão do cliente, organizada
+  // individualmente por atendimento — cada agendamento guarda sua própria narrativa em
+  // appointment.notes, então aqui apenas listamos essas notas por sessão dentro do cadastro.
+  renderClientSessionsNarrative(clientId) {
+    const wrapper = document.getElementById('client-sessions-narrative-wrapper');
+    const list = document.getElementById('client-sessions-narrative-list');
+    if (!wrapper || !list) return;
+
+    if (!clientId) {
+      wrapper.style.display = 'none';
+      list.innerHTML = '';
+      return;
+    }
+    wrapper.style.display = '';
+
+    const sessions = this.getPatientAppointments(clientId).slice().reverse();
+
+    if (!sessions.length) {
+      list.innerHTML = '<p class="text-muted" style="font-size:0.85rem;margin:0;">Nenhuma sessão registrada para este paciente ainda.</p>';
+      return;
+    }
+
+    list.innerHTML = sessions.map((a) => {
+      const notes = String(a.notes || '').trim();
+      const hasNotes = Boolean(notes);
+      return `
+        <div class="client-session-narrative-item">
+          <div class="client-session-narrative-header">
+            <div class="client-session-narrative-meta">
+              <strong>${escapeHtml(formatDateBR(a.date))}${a.time ? ` às ${escapeHtml(a.time)}` : ''}</strong>
+              <span class="client-session-narrative-procedure">${escapeHtml(a.procedure || 'Procedimento não informado')}</span>
+              <span class="client-session-narrative-status">${escapeHtml(a.status || '-')}</span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="app.printAppointmentSession('${a.id}')">
+              <i data-lucide="printer"></i> Imprimir sessão
+            </button>
+          </div>
+          <p class="client-session-narrative-text${hasNotes ? '' : ' is-empty'}">${hasNotes ? escapeHtml(notes).replace(/\n/g, '<br>') : 'Nenhuma narrativa registrada nesta sessão.'}</p>
+        </div>
+      `;
+    }).join('');
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
   }
@@ -12426,7 +12876,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260807-4')
+    navigator.serviceWorker.register('./sw.js?v=20260808-1')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

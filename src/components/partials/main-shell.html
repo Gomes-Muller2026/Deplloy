@@ -686,51 +686,57 @@
     <section class="tab-content" id="tab-config">
       <div class="config-grid">
         <div class="card grid-col-span-2">
-          <div class="card-header"><h3><i data-lucide="cloud-lightning"></i> Sincronização Firebase</h3></div>
           <div class="card-body">
-            <div class="form-group">
-              <label for="cfg-firebase-json">Configuração Firebase JSON</label>
-              <textarea id="cfg-firebase-json" class="form-control" rows="5"></textarea>
-            </div>
-            <div class="config-actions">
-              <button class="btn btn-primary" id="btn-save-firebase">Conectar</button>
-              <button class="btn btn-secondary" id="btn-refresh-firebase" data-action="refresh-firebase">Atualizar Agora</button>
-              <button class="btn btn-secondary" id="btn-fetch-latest-firebase-update">Buscar Última Atualização</button>
-              <button class="btn btn-secondary" id="btn-validate-firebase">Revalidar Firebase</button>
-              <button class="btn btn-secondary" id="btn-disconnect-firebase">Desconectar</button>
-              <button class="btn btn-secondary" id="btn-force-app-update" title="Forçar atualização para a versão mais recente do site">Forçar Atualização do App</button>
-            </div>
-            <div id="firebase-validation-panel" class="firebase-validation-panel">
-              <p class="firebase-validation-summary">Clique em Revalidar Firebase para executar checklist de conexão.</p>
-            </div>
-            <p id="firebase-origin-hint" class="firebase-validation-summary" style="margin-top:0.5rem; margin-bottom:0.85rem; opacity:0.85;">Origem atual: aguardando carregamento...</p>
-
-            <div class="card" style="margin-top:1rem;">
-              <div class="card-header"><h3><i data-lucide="calendar-heart"></i> Google Calendar</h3></div>
-              <div class="card-body">
-                <p>Use um Client ID OAuth do tipo Web com origem JavaScript autorizada (por exemplo http://127.0.0.1:8000 ou https://...).</p>
-                <p id="google-calendar-origin-hint" class="firebase-validation-summary" style="margin-top:-0.25rem; margin-bottom:0.75rem; opacity:0.85;">Origem atual: aguardando carregamento...</p>
-                <div class="form-group">
-                  <label for="cfg-google-calendar-client-id">Google Client ID</label>
-                  <input type="text" id="cfg-google-calendar-client-id" class="form-control" placeholder="xxx.apps.googleusercontent.com">
-                </div>
-                <p class="firebase-validation-summary" style="margin-top:-0.25rem; margin-bottom:0.75rem; opacity:0.85;">A agenda deste sistema só importa do Google Calendar (via de mão única). Agendamentos criados aqui no app não são mais enviados para o Google.</p>
-                <div class="google-calendar-actions-row">
+            <div class="settings-cards-row settings-cards-row-lg">
+              <div class="card">
+                <div class="card-header"><h3><i data-lucide="cloud-lightning"></i> Sincronização Firebase</h3></div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label for="cfg-firebase-json">Configuração Firebase JSON</label>
+                    <textarea id="cfg-firebase-json" class="form-control" rows="5"></textarea>
+                  </div>
                   <div class="config-actions">
-                    <button class="btn btn-primary" id="btn-save-google-calendar">Salvar Client ID</button>
-                    <button class="btn btn-secondary" id="btn-connect-google-calendar">Conectar Google Calendar</button>
-                    <button class="btn btn-secondary" id="btn-import-google-calendar-events">Importar Google para Agenda</button>
-                    <button class="btn btn-secondary" id="btn-disconnect-google-calendar">Desconectar</button>
+                    <button class="btn btn-primary" id="btn-save-firebase">Conectar</button>
+                    <button class="btn btn-secondary" id="btn-refresh-firebase" data-action="refresh-firebase">Atualizar Agora</button>
+                    <button class="btn btn-secondary" id="btn-fetch-latest-firebase-update">Buscar Última Atualização</button>
+                    <button class="btn btn-secondary" id="btn-validate-firebase">Revalidar Firebase</button>
+                    <button class="btn btn-secondary" id="btn-disconnect-firebase">Desconectar</button>
+                    <button class="btn btn-secondary" id="btn-force-app-update" title="Forçar atualização para a versão mais recente do site">Forçar Atualização do App</button>
                   </div>
-                  <div class="google-calendar-sync-times" aria-label="Horários da sincronização">
-                    <div><i data-lucide="download"></i><span><strong>Última importação</strong><small id="google-calendar-last-imported">Ainda não importado</small></span></div>
+                  <div id="firebase-validation-panel" class="firebase-validation-panel">
+                    <p class="firebase-validation-summary">Clique em Revalidar Firebase para executar checklist de conexão.</p>
                   </div>
+                  <p id="firebase-origin-hint" class="firebase-validation-summary" style="margin-top:0.5rem; margin-bottom:0; opacity:0.85;">Origem atual: aguardando carregamento...</p>
                 </div>
-                <div id="google-calendar-status" class="firebase-validation-panel" style="margin-top:0.9rem;">
-                  <p class="firebase-validation-summary">Google Calendar desconectado.</p>
-                </div>
-                <div id="google-calendar-events-panel" class="firebase-validation-panel" style="margin-top:0.9rem;">
-                  <p class="firebase-validation-summary">Nenhum evento carregado ainda.</p>
+              </div>
+
+              <div class="card">
+                <div class="card-header"><h3><i data-lucide="calendar-heart"></i> Google Calendar</h3></div>
+                <div class="card-body">
+                  <p>Use um Client ID OAuth do tipo Web com origem JavaScript autorizada (por exemplo http://127.0.0.1:8000 ou https://...).</p>
+                  <p id="google-calendar-origin-hint" class="firebase-validation-summary" style="margin-top:-0.25rem; margin-bottom:0.75rem; opacity:0.85;">Origem atual: aguardando carregamento...</p>
+                  <div class="form-group">
+                    <label for="cfg-google-calendar-client-id">Google Client ID</label>
+                    <input type="text" id="cfg-google-calendar-client-id" class="form-control" placeholder="xxx.apps.googleusercontent.com">
+                  </div>
+                  <p class="firebase-validation-summary" style="margin-top:-0.25rem; margin-bottom:0.75rem; opacity:0.85;">A agenda deste sistema só importa do Google Calendar (via de mão única). Agendamentos criados aqui no app não são mais enviados para o Google.</p>
+                  <div class="google-calendar-actions-row">
+                    <div class="config-actions">
+                      <button class="btn btn-primary" id="btn-save-google-calendar">Salvar Client ID</button>
+                      <button class="btn btn-secondary" id="btn-connect-google-calendar">Conectar Google Calendar</button>
+                      <button class="btn btn-secondary" id="btn-import-google-calendar-events">Importar Google para Agenda</button>
+                      <button class="btn btn-secondary" id="btn-disconnect-google-calendar">Desconectar</button>
+                    </div>
+                    <div class="google-calendar-sync-times" aria-label="Horários da sincronização">
+                      <div><i data-lucide="download"></i><span><strong>Última importação</strong><small id="google-calendar-last-imported">Ainda não importado</small></span></div>
+                    </div>
+                  </div>
+                  <div id="google-calendar-status" class="firebase-validation-panel" style="margin-top:0.9rem;">
+                    <p class="firebase-validation-summary">Google Calendar desconectado.</p>
+                  </div>
+                  <div id="google-calendar-events-panel" class="firebase-validation-panel" style="margin-top:0.9rem;">
+                    <p class="firebase-validation-summary">Nenhum evento carregado ainda.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -805,6 +811,10 @@
         <div class="form-group grid-col-span-2" id="client-report-card-wrapper" style="display:none;margin-top:0.4rem;">
           <div style="font-size:0.82rem;font-weight:700;color:var(--text-main);margin-bottom:0.55rem;padding-bottom:0.3rem;border-bottom:1px solid rgba(148,163,184,0.18);">Relatório de Sessões do Cliente</div>
           <div class="stats-grid" id="client-report-summary-grid"></div>
+        </div>
+        <div class="form-group grid-col-span-2" id="client-sessions-narrative-wrapper" style="display:none;margin-top:0.4rem;">
+          <div style="font-size:0.82rem;font-weight:700;color:var(--text-main);margin-bottom:0.55rem;padding-bottom:0.3rem;border-bottom:1px solid rgba(148,163,184,0.18);">Narrativa por Sessão Atendida</div>
+          <div class="client-sessions-narrative-list" id="client-sessions-narrative-list"></div>
         </div>
       </div>
       <div class="modal-footer">

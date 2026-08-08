@@ -68,7 +68,13 @@
       "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-sandbox --window-size=900,1100 --screenshot=\"C:\\\\Users\\\\rafae\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-rafae-Desktop-ProjetoAPP-Deplloy\\\\f878d098-b2e4-4038-8932-625458fa5956\\\\scratchpad\\\\qa5.png\" --virtual-time-budget=4000 \"file:///C:/Users/rafae/Desktop/ProjetoAPP/Deplloy/__qa_harness.html\")",
       "Bash(cd \"C:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" && git show HEAD:.claude/settings.json > /tmp/head_settings.json && diff -u /tmp/head_settings.json \".claude/settings.json\" | head -100)",
       "Read(//tmp/**)",
-      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-sandbox --virtual-time-budget=4000 --dump-dom \"file:///C:/Users/rafae/Desktop/ProjetoAPP/Deplloy/__qa_harness.html\")"
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-sandbox --virtual-time-budget=4000 --dump-dom \"file:///C:/Users/rafae/Desktop/ProjetoAPP/Deplloy/__qa_harness.html\")",
+      "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" status --porcelain)",
+      "Bash(cd \"C:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" && rm -f \"/tmp/head_settings.json\" && git status --porcelain)",
+      "Bash(git -C \"c:\\\\Users\\\\rafae\\\\Desktop\\\\ProjetoAPP\\\\Deplloy\" diff --stat)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   },
   "hooks": {

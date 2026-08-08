@@ -11,6 +11,7 @@ const LOGIN_PASSWORD_STORAGE_KEY = 'consultorio_login_password';
 const LOGIN_USERS_STORAGE_KEY = 'consultorio_login_users';
 const LOGIN_ACTIVE_USER_STORAGE_KEY = 'consultorio_login_active_user';
 const SOUND_ENABLED_STORAGE_KEY = 'consultorio_sound_enabled';
+const VOICE_NARRATION_ENABLED_STORAGE_KEY = 'consultorio_voice_narration_enabled';
 const REMINDER_MINS_STORAGE_KEY = 'consultorio_reminder_mins';
 const REMINDER_INTENSITY_STORAGE_KEY = 'consultorio_reminder_intensity';
 const AGENDA_HOUR_RANGE_STORAGE_KEY = 'consultorio_agenda_hour_range';
@@ -572,6 +573,9 @@ class ConsultorioApp {
     this.financeViewFilter = 'all';
     this.financeViewMode = 'cliente';
     this.soundEnabled = true;
+    this.voiceNarrationEnabled = false;
+    this.voiceNarrationRecognition = null;
+    this.voiceNarrationActive = false;
     this.reminderMinutes = 15;
     this.reminderIntensity = 'strong';
     this.agendaViewMode = 'calendar';
@@ -4346,6 +4350,8 @@ class ConsultorioApp {
     this.ensureAppointmentProcedureOptions();
     this.loadSoundSettings();
     this.updateSoundControlsUI();
+    this.loadVoiceNarrationPreference();
+    this.updateVoiceNarrationToggleUI();
     this.populateClientGroupOptions();
     this.populateClientCategoryOptions();
     this.populateClientCategoryFilterOptions();
@@ -4490,6 +4496,163 @@ class ConsultorioApp {
       : 'strong';
     this.updateReminderAlertUI();
     this.updateNotificationPermissionUI();
+  }
+
+  loadVoiceNarrationPreference() {
+    try {
+      this.voiceNarrationEnabled = localStorage.getItem(VOICE_NARRATION_ENABLED_STORAGE_KEY) === '1';
+    } catch (err) {
+      this.voiceNarrationEnabled = false;
+    }
+  }
+
+  saveVoiceNarrationPreference() {
+    try {
+      localStorage.setItem(VOICE_NARRATION_ENABLED_STORAGE_KEY, this.voiceNarrationEnabled ? '1' : '0');
+    } catch (err) {
+      console.log('Falha ao salvar preferência de narração por voz:', err);
+    }
+  }
+
+  updateVoiceNarrationToggleUI() {
+    const toggleBtn = document.getElementById('btn-toggle-voice-narration');
+    const statusText = document.getElementById('voice-narration-status-text');
+    if (toggleBtn) toggleBtn.classList.toggle('is-off', !this.voiceNarrationEnabled);
+    if (statusText) statusText.textContent = this.voiceNarrationEnabled ? 'Narração por Voz: ON' : 'Narração por Voz: OFF';
+
+    const controls = document.getElementById('voice-narration-controls');
+    if (controls) controls.style.display = this.voiceNarrationEnabled ? 'flex' : 'none';
+  }
+
+  toggleVoiceNarrationFlag() {
+    this.voiceNarrationEnabled = !this.voiceNarrationEnabled;
+    if (!this.voiceNarrationEnabled) this.stopVoiceNarrationRecording();
+    this.saveVoiceNarrationPreference();
+    this.updateVoiceNarrationToggleUI();
+    this.showToast(
+      this.voiceNarrationEnabled ? 'Narração por voz ativada.' : 'Narração por voz desativada.',
+      'info'
+    );
+  }
+
+  // Só o texto reconhecido é salvo — nenhum áudio é gravado ou enviado a qualquer lugar.
+  toggleVoiceNarrationRecording() {
+    if (this.voiceNarrationActive) {
+      this.stopVoiceNarrationRecording();
+    } else {
+      this.startVoiceNarrationRecording();
+    }
+  }
+
+  startVoiceNarrationRecording() {
+    if (this.voiceNarrationActive) return;
+
+    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      this.showToast('Seu navegador não suporta narração por voz. Tente pelo Chrome ou Edge (computador ou Android).', 'warning');
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'pt-BR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+      const textarea = document.getElementById('appt-notes');
+      if (!textarea) return;
+
+      let finalChunk = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) finalChunk += result[0].transcript;
+      }
+
+      const trimmedChunk = finalChunk.trim();
+      if (!trimmedChunk) return;
+
+      const separator = textarea.value && !/\s$/.test(textarea.value) ? ' ' : '';
+      textarea.value = `${textarea.value}${separator}${trimmedChunk} `;
+    };
+
+    recognition.onerror = (event) => {
+      const errorCode = String((event && event.error) || '').trim();
+      let message = 'Falha na narração por voz.';
+      if (errorCode === 'not-allowed' || errorCode === 'permission-denied' || errorCode === 'service-not-allowed') {
+        message = 'Permissão de microfone negada. Habilite o microfone para este site nas configurações do navegador e tente de novo.';
+      } else if (errorCode === 'no-speech') {
+        message = 'Nenhuma fala detectada. Toque no microfone para tentar de novo.';
+      } else if (errorCode === 'network') {
+        message = 'Falha de conexão durante a narração por voz. Verifique sua internet.';
+      }
+      this.showToast(message, 'warning');
+      this.stopVoiceNarrationRecording();
+    };
+
+    recognition.onend = () => {
+      // Alguns navegadores encerram o reconhecimento sozinhos após um período de silêncio,
+      // mesmo em modo contínuo — sincroniza o estado/UI quando isso acontece sem clique do usuário.
+      if (this.voiceNarrationActive) this.stopVoiceNarrationRecording();
+    };
+
+    try {
+      recognition.start();
+    } catch (err) {
+      this.showToast('Não foi possível iniciar a narração por voz.', 'warning');
+      return;
+    }
+
+    this.voiceNarrationRecognition = recognition;
+    this.voiceNarrationActive = true;
+    this.updateVoiceNarrationRecordingUI();
+  }
+
+  stopVoiceNarrationRecording() {
+    if (this.voiceNarrationRecognition) {
+      try {
+        this.voiceNarrationRecognition.onend = null;
+        this.voiceNarrationRecognition.stop();
+      } catch (err) { /* no-op */ }
+    }
+    this.voiceNarrationRecognition = null;
+    this.voiceNarrationActive = false;
+    this.updateVoiceNarrationRecordingUI();
+  }
+
+  updateVoiceNarrationRecordingUI() {
+    const btn = document.getElementById('btn-voice-narration-toggle');
+    const label = document.getElementById('voice-narration-mic-label');
+    const indicator = document.getElementById('voice-narration-live-indicator');
+    if (btn) btn.classList.toggle('is-recording', this.voiceNarrationActive);
+    if (label) label.textContent = this.voiceNarrationActive ? 'Parar narração' : 'Narrar por voz';
+    if (indicator) indicator.style.display = this.voiceNarrationActive ? 'inline-flex' : 'none';
+  }
+
+  printAppointmentSession(appointmentId) {
+    const appointment = this.appointments.find((a) => a.id === appointmentId);
+    if (!appointment) {
+      this.showToast('Consulta não encontrada para impressão.', 'warning');
+      return;
+    }
+
+    const client = this.clients.find((c) => c.id === appointment.clientId);
+    const clientName = String(appointment.clientName || (client && client.name) || 'Paciente').trim() || 'Paciente';
+    const notes = String(appointment.notes || '').trim();
+
+    const lines = [
+      'SESSÃO INDIVIDUAL',
+      '',
+      `Paciente: ${clientName}`,
+      `Data: ${formatDateBR(appointment.date)}`,
+      `Horário: ${appointment.time || '-'}`,
+      `Procedimento: ${appointment.procedure || '-'}`,
+      `Status: ${appointment.status || '-'}`,
+      '',
+      'Observações da sessão:',
+      notes || '(sem observações registradas)'
+    ];
+
+    this.openReportWindow(`Sessão - ${clientName} - ${formatDateBR(appointment.date)}`, lines.join('\n'), true);
   }
 
   showHeaderSyncInlineNotice(message = 'Dados atualizados com sucesso.', type = 'success', timeoutMs = 2600) {
@@ -5131,6 +5294,24 @@ class ConsultorioApp {
             }
           });
         }
+        return;
+      }
+
+      const printSessionTrigger = target.closest('#btn-print-appointment-session');
+      if (printSessionTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        const idInput = document.getElementById('appointment-id');
+        const appointmentId = idInput ? idInput.value : '';
+        if (appointmentId) this.printAppointmentSession(appointmentId);
+        return;
+      }
+
+      const voiceNarrationToggleTrigger = target.closest('#btn-voice-narration-toggle');
+      if (voiceNarrationToggleTrigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.toggleVoiceNarrationRecording();
         return;
       }
 
@@ -5876,6 +6057,13 @@ class ConsultorioApp {
         this.saveSoundSettings();
         this.updateSoundControlsUI();
         this.showToast(this.soundEnabled ? 'Avisos sonoros ativados.' : 'Avisos sonoros desativados.', 'info');
+      });
+    }
+
+    const btnToggleVoiceNarration = document.getElementById('btn-toggle-voice-narration');
+    if (btnToggleVoiceNarration) {
+      btnToggleVoiceNarration.addEventListener('click', () => {
+        this.toggleVoiceNarrationFlag();
       });
     }
 
@@ -11115,6 +11303,9 @@ class ConsultorioApp {
     const bulkUpdateModeSelect = document.getElementById('appt-bulk-update-mode');
     const deleteBtn = document.getElementById('btn-delete-appointment');
     if (deleteBtn) deleteBtn.style.display = 'none';
+    const printSessionBtn = document.getElementById('btn-print-appointment-session');
+    if (printSessionBtn) printSessionBtn.style.display = 'none';
+    this.stopVoiceNarrationRecording();
     if (idInput) idInput.value = '';
     if (title) title.textContent = 'Agendar Consulta';
     if (colorInput) colorInput.value = DEFAULT_APPOINTMENT_COLOR;
@@ -11156,6 +11347,7 @@ class ConsultorioApp {
         this.selectAppointmentColor(a.color || DEFAULT_APPOINTMENT_COLOR);
         if (title) title.textContent = 'Editar Consulta/Financeiro';
         if (deleteBtn) deleteBtn.style.display = 'inline-flex';
+        if (printSessionBtn) printSessionBtn.style.display = 'inline-flex';
       }
     }
 
@@ -11165,6 +11357,7 @@ class ConsultorioApp {
   closeAppointmentModal() {
     const modal = document.getElementById('modal-appointment');
     if (modal) modal.classList.remove('active');
+    this.stopVoiceNarrationRecording();
   }
 
   openPaymentModal(appointmentId) {

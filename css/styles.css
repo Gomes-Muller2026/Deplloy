@@ -3388,6 +3388,144 @@ input[type="time"].agenda-hour-range-input {
   font-size: 0.9rem;
 }
 
+.agenda-confirm-badge {
+  margin-left: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.agenda-confirm-badge.is-confirmado {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+}
+
+.agenda-confirm-badge.is-pendente-confirmacao {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+}
+
+.agenda-confirm-badge.is-nao-confirmado {
+  background: rgba(190, 18, 60, 0.24);
+  color: #831843;
+}
+
+.agenda-confirm-badge.is-nunca-enviado {
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.45);
+}
+
+.agenda-day-confirm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.95rem 1.1rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.agenda-day-confirm-header > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.agenda-day-confirm-header i[data-lucide] {
+  width: 18px;
+  height: 18px;
+  color: #4f46e5;
+}
+
+.agenda-confirm-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.6);
+  cursor: pointer;
+}
+
+.agenda-day-confirm-list {
+  padding: 0.5rem;
+  min-height: 140px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.agenda-day-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.5rem;
+  border-radius: 12px;
+}
+
+.agenda-day-confirm-row:hover {
+  background: rgba(79, 70, 229, 0.06);
+}
+
+.agenda-day-confirm-row.is-disabled {
+  opacity: 0.55;
+}
+
+.agenda-day-confirm-time {
+  min-width: 44px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.7);
+}
+
+.agenda-day-confirm-name {
+  font-weight: 700;
+  color: #312e81;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agenda-day-confirm-row .agenda-confirm-badge {
+  margin-left: auto;
+}
+
+.agenda-confirm-resend-btn {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  cursor: pointer;
+  display: inline-flex;
+  padding: 0.3rem;
+  border-radius: 8px;
+}
+
+.agenda-confirm-resend-btn:hover {
+  background: rgba(79, 70, 229, 0.1);
+}
+
+.agenda-confirm-resend-btn:disabled {
+  color: rgba(15, 23, 42, 0.25);
+  cursor: not-allowed;
+}
+
+.agenda-confirm-resend-btn i {
+  width: 16px;
+  height: 16px;
+}
+
+.agenda-day-confirm-footer {
+  padding: 0.8rem 1.1rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.agenda-day-confirm-footer .btn {
+  width: 100%;
+  justify-content: center;
+}
+
 /* Light theme for the inline mini calendar (overrides the dark flatpickr popup theme) */
 #agenda-day-mini-calendar.flatpickr-calendar,
 #agenda-day-mini-calendar .flatpickr-calendar {

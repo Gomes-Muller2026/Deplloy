@@ -7087,6 +7087,50 @@ class ConsultorioApp {
     }
   }
 
+  // Apaga todos os agendamentos locais (sem tocar no Google Calendar) e reimporta tudo do zero
+  // diretamente do Google. Útil para eliminar duplicatas/inconsistências acumuladas localmente
+  // sem arriscar apagar nada do lado do Google. Faz backup em JSON antes de apagar, já que
+  // agendamentos que nunca chegaram a existir no Google (criados só no app) seriam perdidos.
+  async resetLocalAppointmentsFromGoogleOnly() {
+    const confirmMessage = 'Isso vai APAGAR todos os agendamentos da agenda local deste sistema (o Google Calendar não será alterado) e depois reimportar tudo direto do Google. Um backup em JSON dos agendamentos atuais será baixado antes de apagar. Deseja continuar?';
+    const confirmed = typeof this.askConfirmation === 'function'
+      ? await this.askConfirmation(confirmMessage, { title: 'Resetar agenda local', confirmLabel: 'Apagar e reimportar' })
+      : window.confirm(confirmMessage);
+    if (!confirmed) return;
+
+    try {
+      const now = new Date();
+      const backupPayload = {
+        exportedAt: now.toISOString(),
+        reason: 'reset-local-appointments-before-google-reimport',
+        appointments: this.appointments
+      };
+      const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: 'application/json;charset=utf-8' });
+      const fileName = `backup-agendamentos-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}.json`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      const removedCount = this.appointments.length;
+      this.appointments = [];
+      this.saveData();
+      this.render();
+      this.logSyncAudit('info', `Reset local: ${removedCount} agendamento(s) removido(s) da agenda local (backup salvo em ${fileName}). Google Calendar não foi alterado.`);
+      this.showToast(`Backup salvo (${fileName}). ${removedCount} agendamento(s) removido(s) localmente. Reimportando do Google...`, 'success');
+
+      await this.importGoogleCalendarIntoLocalAgenda();
+    } catch (err) {
+      const message = String((err && err.message) || err || 'erro desconhecido');
+      this.logSyncAudit('error', `Falha ao resetar agenda local: ${message}`);
+      this.showToast(`Falha ao resetar agenda local: ${message}`, 'warning');
+    }
+  }
+
   async waitForGoogleCalendarLibraries(timeoutMs = 10000) {
     const deadline = Date.now() + Math.max(1000, Number(timeoutMs) || 10000);
     while (Date.now() < deadline) {

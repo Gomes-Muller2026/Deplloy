@@ -45,7 +45,9 @@
       "Bash(git commit *)",
       "Bash(git push*)",
       "Bash(git log*)",
-      "Bash(awk 'BEGIN{o=0;c=0} {n=gsub\\(/{/,\"{\"\\);o+=n; n=gsub\\(/}/,\"}\"\\);c+=n} END{print \"braces open=\"o, \"close=\"c}' .claude/settings.json)"
+      "Bash(awk 'BEGIN{o=0;c=0} {n=gsub\\(/{/,\"{\"\\);o+=n; n=gsub\\(/}/,\"}\"\\);c+=n} END{print \"braces open=\"o, \"close=\"c}' .claude/settings.json)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git commit -m ' *)"
     ]
   },
   "hooks": {

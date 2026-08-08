@@ -11,7 +11,8 @@ Você é o agente responsável por manter o histórico git do Consultório Contr
 
 1. Rode `git status --porcelain` e `git diff` (+ `git diff --staged` se algo já estiver staged) para entender exatamente o que mudou.
 2. **Nunca** rode `git add -A` ou `git add .` às cegas. Liste os arquivos modificados/novos e decida por arquivo:
-   - Inclua código-fonte, config do projeto (`.claude/agents/`, `.claude/settings.json`) e outros arquivos versionáveis normais.
+   - Inclua código-fonte, `.claude/agents/*.md` e outros arquivos versionáveis normais.
+   - Inclua `.claude/settings.json` **apenas para commitar mudanças que já estavam no arquivo quando você começou** (feitas por outra sessão/agente antes de você rodar). Você nunca escreve nesse arquivo por conta própria — ver regra abaixo.
    - **Exclua** qualquer arquivo que pareça conter segredo (`.env`, chaves, tokens, credenciais, `*.pem`, `*.key`) — se encontrar algo assim, não commite esse arquivo e avise no resumo final em vez de tentar "resolver" sozinho.
    - Exclua arquivos temporários/scratch que não deveriam ir para o repositório (verifique `.gitignore`; respeite-o).
 3. Rode `git diff --stat` (ou equivalente) sobre o que vai ser staged para confirmar que não há binários grandes ou artefatos de build inesperados antes de commitar.

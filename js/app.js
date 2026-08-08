@@ -22,7 +22,15 @@ const GOOGLE_CALENDAR_CLIENT_ID_STORAGE_KEY = 'consultorio_google_calendar_clien
 const GOOGLE_CALENDAR_REQUIRED_CLIENT_ID = '210238418315-lavm9rn9vpne0hqa3fgt77oj1e0cvvis.apps.googleusercontent.com';
 const GOOGLE_CALENDAR_LAST_SENT_STORAGE_KEY = 'consultorio_google_calendar_last_sent';
 const GOOGLE_CALENDAR_LAST_IMPORTED_STORAGE_KEY = 'consultorio_google_calendar_last_imported';
-const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+// calendar.events sozinho só permite ler/escrever eventos de agendas cujo ID já se conhece
+// (efetivamente só "primary" sem outra forma de descobrir o resto). calendar.calendarlist.readonly
+// é necessário para listar as demais agendas do Google (ex.: "CONSULTÓRIO", "PsicoManager",
+// agendas secundárias/compartilhadas) e trazer os compromissos que estão nelas — sem esse escopo,
+// a importação só via a agenda principal do usuário e "perdia" compromissos que existem no Google
+// mas foram criados/importados em outra agenda. Usuários já conectados precisam clicar em
+// "Conectar Google Calendar" de novo para conceder esse escopo adicional (o app força a tela de
+// consentimento em connectGoogleCalendar via prompt: 'select_account consent').
+const GOOGLE_CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly';
 const GOOGLE_CALENDAR_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 const GOOGLE_CALENDAR_ALLOWED_ORIGINS = [
   'http://127.0.0.1:8000',
@@ -6861,6 +6869,53 @@ class ConsultorioApp {
     return created;
   }
 
+  // Agendas do Google que não representam compromissos reais do consultório (feriados,
+  // aniversários de contatos) e que por padrão aparecem na lista de qualquer conta.
+  // Identificadas pelo sufixo do id (não pelo nome exibido, que o usuário pode renomear).
+  isNonAppointmentGoogleCalendarId(calendarId) {
+    const id = String(calendarId || '').trim().toLowerCase();
+    if (!id) return false;
+    return /#holiday@group\.v\.calendar\.google\.com$/.test(id)
+      || /#contacts@group\.v\.calendar\.google\.com$/.test(id)
+      || id === 'addressbook#contacts@group.v.calendar.google.com';
+  }
+
+  // Lista todas as agendas do Google às quais o usuário tem acesso (não só "primary"), para que
+  // a importação traga compromissos criados em agendas secundárias/compartilhadas (ex.:
+  // "CONSULTÓRIO", "PsicoManager", agendas de terceiros). Se a chamada falhar — por exemplo,
+  // porque o usuário ainda não reautorizou com o escopo calendar.calendarlist.readonly — cai de
+  // volta para ['primary'] silenciosamente, preservando o comportamento anterior em vez de quebrar
+  // a importação inteira.
+  async listGoogleAppointmentCalendarIds() {
+    try {
+      const response = await window.gapi.client.calendar.calendarList.list({
+        minAccessRole: 'freeBusyReader',
+        showHidden: true,
+        maxResults: 250
+      });
+      const items = Array.isArray(response && response.result && response.result.items)
+        ? response.result.items
+        : [];
+
+      const ids = items
+        .filter((cal) => cal && !cal.deleted && !cal.primary)
+        .filter((cal) => String((cal && cal.accessRole) || '').trim().toLowerCase() !== 'freebusyreader')
+        .map((cal) => String((cal && cal.id) || '').trim())
+        .filter((id) => id && !this.isNonAppointmentGoogleCalendarId(id));
+
+      // 'primary' é sempre incluído primeiro: é o alias estável para a agenda principal do
+      // usuário (o id "real" dela na resposta é o próprio e-mail, filtrado acima via cal.primary
+      // para não buscar a mesma agenda duas vezes sob ids diferentes).
+      const uniqueIds = Array.from(new Set(ids));
+      uniqueIds.unshift('primary');
+      return uniqueIds;
+    } catch (err) {
+      const message = String((err && err.result && err.result.error && err.result.error.message) || (err && err.message) || err).trim();
+      this.logSyncAudit('warning', `Não foi possível listar todas as agendas do Google (usando somente a principal). Reconecte o Google Calendar para conceder acesso à lista de agendas. Detalhe: ${message}`);
+      return ['primary'];
+    }
+  }
+
   findExistingAppointmentForGoogleEvent(rawRecord = {}) {
     const googleEventId = String(rawRecord.googleEventId || '').trim();
     const idByGoogle = googleEventId ? `gcal-${googleEventId}` : '';
@@ -6894,15 +6949,41 @@ class ConsultorioApp {
     const timeMin = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString();
     const timeMax = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate()).toISOString();
 
-    const events = await this.fetchAllGoogleCalendarEvents({
-      calendarId: 'primary',
-      timeMin,
-      timeMax,
-      showDeleted: false,
-      singleEvents: true,
-      maxResults: 2500,
-      orderBy: 'startTime'
-    });
+    // Antes buscava só a agenda "primary": compromissos criados/movidos para outras agendas do
+    // Google (ex.: "CONSULTÓRIO", "PsicoManager", agendas compartilhadas) nunca eram vistos pela
+    // importação, mesmo aparecendo normalmente na visão semanal do Google Calendar. Agora percorre
+    // todas as agendas relevantes do usuário (ver listGoogleAppointmentCalendarIds).
+    const calendarIds = await this.listGoogleAppointmentCalendarIds();
+
+    const seenEventIds = new Set();
+    const events = [];
+    for (const calendarId of calendarIds) {
+      let calendarEvents = [];
+      try {
+        calendarEvents = await this.fetchAllGoogleCalendarEvents({
+          calendarId,
+          timeMin,
+          timeMax,
+          showDeleted: false,
+          singleEvents: true,
+          maxResults: 2500,
+          orderBy: 'startTime'
+        });
+      } catch (err) {
+        const message = String((err && err.result && err.result.error && err.result.error.message) || (err && err.message) || err).trim();
+        this.logSyncAudit('warning', `Falha ao ler a agenda "${calendarId}" do Google (pulando esta agenda): ${message}`);
+        continue;
+      }
+
+      calendarEvents.forEach((event) => {
+        // Mesmo evento pode, em tese, ser retornado por mais de uma agenda consultada (ex.: um
+        // convite compartilhado entre a agenda principal e uma secundária): mantém só a 1ª ocorrência.
+        const eventId = String((event && event.id) || '').trim();
+        if (eventId && seenEventIds.has(eventId)) return;
+        if (eventId) seenEventIds.add(eventId);
+        events.push(event);
+      });
+    }
 
     let createdClients = 0;
     let insertedAppointments = 0;
@@ -12005,7 +12086,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.app.handleServiceWorkerMessage(event && event.data ? event.data : {});
     });
 
-    navigator.serviceWorker.register('./sw.js?v=20260807-2')
+    navigator.serviceWorker.register('./sw.js?v=20260807-3')
       .then((reg) => {
         console.log('[PWA] Service Worker registrado:', reg.scope);
         if (reg.waiting) window.app.setUpdateReady(true);

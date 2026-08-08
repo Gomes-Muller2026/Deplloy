@@ -2,6 +2,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
 
 initializeApp();
 
@@ -126,5 +127,159 @@ exports.sendReceiptWhatsApp = onRequest({
   } catch (error) {
     console.error('Erro ao enviar recibo pelo WhatsApp:', error);
     response.status(500).json({ error: 'Falha interna ao enviar o recibo.' });
+  }
+});
+
+const escapeHtml = (value) => String(value == null ? '' : value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
+const formatDateBrFromIso = (iso) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : String(iso || '');
+};
+
+const renderConfirmationPage = ({ title, message, details, actions, tone }) => {
+  const toneColor = tone === 'success' ? '#15803d' : tone === 'danger' ? '#b91c1c' : '#4f46e5';
+  const detailsHtml = details
+    ? `<div style="background:#f8fafc;border-radius:12px;padding:16px 18px;margin:20px 0;text-align:left;color:#1e293b;font-size:15px;line-height:1.6;">${details}</div>`
+    : '';
+  const actionsHtml = (actions || []).map((action) => `
+    <a href="${action.href}" style="display:block;width:100%;box-sizing:border-box;margin:10px 0;padding:14px 18px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px;text-align:center;background:${action.background};color:${action.color};">${escapeHtml(action.label)}</a>
+  `).join('');
+
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirmação de consulta</title>
+</head>
+<body style="margin:0;background:#f1f5f9;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;">
+  <div style="max-width:420px;margin:0 auto;padding:32px 20px;">
+    <div style="background:#ffffff;border-radius:16px;padding:28px 24px;box-shadow:0 8px 24px rgba(15,23,42,0.08);text-align:center;">
+      <h1 style="margin:0 0 8px;font-size:20px;color:${toneColor};">${escapeHtml(title)}</h1>
+      <p style="margin:0;color:#334155;font-size:15px;line-height:1.5;">${escapeHtml(message)}</p>
+      ${detailsHtml}
+      ${actionsHtml}
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
+exports.confirmarAgendamento = onRequest({
+  region: 'southamerica-east1',
+  timeoutSeconds: 30,
+  memory: '128MiB',
+  maxInstances: 5
+}, async (request, response) => {
+  response.set('Content-Type', 'text/html; charset=utf-8');
+
+  if (request.method !== 'GET') {
+    response.status(405).send(renderConfirmationPage({
+      title: 'Método não permitido',
+      message: 'Esta página só aceita acesso normal pelo navegador.',
+      tone: 'danger'
+    }));
+    return;
+  }
+
+  const appointmentId = String(request.query.id || '').trim();
+  const token = String(request.query.token || '').trim();
+  const action = String(request.query.action || '').trim();
+
+  if (!appointmentId || !token) {
+    response.status(400).send(renderConfirmationPage({
+      title: 'Link inválido',
+      message: 'Este link de confirmação está incompleto. Peça ao consultório para enviar novamente.',
+      tone: 'danger'
+    }));
+    return;
+  }
+
+  try {
+    const db = getFirestore();
+    const docRef = db.collection('appointments').doc(appointmentId);
+    const doc = await docRef.get();
+
+    if (!doc.exists || String(doc.data().confirmationToken || '') !== token) {
+      response.status(404).send(renderConfirmationPage({
+        title: 'Link inválido ou expirado',
+        message: 'Não encontramos essa consulta ou o link já não é mais válido. Peça ao consultório para enviar um novo link.',
+        tone: 'danger'
+      }));
+      return;
+    }
+
+    const appointment = doc.data();
+    const detailsHtml = [
+      `<strong>${escapeHtml(appointment.clientName || 'Cliente')}</strong>`,
+      `Data: ${escapeHtml(formatDateBrFromIso(appointment.date))}`,
+      `Horário: ${escapeHtml(appointment.time || '--:--')}`,
+      `Procedimento: ${escapeHtml(appointment.procedure || 'Consulta')}`
+    ].join('<br>');
+
+    if (action === 'confirmado' || action === 'nao_confirmado') {
+      await docRef.set({
+        confirmationStatus: action,
+        confirmationRespondedAt: new Date().toISOString()
+      }, { merge: true });
+
+      const isConfirmed = action === 'confirmado';
+      response.status(200).send(renderConfirmationPage({
+        title: isConfirmed ? 'Presença confirmada!' : 'Resposta registrada',
+        message: isConfirmed
+          ? 'Obrigado por confirmar. Te esperamos na data marcada!'
+          : 'Obrigado por avisar. O consultório foi notificado que você não poderá comparecer.',
+        details: detailsHtml,
+        tone: isConfirmed ? 'success' : 'neutral',
+        actions: [{
+          href: `?id=${encodeURIComponent(appointmentId)}&token=${encodeURIComponent(token)}&action=${isConfirmed ? 'nao_confirmado' : 'confirmado'}`,
+          label: isConfirmed ? 'Errei, na verdade não poderei ir' : 'Errei, na verdade posso confirmar',
+          background: '#f1f5f9',
+          color: '#334155'
+        }]
+      }));
+      return;
+    }
+
+    const currentStatus = String(appointment.confirmationStatus || 'pendente');
+    const statusNote = currentStatus === 'confirmado'
+      ? '<p style="color:#15803d;font-weight:700;margin:0 0 8px;">Você já confirmou presença.</p>'
+      : currentStatus === 'nao_confirmado'
+        ? '<p style="color:#b91c1c;font-weight:700;margin:0 0 8px;">Você já avisou que não poderá ir.</p>'
+        : '';
+
+    response.status(200).send(renderConfirmationPage({
+      title: 'Confirmação de consulta',
+      message: 'Você poderá comparecer na consulta abaixo?',
+      details: statusNote + detailsHtml,
+      tone: 'neutral',
+      actions: [
+        {
+          href: `?id=${encodeURIComponent(appointmentId)}&token=${encodeURIComponent(token)}&action=confirmado`,
+          label: 'Confirmar presença',
+          background: '#dcfce7',
+          color: '#15803d'
+        },
+        {
+          href: `?id=${encodeURIComponent(appointmentId)}&token=${encodeURIComponent(token)}&action=nao_confirmado`,
+          label: 'Não poderei ir',
+          background: '#fee2e2',
+          color: '#b91c1c'
+        }
+      ]
+    }));
+  } catch (error) {
+    console.error('Erro ao processar confirmação de agendamento:', error);
+    response.status(500).send(renderConfirmationPage({
+      title: 'Erro interno',
+      message: 'Não foi possível processar sua resposta agora. Tente novamente em alguns minutos.',
+      tone: 'danger'
+    }));
   }
 });

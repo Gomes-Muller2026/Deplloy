@@ -215,6 +215,76 @@ const agendaModule = {
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener');
     app.showToast('Mensagem de WhatsApp preparada.', 'success');
+  },
+
+  CONFIRMATION_ENDPOINT: 'https://southamerica-east1-consultorio-patricia.cloudfunctions.net/confirmarAgendamento',
+
+  generateConfirmationToken() {
+    const part = () => Math.random().toString(36).slice(2);
+    return `${part()}${part()}${Date.now().toString(36)}`;
+  },
+
+  buildConfirmationLink(appointmentId, token) {
+    return `${this.CONFIRMATION_ENDPOINT}?id=${encodeURIComponent(appointmentId)}&token=${encodeURIComponent(token)}`;
+  },
+
+  sendAppointmentConfirmationWhatsApp(app, appointmentId) {
+    const appointment = app.appointments.find((a) => a.id === appointmentId);
+    if (!appointment) return false;
+
+    const client = app.clients.find((c) => c.id === appointment.clientId);
+    const rawPhone = (client && client.phone) || '';
+    const phone = app.normalizeWhatsAppPhone(rawPhone);
+    if (!phone) {
+      app.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
+      return false;
+    }
+
+    const token = this.generateConfirmationToken();
+    const link = this.buildConfirmationLink(appointment.id, token);
+
+    app.appointments = app.appointments.map((a) => (a.id === appointmentId ? {
+      ...a,
+      confirmationStatus: 'pendente',
+      confirmationToken: token,
+      confirmationSentAt: new Date().toISOString()
+    } : a));
+
+    const baseText = typeof app.buildAppointmentWhatsAppMessage === 'function'
+      ? app.buildAppointmentWhatsAppMessage(appointment, client)
+      : [
+          `Olá, ${(client && client.name) || appointment.clientName || 'cliente'}!`,
+          '',
+          'Passando para confirmar seu agendamento:',
+          `Data: ${formatDateBR(appointment.date)}`,
+          `Horário: ${appointment.time || ''}`,
+          `Procedimento: ${appointment.procedure || 'Consulta'}`
+        ].join('\n');
+
+    const text = `${baseText}\n\nPor favor, confirme clicando no link abaixo:\n${link}`;
+
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener');
+
+    app.saveData();
+    app.render();
+    return true;
+  },
+
+  sendSelectedAppointmentConfirmations(app, appointmentIds) {
+    const ids = Array.from(appointmentIds || []);
+    if (!ids.length) {
+      app.showToast('Selecione ao menos um cliente para enviar a confirmação.', 'warning');
+      return;
+    }
+
+    ids.forEach((id, index) => {
+      window.setTimeout(() => {
+        this.sendAppointmentConfirmationWhatsApp(app, id);
+      }, index * 400);
+    });
+
+    app.showToast(`Enviando confirmação para ${ids.length} cliente(s)...`, 'info');
   }
 };
 

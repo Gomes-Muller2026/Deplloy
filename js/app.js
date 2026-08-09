@@ -10082,13 +10082,18 @@ class ConsultorioApp {
     ];
 
     grid.innerHTML = cards.map((c) => `
-      <button type="button" class="stat-card ${c.color}" onclick="app.openClientsReportBucket('${c.key}')" title="Ver estes agendamentos na Agenda">
+      <div class="stat-card ${c.color}" data-bucket="${c.key}" tabindex="0" role="button"
+        onclick="app.openClientsReportBucket('${c.key}')" title="Ver estes agendamentos na Agenda"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openClientsReportBucket('${c.key}');}">
+        <button type="button" class="stat-card-narrative-btn" title="Ver narrativas das sessões" onclick="event.stopPropagation();app.openPeriodNarrativesReport('${c.key}')">
+          <i data-lucide="file-text"></i>
+        </button>
         <div class="stat-icon"><i data-lucide="${c.icon}"></i></div>
         <div class="stat-info">
           <span class="stat-label">${c.label}</span>
           <h3 class="stat-value">${counts[c.key]}</h3>
         </div>
-      </button>
+      </div>
     `).join('');
 
     const rangeLabel = document.getElementById('clients-report-range-label');
@@ -10131,6 +10136,47 @@ class ConsultorioApp {
 
   returnToClientsFromAgenda() {
     this.switchTab('clientes');
+  }
+
+  // Segundo caminho de acesso à narrativa: a partir dos cards de "Relatório de Sessões do
+  // Período" (agregado de todos os pacientes), sem substituir o clique principal do card
+  // (que continua levando à Agenda filtrada). Abre um relatório com a narrativa ditada de
+  // cada sessão daquele status no período selecionado.
+  openPeriodNarrativesReport(bucket) {
+    const bucketLabels = {
+      agendadas: 'Sessões Agendadas',
+      confirmadas: 'Sessões Confirmadas',
+      presentes: 'Presentes',
+      ausentes: 'Ausentes',
+      canceladasCliente: 'Cliente Cancelou',
+      canceladasProfissional: 'Profissional Cancelou'
+    };
+    const bucketLabel = bucketLabels[bucket] || bucket;
+
+    const scoped = this.filterItemsByTopRange(this.appointments || [], 'date')
+      .filter((a) => this.getAppointmentStatusMeta(a.status).bucket === bucket)
+      .slice()
+      .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+
+    const { start, end } = this.getTopRange();
+    const rangeLabel = (start || end) ? `Período: ${start ? formatDateBR(start) : '...'} até ${end ? formatDateBR(end) : '...'}` : 'Todo o período';
+
+    const lines = [`NARRATIVAS DE SESSÃO - ${bucketLabel}`, rangeLabel, ''];
+
+    if (!scoped.length) {
+      lines.push('Nenhuma sessão encontrada para este status no período selecionado.');
+    } else {
+      scoped.forEach((a) => {
+        const clientName = String(a.clientName || (this.clients.find((c) => c.id === a.clientId) || {}).name || 'Cliente').trim() || 'Cliente';
+        const narrative = this.getSessionNarrativeDisplay(a).text;
+        lines.push(`${formatDateBR(a.date)}${a.time ? ` às ${a.time}` : ''} — ${clientName}`);
+        lines.push(a.procedure || 'Procedimento não informado');
+        lines.push(narrative || '(sem narrativa registrada)');
+        lines.push('');
+      });
+    }
+
+    this.openReportWindow(`Narrativas - ${bucketLabel}`, lines.join('\n'), true);
   }
 
   renderClientsTable() {

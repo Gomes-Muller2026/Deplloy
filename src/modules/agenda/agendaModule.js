@@ -250,25 +250,18 @@ const agendaModule = {
 
   sendAppointmentConfirmationWhatsApp(app, appointmentId, options = {}) {
     const appointment = app.appointments.find((a) => a.id === appointmentId);
-    if (!appointment) return false;
+    if (!appointment) return 'not-found';
 
     const client = app.clients.find((c) => c.id === appointment.clientId);
     const rawPhone = (client && client.phone) || '';
     const phone = app.normalizeWhatsAppPhone(rawPhone);
     if (!phone) {
-      app.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
-      return false;
+      if (!options.silent) app.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
+      return 'no-phone';
     }
 
     const token = this.generateConfirmationToken();
     const link = this.buildConfirmationLink(appointment.id, token);
-
-    app.appointments = app.appointments.map((a) => (a.id === appointmentId ? {
-      ...a,
-      confirmationStatus: 'pendente',
-      confirmationToken: token,
-      confirmationSentAt: new Date().toISOString()
-    } : a));
 
     const baseText = typeof app.buildAppointmentWhatsAppMessage === 'function'
       ? app.buildAppointmentWhatsAppMessage(appointment, client)
@@ -284,7 +277,25 @@ const agendaModule = {
     const text = `${baseText}\n\nPor favor, confirme clicando no link abaixo:\n${link}`;
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener');
+    const opened = window.open(url, '_blank', 'noopener');
+
+    // O navegador pode bloquear pop-ups abertos em sequência no mesmo clique
+    // (Chrome, por padrão, só permite 1 por gesto do usuário). Nesse caso
+    // window.open retorna null/undefined: tratamos como "bloqueado" em vez de
+    // marcar como enviado, e deixamos o item na fila para um clique manual.
+    if (!opened) {
+      if (!Array.isArray(app.agendaConfirmPendingQueue)) app.agendaConfirmPendingQueue = [];
+      if (!app.agendaConfirmPendingQueue.includes(appointmentId)) app.agendaConfirmPendingQueue.push(appointmentId);
+      if (!options.skipRender) app.render();
+      return 'blocked';
+    }
+
+    app.appointments = app.appointments.map((a) => (a.id === appointmentId ? {
+      ...a,
+      confirmationStatus: 'pendente',
+      confirmationToken: token,
+      confirmationSentAt: new Date().toISOString()
+    } : a));
 
     if (Array.isArray(app.agendaConfirmPendingQueue)) {
       app.agendaConfirmPendingQueue = app.agendaConfirmPendingQueue.filter((id) => id !== appointmentId);
@@ -292,7 +303,7 @@ const agendaModule = {
 
     app.saveData();
     if (!options.skipRender) app.render();
-    return true;
+    return 'sent';
   },
 
   sendSelectedAppointmentConfirmations(app, appointmentIds) {
@@ -302,21 +313,26 @@ const agendaModule = {
       return;
     }
 
-    // O navegador só permite abrir 1 pop-up por clique do usuário: chamar window.open
-    // várias vezes seguidas no mesmo clique faz com que só a primeira janela abra e
-    // as demais sejam bloqueadas silenciosamente. Por isso enviamos a primeira agora
-    // (dentro do clique) e colocamos as demais numa fila: cada uma exige um novo
-    // clique no ícone de enviar da lista para abrir sua janela do WhatsApp.
-    const [firstId, ...rest] = ids;
-    const firstSent = this.sendAppointmentConfirmationWhatsApp(app, firstId, { skipRender: true });
-
-    app.agendaConfirmPendingQueue = firstSent ? rest : ids;
+    // Tentamos abrir a janela do WhatsApp para todos os selecionados dentro do
+    // mesmo clique. O navegador pode bloquear algumas como pop-up (em geral,
+    // permite só a primeira por gesto do usuário) — nesse caso elas entram
+    // numa fila e ficam destacadas na lista, exigindo um clique manual em
+    // cada uma para abrir (contornando o bloqueio).
+    let sentCount = 0;
+    let blockedCount = 0;
+    app.agendaConfirmPendingQueue = [];
+    ids.forEach((id) => {
+      const result = this.sendAppointmentConfirmationWhatsApp(app, id, { skipRender: true });
+      if (result === 'sent') sentCount += 1;
+      else if (result === 'blocked') blockedCount += 1;
+    });
     app.render();
 
-    if (firstSent && rest.length > 0) {
-      app.showToast(`Confirmação enviada para 1 cliente. Clique no ícone de enviar ao lado dos próximos ${rest.length} cliente(s) (destacados) para continuar o envio em sequência.`, 'info');
-    } else if (firstSent) {
-      app.showToast('Confirmação enviada com sucesso.', 'success');
+    if (blockedCount === 0 && sentCount > 0) {
+      app.showToast(`Confirmação enviada para ${sentCount} cliente(s). Confira as janelas do WhatsApp abertas.`, 'success');
+    } else if (blockedCount > 0) {
+      const sentPart = sentCount > 0 ? `Enviado para ${sentCount} cliente(s). ` : '';
+      app.showToast(`${sentPart}O navegador bloqueou o envio para ${blockedCount} cliente(s) — clique no ícone de enviar ao lado de cada um destacado como "Próximo" para continuar. Para enviar tudo de uma vez da próxima vez, permita pop-ups para este site nas configurações do navegador.`, 'warning');
     }
   }
 };

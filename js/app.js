@@ -1964,7 +1964,13 @@ class ConsultorioApp {
       [LOGIN_USERS_FIRESTORE_COLLECTION]: {},
       clients: {},
       appointments: {},
-      expenses: {}
+      expenses: {},
+      // Sub-shadow tracking only the WhatsApp-confirmation fields of each appointment. Kept
+      // separate from the main "appointments" signature so pushAllDataToFirebase can tell whether
+      // THIS device is the one that actually changed confirmationStatus/confirmationToken/
+      // confirmationSentAt since its last sync — see pushAllDataToFirebase for why this matters
+      // (avoids a stale tab silently wiping out a confirmation link sent from another device).
+      appointmentConfirmations: {}
     };
   }
 
@@ -1978,11 +1984,37 @@ class ConsultorioApp {
         [LOGIN_USERS_FIRESTORE_COLLECTION]: (raw[LOGIN_USERS_FIRESTORE_COLLECTION] && typeof raw[LOGIN_USERS_FIRESTORE_COLLECTION] === 'object' && !Array.isArray(raw[LOGIN_USERS_FIRESTORE_COLLECTION])) ? raw[LOGIN_USERS_FIRESTORE_COLLECTION] : {},
         clients: (raw.clients && typeof raw.clients === 'object' && !Array.isArray(raw.clients)) ? raw.clients : {},
         appointments: (raw.appointments && typeof raw.appointments === 'object' && !Array.isArray(raw.appointments)) ? raw.appointments : {},
-        expenses: (raw.expenses && typeof raw.expenses === 'object' && !Array.isArray(raw.expenses)) ? raw.expenses : {}
+        expenses: (raw.expenses && typeof raw.expenses === 'object' && !Array.isArray(raw.expenses)) ? raw.expenses : {},
+        appointmentConfirmations: (raw.appointmentConfirmations && typeof raw.appointmentConfirmations === 'object' && !Array.isArray(raw.appointmentConfirmations)) ? raw.appointmentConfirmations : {}
       };
     } catch (err) {
       return fallback;
     }
+  }
+
+  // Fields owned by the WhatsApp confirmation flow: set locally when the receptionist sends/clears/
+  // cycles a confirmation, and set remotely (directly in Firestore) by the confirmarAgendamento
+  // Cloud Function when the client taps the link. They must never be overwritten by a device that
+  // didn't itself just change them — see pushAllDataToFirebase.
+  static get APPOINTMENT_CONFIRMATION_FIELDS() {
+    return ['confirmationStatus', 'confirmationToken', 'confirmationSentAt', 'confirmationRespondedAt'];
+  }
+
+  extractAppointmentConfirmationFields(appt) {
+    const source = appt && typeof appt === 'object' ? appt : {};
+    const result = {};
+    ConsultorioApp.APPOINTMENT_CONFIRMATION_FIELDS.forEach((field) => {
+      result[field] = source[field] === undefined ? null : source[field];
+    });
+    return result;
+  }
+
+  stripAppointmentConfirmationFields(appt) {
+    const clone = { ...(appt && typeof appt === 'object' ? appt : {}) };
+    ConsultorioApp.APPOINTMENT_CONFIRMATION_FIELDS.forEach((field) => {
+      delete clone[field];
+    });
+    return clone;
   }
 
   saveFirebasePushShadowState() {
@@ -2067,6 +2099,13 @@ class ConsultorioApp {
       docsByCollection[collectionName].forEach((data, id) => {
         nextState[collectionName][id] = this.computeSyncDocSignature(data);
       });
+    });
+
+    // Baseline the confirmation-fields sub-shadow to whatever was just pulled/loaded, so this
+    // device only treats confirmationStatus/confirmationToken/confirmationSentAt as "locally
+    // changed" (and eligible to be pushed) starting from this known-fresh snapshot.
+    docsByCollection.appointments.forEach((data, id) => {
+      nextState.appointmentConfirmations[id] = this.computeSyncDocSignature(this.extractAppointmentConfirmationFields(data));
     });
 
     this.firebasePushShadowState = nextState;
@@ -8456,17 +8495,44 @@ class ConsultorioApp {
         operations.push(operation);
       };
 
+      const previousConfirmationState = (previousState.appointmentConfirmations && typeof previousState.appointmentConfirmations === 'object' && !Array.isArray(previousState.appointmentConfirmations))
+        ? previousState.appointmentConfirmations
+        : {};
+
       collectionNames.forEach((collectionName) => {
         const currentDocs = docsByCollection[collectionName];
         const previousCollectionState = (previousState[collectionName] && typeof previousState[collectionName] === 'object' && !Array.isArray(previousState[collectionName]))
           ? previousState[collectionName]
           : {};
+        const isAppointments = collectionName === 'appointments';
 
         currentDocs.forEach((data, id) => {
           const signature = this.computeSyncDocSignature(data);
           nextState[collectionName][id] = signature;
+
+          if (!isAppointments) {
+            if (previousCollectionState[id] !== signature) {
+              addOperation({ type: 'set', collection: collectionName, id, data });
+            }
+            return;
+          }
+
+          // Appointments: WhatsApp confirmation fields (confirmationStatus/confirmationToken/
+          // confirmationSentAt/confirmationRespondedAt) are excluded from this doc's push payload
+          // UNLESS *this* device is the one that actually changed them since its own last known
+          // baseline. Otherwise a device with a stale in-memory copy of an appointment (e.g. one
+          // that just reconciled unrelated fields from a periodic Google Calendar import) would
+          // overwrite the whole document and silently erase a confirmation link/status that was
+          // set moments earlier by another device — breaking confirmarAgendamento links for the
+          // client. The write always uses {merge:true} (see batch loop below) so omitted fields
+          // are left untouched in Firestore instead of being wiped.
+          const confirmationSignature = this.computeSyncDocSignature(this.extractAppointmentConfirmationFields(data));
+          const confirmationChangedLocally = previousConfirmationState[id] === undefined || previousConfirmationState[id] !== confirmationSignature;
+          nextState.appointmentConfirmations[id] = confirmationSignature;
+
           if (previousCollectionState[id] !== signature) {
-            addOperation({ type: 'set', collection: collectionName, id, data });
+            const payload = confirmationChangedLocally ? data : this.stripAppointmentConfirmationFields(data);
+            addOperation({ type: 'set', collection: collectionName, id, data: payload, merge: true });
           }
         });
 
@@ -8480,6 +8546,7 @@ class ConsultorioApp {
         const normalizedId = String(id || '').trim();
         if (!normalizedId) return;
         delete nextState.appointments[normalizedId];
+        delete nextState.appointmentConfirmations[normalizedId];
         addOperation({ type: 'delete', collection: 'appointments', id: normalizedId });
       });
 
@@ -8521,7 +8588,11 @@ class ConsultorioApp {
             return;
           }
 
-          batch.set(ref, operation.data);
+          if (operation.merge) {
+            batch.set(ref, operation.data, { merge: true });
+          } else {
+            batch.set(ref, operation.data);
+          }
         });
 
         await batch.commit();

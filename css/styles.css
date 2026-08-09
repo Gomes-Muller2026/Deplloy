@@ -467,16 +467,29 @@ body.config-view .header-actions > * {
 
 /* Grupo B (diagnóstico técnico: sincronismo/versão/autenticação): é
    informativo, não uma ação primária — fica com opacidade reduzida para não
-   competir visualmente com os botões de ação do Grupo C. */
+   competir visualmente com os botões de ação do Grupo C. Compartilha a linha
+   com o Grupo C (largura automática em vez de 100%, ver regra abaixo). */
 .header-actions-row--diagnostics {
+  flex: 0 1 auto;
+  width: auto;
   gap: 0.45rem 0.6rem;
   opacity: 0.82;
 }
 
-/* Grupo C (identidade do usuário + ações do consultório): o mais proeminente,
-   alinhado à direita. */
+/* Grupo C (identidade do usuário + ações do consultório): o mais proeminente.
+   Fica na mesma linha do Grupo B (diagnóstico), empurrado para a direita. */
 .header-actions-row--user {
+  flex: 1 1 auto;
+  width: auto;
   justify-content: flex-end;
+}
+
+/* Sem os dois na mesma linha visual, a divisória tracejada entre eles (regra
+   genérica .header-actions-row + .header-actions-row) não faz sentido. */
+.header-actions-row--diagnostics + .header-actions-row--user {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 /* Grupo D (resumo financeiro do período): linha própria, também alinhada à

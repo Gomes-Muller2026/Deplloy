@@ -3960,8 +3960,7 @@ input[type="time"].agenda-hour-range-input {
 /* If inline styles set background, force the green background while keeping any inline border-color for accents */
 .fc-event[style],
 .fc-timegrid-event[style],
-.fc-daygrid-event[style],
-.agenda-event[style] {
+.fc-daygrid-event[style] {
   background-color: #2e6b47 !important;
   color: #ffffff !important;
 }

@@ -1,4 +1,5 @@
 node_modules
+firebase-debug.log
 
 # Harness temporários para testes QA via Chrome headless
 __*.html

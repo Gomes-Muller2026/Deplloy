@@ -3747,7 +3747,10 @@ input[type="time"].agenda-hour-range-input {
 #agenda-day-mini-calendar .flatpickr-innerContainer,
 #agenda-day-mini-calendar .flatpickr-rContainer,
 #agenda-day-mini-calendar .flatpickr-days,
-#agenda-day-mini-calendar .dayContainer {
+#agenda-day-mini-calendar .dayContainer,
+#agenda-day-mini-calendar .flatpickr-months,
+#agenda-day-mini-calendar .flatpickr-weekdays,
+#agenda-day-mini-calendar .flatpickr-weekdaycontainer {
   background: #ffffff !important;
   width: 100% !important;
   max-width: 100%;

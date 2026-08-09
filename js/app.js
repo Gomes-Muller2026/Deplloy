@@ -9390,6 +9390,7 @@ class ConsultorioApp {
       onChange: (selectedDates, dateStr) => {
         this.agendaDaySelectedDate = dateStr;
         this.agendaConfirmSelectedIds.clear();
+        this.agendaConfirmPendingQueue = [];
         this.renderAgendaDayList();
       },
       onDayCreate: (selectedDates, dateStr, fp, dayElem) => {
@@ -9535,6 +9536,13 @@ class ConsultorioApp {
       if (!validIds.has(id)) this.agendaConfirmSelectedIds.delete(id);
     });
 
+    if (Array.isArray(this.agendaConfirmPendingQueue)) {
+      this.agendaConfirmPendingQueue = this.agendaConfirmPendingQueue.filter((id) => validIds.has(id));
+    }
+    const nextQueuedId = Array.isArray(this.agendaConfirmPendingQueue) && this.agendaConfirmPendingQueue.length
+      ? this.agendaConfirmPendingQueue[0]
+      : null;
+
     if (!dayAppointments || !dayAppointments.length) {
       listEl.innerHTML = '<div class="agenda-day-list-empty">Nenhuma sessão agendada para este dia.</div>';
       this.updateAgendaConfirmSendButtonState();
@@ -9551,9 +9559,11 @@ class ConsultorioApp {
       const checked = this.agendaConfirmSelectedIds.has(a.id) ? 'checked' : '';
       const disabled = hasPhone ? '' : 'disabled';
       const rowTitle = hasPhone ? '' : 'title="Cliente sem telefone válido para WhatsApp"';
+      const isNextQueued = nextQueuedId === a.id;
+      const sendBtnTitle = isNextQueued ? 'Clique para continuar o envio em sequência' : 'Enviar confirmação';
 
       return `
-        <div class="agenda-day-confirm-row ${hasPhone ? '' : 'is-disabled'}" ${rowTitle}>
+        <div class="agenda-day-confirm-row ${hasPhone ? '' : 'is-disabled'} ${isNextQueued ? 'is-next-queued' : ''}" ${rowTitle}>
           <div class="agenda-day-confirm-row-main">
             <input type="checkbox" class="agenda-confirm-row-checkbox" data-appointment-id="${safeText(a.id || '')}" ${checked} ${disabled} onchange="app.toggleAgendaConfirmSelection('${a.id}', this.checked)">
             <span class="agenda-day-confirm-time">${safeText(a.time || '--:--')}</span>
@@ -9561,7 +9571,8 @@ class ConsultorioApp {
           </div>
           <div class="agenda-day-confirm-row-meta">
             ${badgeHtml}
-            <button type="button" class="agenda-confirm-resend-btn" title="Enviar confirmação" onclick="app.resendAgendaConfirmation('${a.id}')" ${hasPhone ? '' : 'disabled'}>
+            ${isNextQueued ? '<span class="agenda-confirm-badge is-next-queued-badge">Próximo</span>' : ''}
+            <button type="button" class="agenda-confirm-resend-btn ${isNextQueued ? 'is-pulsing' : ''}" title="${sendBtnTitle}" onclick="app.resendAgendaConfirmation('${a.id}')" ${hasPhone ? '' : 'disabled'}>
               <i data-lucide="send"></i>
             </button>
           </div>

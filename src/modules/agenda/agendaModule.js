@@ -266,6 +266,10 @@ const agendaModule = {
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener');
 
+    if (Array.isArray(app.agendaConfirmPendingQueue)) {
+      app.agendaConfirmPendingQueue = app.agendaConfirmPendingQueue.filter((id) => id !== appointmentId);
+    }
+
     app.saveData();
     if (!options.skipRender) app.render();
     return true;
@@ -278,16 +282,21 @@ const agendaModule = {
       return;
     }
 
-    // window.open precisa rodar de forma síncrona dentro do clique do usuário,
-    // senão o navegador bloqueia como pop-up (mesmo com atraso de poucos ms).
-    let sentCount = 0;
-    ids.forEach((id) => {
-      if (this.sendAppointmentConfirmationWhatsApp(app, id, { skipRender: true })) sentCount += 1;
-    });
+    // O navegador só permite abrir 1 pop-up por clique do usuário: chamar window.open
+    // várias vezes seguidas no mesmo clique faz com que só a primeira janela abra e
+    // as demais sejam bloqueadas silenciosamente. Por isso enviamos a primeira agora
+    // (dentro do clique) e colocamos as demais numa fila: cada uma exige um novo
+    // clique no ícone de enviar da lista para abrir sua janela do WhatsApp.
+    const [firstId, ...rest] = ids;
+    const firstSent = this.sendAppointmentConfirmationWhatsApp(app, firstId, { skipRender: true });
+
+    app.agendaConfirmPendingQueue = firstSent ? rest : ids;
     app.render();
 
-    if (sentCount > 0) {
-      app.showToast(`Confirmação enviada para ${sentCount} cliente(s). Confira as janelas do WhatsApp abertas.`, 'success');
+    if (firstSent && rest.length > 0) {
+      app.showToast(`Confirmação enviada para 1 cliente. Clique no ícone de enviar ao lado dos próximos ${rest.length} cliente(s) (destacados) para continuar o envio em sequência.`, 'info');
+    } else if (firstSent) {
+      app.showToast('Confirmação enviada com sucesso.', 'success');
     }
   }
 };

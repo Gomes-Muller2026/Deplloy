@@ -3571,6 +3571,26 @@ input[type="time"].agenda-hour-range-input {
   height: 16px;
 }
 
+.agenda-day-confirm-row.is-next-queued {
+  background: rgba(79, 70, 229, 0.08);
+  border: 1px dashed rgba(79, 70, 229, 0.35);
+}
+
+.agenda-confirm-badge.is-next-queued-badge {
+  background: rgba(79, 70, 229, 0.14);
+  color: #4338ca;
+}
+
+.agenda-confirm-resend-btn.is-pulsing {
+  background: rgba(79, 70, 229, 0.14);
+  animation: agenda-confirm-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes agenda-confirm-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(79, 70, 229, 0); }
+}
+
 .agenda-day-confirm-footer {
   padding: 0.8rem 1.1rem;
   border-top: 1px solid rgba(15, 23, 42, 0.08);

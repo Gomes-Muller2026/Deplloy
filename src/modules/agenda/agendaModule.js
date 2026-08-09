@@ -301,31 +301,17 @@ const agendaModule = {
     const text = `${baseText}\n\nPor favor, confirme clicando no link abaixo:\n${link}`;
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    const opened = window.open(url, '_blank', 'noopener');
 
-    // Envios manuais (um clique de cada vez, ex.: "Enviar próximo" da fila ou
-    // o botão de reenvio de uma linha) reaproveitam a mesma aba já aberta em
-    // vez de acumular uma aba nova por contato — basta navegar a referência
-    // existente, o que não é bloqueado por pop-up blocker (só window.open novo é).
-    const existingWindow = app.whatsappSendWindowRef;
-    if (options.reuseTab && existingWindow && !existingWindow.closed) {
-      existingWindow.location.href = url;
-      existingWindow.focus();
-    } else {
-      const opened = window.open(url, '_blank');
-
-      // O navegador pode bloquear pop-ups abertos em sequência no mesmo clique
-      // (Chrome, por padrão, só permite 1 por gesto do usuário). Nesse caso
-      // window.open retorna null/undefined: tratamos como "bloqueado" em vez de
-      // marcar como enviado, e deixamos o item na fila para um clique manual.
-      if (!opened) {
-        if (!Array.isArray(app.agendaConfirmPendingQueue)) app.agendaConfirmPendingQueue = [];
-        if (!app.agendaConfirmPendingQueue.includes(appointmentId)) app.agendaConfirmPendingQueue.push(appointmentId);
-        if (!options.skipRender) app.render();
-        return 'blocked';
-      }
-
-      opened.opener = null;
-      app.whatsappSendWindowRef = opened;
+    // O navegador pode bloquear pop-ups abertos em sequência no mesmo clique
+    // (Chrome, por padrão, só permite 1 por gesto do usuário). Nesse caso
+    // window.open retorna null/undefined: tratamos como "bloqueado" em vez de
+    // marcar como enviado, e deixamos o item na fila para um clique manual.
+    if (!opened) {
+      if (!Array.isArray(app.agendaConfirmPendingQueue)) app.agendaConfirmPendingQueue = [];
+      if (!app.agendaConfirmPendingQueue.includes(appointmentId)) app.agendaConfirmPendingQueue.push(appointmentId);
+      if (!options.skipRender) app.render();
+      return 'blocked';
     }
 
     app.appointments = app.appointments.map((a) => (a.id === appointmentId ? {

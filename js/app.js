@@ -10140,8 +10140,8 @@ class ConsultorioApp {
 
   // Segundo caminho de acesso à narrativa: a partir dos cards de "Relatório de Sessões do
   // Período" (agregado de todos os pacientes), sem substituir o clique principal do card
-  // (que continua levando à Agenda filtrada). Abre um relatório com a narrativa ditada de
-  // cada sessão daquele status no período selecionado.
+  // (que continua levando à Agenda filtrada). Abre um modal inline (não um popup/print)
+  // listando a narrativa ditada de cada sessão daquele status no período selecionado.
   openPeriodNarrativesReport(bucket) {
     const bucketLabels = {
       agendadas: 'Sessões Agendadas',
@@ -10153,30 +10153,54 @@ class ConsultorioApp {
     };
     const bucketLabel = bucketLabels[bucket] || bucket;
 
+    const modal = document.getElementById('modal-period-narratives');
+    const list = document.getElementById('period-narratives-list');
+    const titleEl = document.getElementById('period-narratives-title');
+    if (!modal || !list) return;
+
     const scoped = this.filterItemsByTopRange(this.appointments || [], 'date')
       .filter((a) => this.getAppointmentStatusMeta(a.status).bucket === bucket)
       .slice()
-      .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+      .sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
 
-    const { start, end } = this.getTopRange();
-    const rangeLabel = (start || end) ? `Período: ${start ? formatDateBR(start) : '...'} até ${end ? formatDateBR(end) : '...'}` : 'Todo o período';
-
-    const lines = [`NARRATIVAS DE SESSÃO - ${bucketLabel}`, rangeLabel, ''];
-
-    if (!scoped.length) {
-      lines.push('Nenhuma sessão encontrada para este status no período selecionado.');
-    } else {
-      scoped.forEach((a) => {
-        const clientName = String(a.clientName || (this.clients.find((c) => c.id === a.clientId) || {}).name || 'Cliente').trim() || 'Cliente';
-        const narrative = this.getSessionNarrativeDisplay(a).text;
-        lines.push(`${formatDateBR(a.date)}${a.time ? ` às ${a.time}` : ''} — ${clientName}`);
-        lines.push(a.procedure || 'Procedimento não informado');
-        lines.push(narrative || '(sem narrativa registrada)');
-        lines.push('');
-      });
+    if (titleEl) {
+      const { start, end } = this.getTopRange();
+      const rangeLabel = (start || end) ? `${start ? formatDateBR(start) : '...'} até ${end ? formatDateBR(end) : '...'}` : 'todo o período';
+      titleEl.textContent = `Narrativas — ${bucketLabel} (${rangeLabel})`;
     }
 
-    this.openReportWindow(`Narrativas - ${bucketLabel}`, lines.join('\n'), true);
+    if (!scoped.length) {
+      list.innerHTML = '<p class="text-muted" style="font-size:0.85rem;margin:0;">Nenhuma sessão encontrada para este status no período selecionado.</p>';
+    } else {
+      list.innerHTML = scoped.map((a) => {
+        const clientName = String(a.clientName || (this.clients.find((c) => c.id === a.clientId) || {}).name || 'Cliente').trim() || 'Cliente';
+        const { text: narrative, migrated } = this.getSessionNarrativeDisplay(a);
+        const hasNarrative = Boolean(narrative);
+        const migratedHint = (hasNarrative && migrated) ? ' <em class="client-session-narrative-migrated-hint">(migrado de Observações)</em>' : '';
+        return `
+          <div class="client-session-narrative-item">
+            <div class="client-session-narrative-header">
+              <div class="client-session-narrative-meta">
+                <strong>${escapeHtml(clientName)}</strong>
+                <span class="client-session-narrative-procedure">${escapeHtml(formatDateBR(a.date))}${a.time ? ` às ${escapeHtml(a.time)}` : ''} · ${escapeHtml(a.procedure || 'Procedimento não informado')}</span>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="app.printAppointmentSession('${a.id}')">
+                <i data-lucide="printer"></i> Imprimir sessão
+              </button>
+            </div>
+            <p class="client-session-narrative-text${hasNarrative ? '' : ' is-empty'}">${hasNarrative ? `${escapeHtml(narrative).replace(/\n/g, '<br>')}${migratedHint}` : 'Nenhuma narrativa registrada nesta sessão.'}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    modal.classList.add('active');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+  }
+
+  closePeriodNarrativesModal() {
+    const modal = document.getElementById('modal-period-narratives');
+    if (modal) modal.classList.remove('active');
   }
 
   renderClientsTable() {
@@ -13059,7 +13083,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260808-2', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260808-3', 'app-root')
       ]);
     }
   } catch (err) {

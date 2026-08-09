@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260808-62">
+  <link rel="stylesheet" href="css/styles.css?v=20260808-63">
 </head>
 <body>
   <div id="login-root">
@@ -815,8 +815,8 @@
                   <div class="card">
                     <div class="card-header"><h3><i data-lucide="mic"></i> Narração por Voz</h3></div>
                     <div class="card-body">
-                      <p>Quando ativado, um botão de microfone aparece no campo Observações ao editar uma consulta, permitindo narrar em voz alta e transformar a fala em texto automaticamente (requer permissão do navegador e conexão com a internet).</p>
-                      <button class="btn btn-secondary btn-icon-text active-sound is-off" id="btn-toggle-voice-narration" type="button" title="Ativar/Desativar narração por voz nas observações da consulta">
+                      <p>Quando ativado, um botão de microfone aparece no campo Narrativa da Sessão ao editar uma consulta, permitindo narrar em voz alta e transformar a fala em texto automaticamente (requer permissão do navegador e conexão com a internet). Esse campo é local e nunca é sobrescrito pela sincronização com o Google Calendar.</p>
+                      <button class="btn btn-secondary btn-icon-text active-sound is-off" id="btn-toggle-voice-narration" type="button" title="Ativar/Desativar narração por voz na narrativa da sessão">
                         <i data-lucide="mic"></i>
                         <span id="voice-narration-status-text">Narração por Voz: OFF</span>
                       </button>
@@ -1242,8 +1242,12 @@
             <div class="form-group grid-col-span-2">
               <label for="appt-notes">Observações</label>
               <textarea id="appt-notes" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group grid-col-span-2">
+              <label for="appt-session-narrative">Narrativa da Sessão</label>
+              <textarea id="appt-session-narrative" class="form-control" rows="4" placeholder="Registre aqui a narrativa clínica da sessão — este campo não é afetado pela sincronização com o Google Calendar."></textarea>
               <div id="voice-narration-controls" class="voice-narration-controls" style="display:none; margin-top:0.5rem; align-items:center; gap:0.6rem; flex-wrap:wrap;">
-                <button type="button" class="btn btn-secondary btn-sm voice-narration-mic-btn" id="btn-voice-narration-toggle" title="Narrar observações por voz">
+                <button type="button" class="btn btn-secondary btn-sm voice-narration-mic-btn" id="btn-voice-narration-toggle" title="Narrar a sessão por voz">
                   <i data-lucide="mic"></i><span id="voice-narration-mic-label">Narrar por voz</span>
                 </button>
                 <span id="voice-narration-live-indicator" class="voice-narration-live-indicator" style="display:none; font-size:0.8rem; color:var(--text-muted); align-items:center;"><span class="voice-narration-mic-dot"></span>Gravando... fale agora</span>

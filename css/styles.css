@@ -4859,6 +4859,12 @@ button.money-pill:active {
   font-style: italic;
 }
 
+.client-session-narrative-migrated-hint {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-style: italic;
+}
+
 /* Finance Summary Bar */
 .fin-summary-grid {
   display: grid;

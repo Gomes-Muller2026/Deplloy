@@ -11151,6 +11151,7 @@ class ConsultorioApp {
     }
 
     this.loadAnamneseData(_anamneseData);
+    this.clientNarrativeFilterBucket = null;
     this.renderClientReportCard(clientId);
     this.renderClientSessionsNarrative(clientId);
     modal.classList.add('active');
@@ -12412,6 +12413,18 @@ class ConsultorioApp {
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
   }
 
+  // Clica num card de status em "Relatório de Sessões do Cliente" para filtrar a lista
+  // de Narrativa abaixo por aquele bucket; clicar de novo no mesmo card (ou no card "Total")
+  // limpa o filtro.
+  toggleClientNarrativeFilter(bucket, clientId) {
+    const key = String(bucket || '').trim();
+    this.clientNarrativeFilterBucket = (!key || key === 'total' || this.clientNarrativeFilterBucket === key)
+      ? null
+      : key;
+    this.renderClientReportCard(clientId);
+    this.renderClientSessionsNarrative(clientId);
+  }
+
   buildPacienteIndividualReportLines(patient) {
     const patientAppointments = this.getPatientAppointments(patient.id);
     const fullAddress = [
@@ -13000,7 +13013,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260808-1', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260808-2', 'app-root')
       ]);
     }
   } catch (err) {

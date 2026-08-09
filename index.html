@@ -136,13 +136,6 @@
               <i data-lucide="cloud"></i>
               <span id="cloud-status-text">Modo Local</span>
             </div>
-            <div id="header-sync-panel" class="header-sync-panel local" title="Sem atualização" aria-live="polite">
-              <span class="header-sync-label">Sincronismo</span>
-              <span id="header-sync-note-text" class="header-sync-note-text">Sem atualização</span>
-            </div>
-            <span id="app-version-badge" class="cloud-sync-meta local">Versão: v00.00/00000000</span>
-            <span id="cloud-sync-last" class="cloud-sync-meta" title="Sem atualização" aria-label="Sem atualização"></span>
-            <span id="firebase-auth-status" class="firebase-auth-meta auth-offline" role="button" tabindex="0" title="Clique para ver diagnóstico de autenticação Firebase">Auth Firebase: Desconectado</span>
             </div>
 
             <div class="top-date-picker">
@@ -166,6 +159,13 @@
               <i data-lucide="refresh-cw"></i>
               <span>Atualizar Agora</span>
             </button>
+            <div id="header-sync-panel" class="header-sync-panel local" title="Sem atualização" aria-live="polite">
+              <span class="header-sync-label">Sincronismo</span>
+              <span id="header-sync-note-text" class="header-sync-note-text">Sem atualização</span>
+            </div>
+            <span id="app-version-badge" class="cloud-sync-meta local">Versão: v00.00/00000000</span>
+            <span id="cloud-sync-last" class="cloud-sync-meta" title="Sem atualização" aria-label="Sem atualização"></span>
+            <span id="firebase-auth-status" class="firebase-auth-meta auth-offline" role="button" tabindex="0" title="Clique para ver diagnóstico de autenticação Firebase">Auth Firebase: Desconectado</span>
             <span id="header-current-user" class="header-user-pill" title="Usuário da sessão atual">
               <i data-lucide="user-round"></i>
               <span id="header-current-user-name">-</span>
@@ -439,6 +439,9 @@
               <div class="clients-report-header">
                 <h3>Relatório de Sessões do Período</h3>
                 <span class="clients-report-range" id="clients-report-range-label"></span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.openAllPeriodNarrativesModal()">
+                  <i data-lucide="file-text"></i> Ver Narrativas
+                </button>
               </div>
               <div class="stats-grid" id="clients-report-summary-grid"></div>
             </div>
@@ -1497,6 +1500,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260809-1"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260809-39"></script>
+  <script src="js/app.js?v=20260809-40"></script>
 </body>
 </html>

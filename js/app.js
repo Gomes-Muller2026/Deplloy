@@ -42,7 +42,7 @@ const LOCAL_BACKUP_DATA_URL = './data/backup_consultorio_2026-07-26%20(1).json';
 const APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY = 'consultorio_deleted_appointment_tombstones';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
 const APP_RELEASE_SEEN_STORAGE_KEY = 'consultorio_app_release_seen';
-const APP_RELEASE_VERSION = 'v09.08.2026-1';
+const APP_RELEASE_VERSION = 'v09.08.2026-2';
 const LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY = 'consultorio_landscape_sidebar_collapsed';
 const LOGIN_USERS_FIRESTORE_COLLECTION = 'login_users';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
@@ -10156,24 +10156,40 @@ class ConsultorioApp {
     };
     const bucketLabel = bucketLabels[bucket] || bucket;
 
+    const scoped = this.filterItemsByTopRange(this.appointments || [], 'date')
+      .filter((a) => this.getAppointmentStatusMeta(a.status).bucket === bucket);
+
+    this.renderPeriodNarrativesModal(scoped, bucketLabel);
+  }
+
+  // Botão "Ver Narrativas" no cabeçalho de "Relatório de Sessões do Período" — traz, num
+  // único lugar bem visível, todas as sessões do período selecionado (de todos os status)
+  // que têm narrativa efetivamente registrada.
+  openAllPeriodNarrativesModal() {
+    const scoped = this.filterItemsByTopRange(this.appointments || [], 'date')
+      .filter((a) => Boolean(this.getSessionNarrativeDisplay(a).text));
+
+    this.renderPeriodNarrativesModal(scoped, 'Todas as sessões com narrativa');
+  }
+
+  renderPeriodNarrativesModal(appointmentsList, headingLabel) {
     const modal = document.getElementById('modal-period-narratives');
     const list = document.getElementById('period-narratives-list');
     const titleEl = document.getElementById('period-narratives-title');
     if (!modal || !list) return;
 
-    const scoped = this.filterItemsByTopRange(this.appointments || [], 'date')
-      .filter((a) => this.getAppointmentStatusMeta(a.status).bucket === bucket)
+    const scoped = (appointmentsList || [])
       .slice()
       .sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
 
     if (titleEl) {
       const { start, end } = this.getTopRange();
       const rangeLabel = (start || end) ? `${start ? formatDateBR(start) : '...'} até ${end ? formatDateBR(end) : '...'}` : 'todo o período';
-      titleEl.textContent = `Narrativas — ${bucketLabel} (${rangeLabel})`;
+      titleEl.textContent = `Narrativas — ${headingLabel} (${rangeLabel})`;
     }
 
     if (!scoped.length) {
-      list.innerHTML = '<p class="text-muted" style="font-size:0.85rem;margin:0;">Nenhuma sessão encontrada para este status no período selecionado.</p>';
+      list.innerHTML = '<p class="text-muted" style="font-size:0.85rem;margin:0;">Nenhuma sessão com narrativa encontrada para este filtro no período selecionado.</p>';
     } else {
       list.innerHTML = scoped.map((a) => {
         const clientName = String(a.clientName || (this.clients.find((c) => c.id === a.clientId) || {}).name || 'Cliente').trim() || 'Cliente';
@@ -13086,7 +13102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.loadPartial) {
       await Promise.all([
         window.loadPartial('src/components/partials/login-screen.html?v=20260729-1', 'login-root'),
-        window.loadPartial('src/components/partials/main-shell.html?v=20260808-3', 'app-root')
+        window.loadPartial('src/components/partials/main-shell.html?v=20260809-4', 'app-root')
       ]);
     }
   } catch (err) {

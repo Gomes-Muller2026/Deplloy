@@ -456,12 +456,17 @@ body.config-view .header-actions > * {
 
 /* Aplicado só a partir de telas de desktop: em telas estreitas (<=900px) o
    layout mobile já existente (sound-control-group empilhado em 100% de
-   largura, etc.) continua valendo sem interferência deste wrapper. */
+   largura, etc.) continua valendo sem interferência deste wrapper.
+   O wrapper fica "transparente" (display:contents) nesta view: seus filhos
+   (avisos sonoros + status Firebase Online) passam a ser itens diretos do
+   fluxo único de .header-actions, junto com os botões/pílulas de ação e os
+   indicadores de sincronismo/versão/autenticação (movidos para depois de
+   "Atualizar Agora" no HTML). Isso permite que o próprio flex-wrap distribua
+   tudo em apenas duas linhas (status em cima, ações embaixo) sempre que a
+   largura disponível permitir, sem uma linha extra fixa no meio. */
 @media (min-width: 901px) {
   body.panil-view .header-actions .header-actions-group1 {
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    display: contents;
   }
 
   body.panil-view .header-actions .header-actions-group1 > * {
@@ -473,24 +478,21 @@ body.config-view .header-actions > * {
      sozinho, ele acabaria estourando a largura da linha em vez de distribuir
      seu conteúdo pelas linhas disponíveis. Com display:contents ele deixa de
      gerar uma caixa própria e seus filhos (botões/pílulas) passam a ser itens
-     do próprio group1, podendo quebrar linha individualmente como os demais. */
-  body.panil-view .header-actions .header-actions-group1 .sound-control-group {
+     do próprio fluxo de .header-actions, podendo quebrar linha individualmente
+     como os demais. */
+  body.panil-view .header-actions .sound-control-group {
     display: contents;
   }
 
-  body.panil-view .header-actions .header-actions-group1 .sound-control-group > * {
+  body.panil-view .header-actions .sound-control-group > * {
     flex: 0 0 auto;
   }
 
-  /* Reduz um pouco a largura dos badges de status para caber mais conteúdo
-     visível de cara nesta linha antes de precisar rolar horizontalmente. */
-  body.panil-view .header-actions .header-actions-group1 #header-sync-panel {
-    max-width: 230px;
-  }
-
-  body.panil-view .header-actions .header-actions-group1 #app-version-badge {
-    min-width: 112px;
-    max-width: 112px;
+  /* A quebra fixa entre o bloco de avisos/status e o bloco de ações deixa de
+     ser usada nesta view: sem ela, o flex-wrap de .header-actions distribui
+     livremente os itens pelas duas linhas disponíveis. */
+  body.panil-view .header-actions-break {
+    display: none;
   }
 }
 

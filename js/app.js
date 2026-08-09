@@ -9456,7 +9456,7 @@ class ConsultorioApp {
         return `
           <div class="agenda-day-session-row" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')">
             <span class="agenda-day-session-time"><i data-lucide="clock"></i>${safeText(a.time || '--:--')}</span>
-            <span class="agenda-day-avatar">${safeText(initials)}</span>
+            <span class="agenda-day-avatar" style="background:${safeText(normalizeHexColor(a.color || DEFAULT_APPOINTMENT_COLOR))};">${safeText(initials)}</span>
             <span class="agenda-day-session-name">${safeText(a.clientName || '-')}</span>
             <span class="agenda-day-session-meta ${metaClass}">${safeText(metaLabel)}</span>
             ${confirmChip}

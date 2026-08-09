@@ -5858,11 +5858,17 @@ body.analytics-focus-mode .analytics-grid {
 }
 
 /* ── Apple / macOS-style glass treatment ────────────────────────────────
-   Scoped to #modal-appointment only (pilot for "Agendar/Editar Consulta").
+   Applied to every "edit/registration form" modal (has a Salvar button):
+   #modal-appointment (pilot, "Agendar/Editar Consulta"), #modal-client,
+   #modal-expense and #modal-payment. Simple list-management modals (tags,
+   groups, categories, convênios, planos financeiros) intentionally keep
+   the old flat look and are NOT part of this selector list.
    Keeps the app's dark theme; adds vibrancy blur, deep soft shadows,
    larger corner radii and SF Pro-ish typography. Not applied globally. ── */
-#modal-appointment .modal-card {
-  width: min(760px, calc(100vw - 48px));
+#modal-appointment .modal-card,
+#modal-client .modal-card,
+#modal-expense .modal-card,
+#modal-payment .modal-card {
   border-radius: 26px;
   background: linear-gradient(165deg, rgba(58, 71, 99, 0.6) 0%, rgba(21, 28, 46, 0.82) 48%, rgba(8, 12, 22, 0.92) 100%);
   -webkit-backdrop-filter: blur(42px) saturate(190%);
@@ -5878,19 +5884,39 @@ body.analytics-focus-mode .analytics-grid {
   letter-spacing: -0.011em;
 }
 
-#modal-appointment .modal-header {
+/* Per-modal width stays independent from the shared glass box above
+   (#modal-client and #modal-payment already size themselves via
+   #modal-client .modal-card / .modal-card-sm declared earlier). */
+#modal-appointment .modal-card {
+  width: min(760px, calc(100vw - 48px));
+}
+
+#modal-expense .modal-card {
+  width: min(560px, calc(100vw - 40px));
+}
+
+#modal-appointment .modal-header,
+#modal-client .modal-header,
+#modal-expense .modal-header,
+#modal-payment .modal-header {
   padding: 1.3rem 1.6rem 1.05rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.09);
 }
 
-#modal-appointment .modal-header h3 {
+#modal-appointment .modal-header h3,
+#modal-client .modal-header h3,
+#modal-expense .modal-header h3,
+#modal-payment .modal-header h3 {
   font-size: 1.22rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-#modal-appointment .btn-close {
+#modal-appointment .btn-close,
+#modal-client .btn-close,
+#modal-expense .btn-close,
+#modal-payment .btn-close {
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -5899,18 +5925,27 @@ body.analytics-focus-mode .analytics-grid {
   transition: background-color 0.18s ease, transform 0.18s ease;
 }
 
-#modal-appointment .btn-close:hover {
+#modal-appointment .btn-close:hover,
+#modal-client .btn-close:hover,
+#modal-expense .btn-close:hover,
+#modal-payment .btn-close:hover {
   background-color: rgba(255, 255, 255, 0.18);
   transform: scale(1.06);
 }
 
-#modal-appointment .modal-body {
+#modal-appointment .modal-body,
+#modal-client .modal-body,
+#modal-expense .modal-body,
+#modal-payment .modal-body {
   padding-top: 1.4rem;
   padding-left: 1.6rem;
   padding-right: 1.6rem;
 }
 
-#modal-appointment .form-group label {
+#modal-appointment .form-group label,
+#modal-client .form-group label,
+#modal-expense .form-group label,
+#modal-payment .form-group label {
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: -0.003em;
@@ -5918,7 +5953,16 @@ body.analytics-focus-mode .analytics-grid {
 
 #modal-appointment .form-control,
 #modal-appointment input[type="date"],
-#modal-appointment input[type="time"] {
+#modal-appointment input[type="time"],
+#modal-client .form-control,
+#modal-client input[type="date"],
+#modal-client input[type="time"],
+#modal-expense .form-control,
+#modal-expense input[type="date"],
+#modal-expense input[type="time"],
+#modal-payment .form-control,
+#modal-payment input[type="date"],
+#modal-payment input[type="time"] {
   border-radius: 13px;
   padding: 0.68rem 0.95rem;
   letter-spacing: -0.006em;
@@ -5927,14 +5971,26 @@ body.analytics-focus-mode .analytics-grid {
 
 #modal-appointment .form-control:focus,
 #modal-appointment input[type="date"]:focus,
-#modal-appointment input[type="time"]:focus {
+#modal-appointment input[type="time"]:focus,
+#modal-client .form-control:focus,
+#modal-client input[type="date"]:focus,
+#modal-client input[type="time"]:focus,
+#modal-expense .form-control:focus,
+#modal-expense input[type="date"]:focus,
+#modal-expense input[type="time"]:focus,
+#modal-payment .form-control:focus,
+#modal-payment input[type="date"]:focus,
+#modal-payment input[type="time"]:focus {
   box-shadow:
     0 0 0 4px rgba(10, 132, 255, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
     inset 0 0 0 1px rgba(10, 132, 255, 0.16);
 }
 
-#modal-appointment .modal-footer {
+#modal-appointment .modal-footer,
+#modal-client .modal-footer,
+#modal-expense .modal-footer,
+#modal-payment .modal-footer {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -5945,11 +6001,50 @@ body.analytics-focus-mode .analytics-grid {
   background: linear-gradient(0deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 100%);
 }
 
-#modal-appointment .modal-footer .btn {
+#modal-appointment .modal-footer .btn,
+#modal-client .modal-footer .btn,
+#modal-expense .modal-footer .btn,
+#modal-payment .modal-footer .btn {
   border-radius: 999px;
   padding: 0.62rem 1.3rem;
   font-weight: 600;
   letter-spacing: -0.008em;
+}
+
+/* #modal-payment-only: bring its internal info/summary cards in line with
+   the glass treatment (translucent fill + consistent rounded corners),
+   since they sit directly inside the glass modal-card above. */
+#modal-payment .payment-info-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+#modal-payment .payment-value-block {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 13px;
+}
+
+#modal-payment .payment-mode-card {
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+#modal-payment .payment-mode-card.is-active {
+  border-color: rgba(163, 230, 53, 0.72);
+  background: linear-gradient(145deg, rgba(110, 143, 74, 0.32), rgba(255, 255, 255, 0.05));
+}
+
+#modal-payment .payment-receipt-card,
+#modal-payment .payment-receipt-template-panel,
+#modal-payment .payment-receipt-professional-panel {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Ensure form controls don't force horizontal overflow inside modal */

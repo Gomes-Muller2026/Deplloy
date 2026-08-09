@@ -460,26 +460,8 @@ body.config-view .header-actions > * {
 @media (min-width: 901px) {
   body.panil-view .header-actions .header-actions-group1 {
     flex: 1 1 100%;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0.5rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(163, 230, 53, 0.45) transparent;
-    padding-bottom: 6px;
-  }
-
-  body.panil-view .header-actions .header-actions-group1::-webkit-scrollbar {
-    height: 5px;
-  }
-
-  body.panil-view .header-actions .header-actions-group1::-webkit-scrollbar-thumb {
-    background: rgba(163, 230, 53, 0.45);
-    border-radius: 999px;
-  }
-
-  body.panil-view .header-actions .header-actions-group1::-webkit-scrollbar-track {
-    background: transparent;
   }
 
   body.panil-view .header-actions .header-actions-group1 > * {

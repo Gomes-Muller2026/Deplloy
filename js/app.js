@@ -9520,6 +9520,12 @@ class ConsultorioApp {
     }
   }
 
+  clearAgendaConfirmationStatus(appointmentId) {
+    if (window.agendaModule && typeof window.agendaModule.clearAppointmentConfirmationStatus === 'function') {
+      window.agendaModule.clearAppointmentConfirmationStatus(this, appointmentId);
+    }
+  }
+
   sendSelectedAgendaConfirmations() {
     if (window.agendaModule && typeof window.agendaModule.sendSelectedAppointmentConfirmations === 'function') {
       window.agendaModule.sendSelectedAppointmentConfirmations(this, this.agendaConfirmSelectedIds);
@@ -9556,6 +9562,12 @@ class ConsultorioApp {
       const badgeHtml = confirmBadge
         ? `<span class="agenda-confirm-badge ${confirmBadge.className}">${safeText(confirmBadge.label)}</span>`
         : '<span class="agenda-confirm-badge is-nunca-enviado">Não enviado</span>';
+      const isStuckPending = String(a.confirmationStatus || '').trim() === 'pendente';
+      const clearBtnHtml = isStuckPending
+        ? `<button type="button" class="agenda-confirm-clear-btn" title="Limpar status travado (voltar para não enviado)" onclick="app.clearAgendaConfirmationStatus('${a.id}')">
+             <i data-lucide="x"></i>
+           </button>`
+        : '';
       const checked = this.agendaConfirmSelectedIds.has(a.id) ? 'checked' : '';
       const disabled = hasPhone ? '' : 'disabled';
       const rowTitle = hasPhone ? '' : 'title="Cliente sem telefone válido para WhatsApp"';
@@ -9571,6 +9583,7 @@ class ConsultorioApp {
           </div>
           <div class="agenda-day-confirm-row-meta">
             ${badgeHtml}
+            ${clearBtnHtml}
             ${isNextQueued ? '<span class="agenda-confirm-badge is-next-queued-badge">Próximo</span>' : ''}
             <button type="button" class="agenda-confirm-resend-btn ${isNextQueued ? 'is-pulsing' : ''}" title="${sendBtnTitle}" onclick="app.resendAgendaConfirmation('${a.id}')" ${hasPhone ? '' : 'disabled'}>
               <i data-lucide="send"></i>

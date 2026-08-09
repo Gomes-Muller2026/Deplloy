@@ -3591,6 +3591,26 @@ input[type="time"].agenda-hour-range-input {
   50% { box-shadow: 0 0 0 6px rgba(79, 70, 229, 0); }
 }
 
+.agenda-confirm-clear-btn {
+  background: none;
+  border: none;
+  color: rgba(190, 18, 60, 0.6);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 0.3rem;
+  border-radius: 8px;
+}
+
+.agenda-confirm-clear-btn:hover {
+  background: rgba(190, 18, 60, 0.1);
+  color: #be123c;
+}
+
+.agenda-confirm-clear-btn i {
+  width: 14px;
+  height: 14px;
+}
+
 .agenda-day-confirm-footer {
   padding: 0.8rem 1.1rem;
   border-top: 1px solid rgba(15, 23, 42, 0.08);

@@ -228,6 +228,26 @@ const agendaModule = {
     return `${this.CONFIRMATION_ENDPOINT}?id=${encodeURIComponent(appointmentId)}&token=${encodeURIComponent(token)}`;
   },
 
+  clearAppointmentConfirmationStatus(app, appointmentId) {
+    const appointment = app.appointments.find((a) => a.id === appointmentId);
+    if (!appointment) return;
+
+    app.appointments = app.appointments.map((a) => (a.id === appointmentId ? {
+      ...a,
+      confirmationStatus: null,
+      confirmationToken: null,
+      confirmationSentAt: null
+    } : a));
+
+    if (Array.isArray(app.agendaConfirmPendingQueue)) {
+      app.agendaConfirmPendingQueue = app.agendaConfirmPendingQueue.filter((id) => id !== appointmentId);
+    }
+
+    app.saveData();
+    app.render();
+    app.showToast('Status de confirmação limpo. Pode enviar novamente quando quiser.', 'info');
+  },
+
   sendAppointmentConfirmationWhatsApp(app, appointmentId, options = {}) {
     const appointment = app.appointments.find((a) => a.id === appointmentId);
     if (!appointment) return false;

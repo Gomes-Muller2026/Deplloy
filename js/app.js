@@ -42,7 +42,7 @@ const LOCAL_BACKUP_DATA_URL = './data/backup_consultorio_2026-07-26%20(1).json';
 const APPOINTMENT_DELETE_TOMBSTONES_STORAGE_KEY = 'consultorio_deleted_appointment_tombstones';
 const APP_VERSION_STORAGE_KEY = 'consultorio_app_version_info';
 const APP_RELEASE_SEEN_STORAGE_KEY = 'consultorio_app_release_seen';
-const APP_RELEASE_VERSION = 'v08.08.2026-1';
+const APP_RELEASE_VERSION = 'v09.08.2026-1';
 const LANDSCAPE_SIDEBAR_COLLAPSED_STORAGE_KEY = 'consultorio_landscape_sidebar_collapsed';
 const LOGIN_USERS_FIRESTORE_COLLECTION = 'login_users';
 const CLIENT_GROUPS_STORAGE_KEY = 'consultorio_client_groups';
@@ -771,7 +771,10 @@ const hexToRgb = (hexColor) => {
 const agendaEventInlineStyle = (hexColor) => {
   const color = normalizeHexColor(hexColor);
   const rgb = hexToRgb(color);
-  return `background-color: #ffffff; border: 1px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.24); color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.95);`;
+  // Cores claras (amarelo, verde-limão) ficam ilegíveis com texto branco: escolhe o texto pela luminância.
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  const textColor = luminance > 0.62 ? '#1f2937' : '#ffffff';
+  return `background-color: ${color}; border: 1px solid rgba(0, 0, 0, 0.18); color: ${textColor};`;
 };
 
 const normalizeLoginUsers = (rawUsers) => {

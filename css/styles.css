@@ -3851,9 +3851,10 @@ input[type="time"].agenda-hour-range-input {
   gap: 0.15rem;
   padding: 0.4rem 0.55rem;
   border-radius: 12px;
-   background-color: #2e6b47 !important; /* verde musgo */
-   border: 1px solid rgba(18,56,44,0.18) !important;
-   color: #ffffff !important;
+  /* Cor definida inline por agendamento (ver agendaEventInlineStyle); estes são apenas fallback. */
+  background-color: #2e6b47;
+  border: 1px solid rgba(18,56,44,0.18);
+  color: #ffffff;
   box-sizing: border-box;
   pointer-events: auto;
   z-index: 5;
@@ -3867,8 +3868,7 @@ input[type="time"].agenda-hour-range-input {
 
 .agenda-event:hover {
   transform: translateY(-6px);
-  border-color: rgba(46,107,71,0.42) !important;
-  box-shadow: 0 20px 48px rgba(46,107,71,0.22);
+  box-shadow: 0 20px 48px rgba(15,23,42,0.28);
   z-index: 200 !important;
 }
 
@@ -3901,7 +3901,8 @@ input[type="time"].agenda-hour-range-input {
 
 .agenda-event-time {
   font-size: 0.76rem;
-  color: rgba(255,255,255,0.92);
+  color: inherit;
+  opacity: 0.92;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -3918,7 +3919,7 @@ input[type="time"].agenda-hour-range-input {
   font-size: 0.88rem;
   font-weight: 800;
   letter-spacing: 0.01em;
-  color: #ffffff;
+  color: inherit;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3926,7 +3927,8 @@ input[type="time"].agenda-hour-range-input {
 
 .agenda-event-meta {
   font-size: 0.76rem;
-  color: rgba(255,255,255,0.84);
+  color: inherit;
+  opacity: 0.84;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;

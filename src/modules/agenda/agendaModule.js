@@ -228,7 +228,7 @@ const agendaModule = {
     return `${this.CONFIRMATION_ENDPOINT}?id=${encodeURIComponent(appointmentId)}&token=${encodeURIComponent(token)}`;
   },
 
-  sendAppointmentConfirmationWhatsApp(app, appointmentId) {
+  sendAppointmentConfirmationWhatsApp(app, appointmentId, options = {}) {
     const appointment = app.appointments.find((a) => a.id === appointmentId);
     if (!appointment) return false;
 
@@ -267,7 +267,7 @@ const agendaModule = {
     window.open(url, '_blank', 'noopener');
 
     app.saveData();
-    app.render();
+    if (!options.skipRender) app.render();
     return true;
   },
 
@@ -278,13 +278,17 @@ const agendaModule = {
       return;
     }
 
-    ids.forEach((id, index) => {
-      window.setTimeout(() => {
-        this.sendAppointmentConfirmationWhatsApp(app, id);
-      }, index * 400);
+    // window.open precisa rodar de forma síncrona dentro do clique do usuário,
+    // senão o navegador bloqueia como pop-up (mesmo com atraso de poucos ms).
+    let sentCount = 0;
+    ids.forEach((id) => {
+      if (this.sendAppointmentConfirmationWhatsApp(app, id, { skipRender: true })) sentCount += 1;
     });
+    app.render();
 
-    app.showToast(`Enviando confirmação para ${ids.length} cliente(s)...`, 'info');
+    if (sentCount > 0) {
+      app.showToast(`Confirmação enviada para ${sentCount} cliente(s). Confira as janelas do WhatsApp abertas.`, 'success');
+    }
   }
 };
 

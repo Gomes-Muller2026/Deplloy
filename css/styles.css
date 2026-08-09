@@ -1693,6 +1693,7 @@ input[type="date"]:focus {
 /* Sound Control Group */
 .sound-control-group {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
 }

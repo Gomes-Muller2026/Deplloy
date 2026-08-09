@@ -3804,6 +3804,7 @@ input[type="time"].agenda-hour-range-input {
   height: 42px !important;
   line-height: 42px !important;
   font-size: 0.95rem !important;
+  max-width: 14.2857143% !important;
 }
 
 #agenda-day-mini-calendar .flatpickr-current-month {

@@ -1468,12 +1468,18 @@ select.form-control:focus {
     inset 0 -6px 10px rgba(15, 23, 42, 0.3);
 }
 
-#modal-appointment .modal-footer .btn-primary {
+#modal-appointment .modal-footer .btn-primary,
+#modal-client .modal-footer .btn-primary,
+#modal-expense .modal-footer .btn-primary,
+#modal-payment .modal-footer .btn-primary {
   background: linear-gradient(155deg, rgba(14, 165, 233, 0.94), rgba(2, 132, 199, 0.94));
   border-color: rgba(190, 242, 100, 0.52);
 }
 
-#modal-appointment .modal-footer .btn-secondary {
+#modal-appointment .modal-footer .btn-secondary,
+#modal-client .modal-footer .btn-secondary,
+#modal-expense .modal-footer .btn-secondary,
+#modal-payment .modal-footer .btn-secondary {
   background: linear-gradient(155deg, rgba(100, 116, 139, 0.6), rgba(51, 65, 85, 0.85));
   border-color: rgba(148, 163, 184, 0.45);
 }
@@ -5718,27 +5724,39 @@ body.analytics-focus-mode .analytics-grid {
   }
 }
 
-#modal-client .modal-body::-webkit-scrollbar {
+#modal-client .modal-body::-webkit-scrollbar,
+#modal-expense .modal-body::-webkit-scrollbar,
+#modal-payment .modal-body::-webkit-scrollbar {
   width: 10px;
 }
 
-#modal-client .modal-body::-webkit-scrollbar-track {
+#modal-client .modal-body::-webkit-scrollbar-track,
+#modal-expense .modal-body::-webkit-scrollbar-track,
+#modal-payment .modal-body::-webkit-scrollbar-track {
   background: rgba(148, 163, 184, 0.14);
   border-radius: 999px;
 }
 
-#modal-client .modal-body::-webkit-scrollbar-thumb {
-  background: rgba(110, 143, 74, 0.52);
+#modal-client .modal-body::-webkit-scrollbar-thumb,
+#modal-expense .modal-body::-webkit-scrollbar-thumb,
+#modal-payment .modal-body::-webkit-scrollbar-thumb {
+  background: rgba(10, 132, 255, 0.45);
   border-radius: 999px;
 }
 
-#modal-client .modal-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(110, 143, 74, 0.72);
+#modal-client .modal-body::-webkit-scrollbar-thumb:hover,
+#modal-expense .modal-body::-webkit-scrollbar-thumb:hover,
+#modal-payment .modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(10, 132, 255, 0.65);
 }
 
-/* Improve field readability inside patient and appointment modals */
+/* Improve field readability inside edit/registration modals
+   (appointment, patient, expense, payment — the modals that got the
+   Apple/macOS glass treatment; list-management modals are untouched). */
 #modal-appointment .form-group label,
-#modal-client .form-group label {
+#modal-client .form-group label,
+#modal-expense .form-group label,
+#modal-payment .form-group label {
   color: #f8fafc;
   font-weight: 700;
   text-shadow: 0 1px 0 rgba(2, 6, 23, 0.45);
@@ -5746,10 +5764,16 @@ body.analytics-focus-mode .analytics-grid {
 
 #modal-appointment .form-control,
 #modal-client .form-control,
+#modal-expense .form-control,
+#modal-payment .form-control,
 #modal-appointment input[type="date"],
 #modal-appointment input[type="time"],
 #modal-client input[type="date"],
-#modal-client input[type="time"] {
+#modal-client input[type="time"],
+#modal-expense input[type="date"],
+#modal-expense input[type="time"],
+#modal-payment input[type="date"],
+#modal-payment input[type="time"] {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03) 42%, rgba(15, 23, 42, 0.72));
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
@@ -5764,19 +5788,31 @@ body.analytics-focus-mode .analytics-grid {
 
 #modal-appointment .form-control::placeholder,
 #modal-client .form-control::placeholder,
+#modal-expense .form-control::placeholder,
+#modal-payment .form-control::placeholder,
 #modal-appointment input[type="date"]::placeholder,
 #modal-appointment input[type="time"]::placeholder,
 #modal-client input[type="date"]::placeholder,
-#modal-client input[type="time"]::placeholder {
+#modal-client input[type="time"]::placeholder,
+#modal-expense input[type="date"]::placeholder,
+#modal-expense input[type="time"]::placeholder,
+#modal-payment input[type="date"]::placeholder,
+#modal-payment input[type="time"]::placeholder {
   color: rgba(248, 250, 252, 0.58);
 }
 
 #modal-appointment .form-control:focus,
 #modal-client .form-control:focus,
+#modal-expense .form-control:focus,
+#modal-payment .form-control:focus,
 #modal-appointment input[type="date"]:focus,
 #modal-appointment input[type="time"]:focus,
 #modal-client input[type="date"]:focus,
-#modal-client input[type="time"]:focus {
+#modal-client input[type="time"]:focus,
+#modal-expense input[type="date"]:focus,
+#modal-expense input[type="time"]:focus,
+#modal-payment input[type="date"]:focus,
+#modal-payment input[type="time"]:focus {
   outline: none;
   border-color: rgba(10, 132, 255, 0.85);
   box-shadow:
@@ -5789,32 +5825,48 @@ body.analytics-focus-mode .analytics-grid {
 #modal-appointment input[type="date"]::-webkit-calendar-picker-indicator,
 #modal-appointment input[type="time"]::-webkit-calendar-picker-indicator,
 #modal-client input[type="date"]::-webkit-calendar-picker-indicator,
-#modal-client input[type="time"]::-webkit-calendar-picker-indicator {
+#modal-client input[type="time"]::-webkit-calendar-picker-indicator,
+#modal-expense input[type="date"]::-webkit-calendar-picker-indicator,
+#modal-expense input[type="time"]::-webkit-calendar-picker-indicator,
+#modal-payment input[type="date"]::-webkit-calendar-picker-indicator,
+#modal-payment input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(1) brightness(1.9) contrast(1.15);
   background-color: rgba(255, 255, 255, 0.22);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
 
 #modal-appointment select.form-control,
-#modal-client select.form-control {
+#modal-client select.form-control,
+#modal-expense select.form-control,
+#modal-payment select.form-control {
   color: var(--text-main);
   font-weight: 600;
 }
 
 #modal-appointment select.form-control option,
 #modal-client select.form-control option,
+#modal-expense select.form-control option,
+#modal-payment select.form-control option,
 #modal-appointment select.form-control optgroup,
-#modal-client select.form-control optgroup {
+#modal-client select.form-control optgroup,
+#modal-expense select.form-control optgroup,
+#modal-payment select.form-control optgroup {
   background-color: #10182b;
   color: #f8fafc;
 }
 
 #modal-appointment select.form-control option:checked,
 #modal-client select.form-control option:checked,
+#modal-expense select.form-control option:checked,
+#modal-payment select.form-control option:checked,
 #modal-appointment select.form-control option:hover,
 #modal-client select.form-control option:hover,
+#modal-expense select.form-control option:hover,
+#modal-payment select.form-control option:hover,
 #modal-appointment select.form-control option:focus,
-#modal-client select.form-control option:focus {
+#modal-client select.form-control option:focus,
+#modal-expense select.form-control option:focus,
+#modal-payment select.form-control option:focus {
   background-color: #0a84ff;
   color: #ffffff;
 }
@@ -5849,12 +5901,12 @@ body.analytics-focus-mode .analytics-grid {
 }
 
 #modal-appointment .modal-body::-webkit-scrollbar-thumb {
-  background: rgba(110, 143, 74, 0.52);
+  background: rgba(10, 132, 255, 0.45);
   border-radius: 999px;
 }
 
 #modal-appointment .modal-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(110, 143, 74, 0.72);
+  background: rgba(10, 132, 255, 0.65);
 }
 
 /* ── Apple / macOS-style glass treatment ────────────────────────────────
@@ -6045,6 +6097,49 @@ body.analytics-focus-mode .analytics-grid {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ── Apple-style treatment for the WhatsApp templates screen (light card
+   surface) — the .card container already has the rounded/soft-shadow look;
+   this just brings its form fields off the app's default dark-olive
+   .form-control and onto a light glass finish that matches the white card. */
+#tab-whatsapp .form-control,
+#tab-whatsapp input[type="date"],
+#tab-whatsapp input[type="time"],
+#tab-whatsapp select.form-control,
+#tab-whatsapp textarea.form-control {
+  background-color: transparent;
+  background-image: linear-gradient(165deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.02));
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 13px;
+  color: #1e293b;
+  color-scheme: light;
+  letter-spacing: -0.006em;
+}
+
+#tab-whatsapp .form-control::placeholder,
+#tab-whatsapp textarea.form-control::placeholder {
+  color: rgba(30, 41, 59, 0.45);
+}
+
+#tab-whatsapp .form-control:focus,
+#tab-whatsapp input[type="date"]:focus,
+#tab-whatsapp input[type="time"]:focus,
+#tab-whatsapp select.form-control:focus,
+#tab-whatsapp textarea.form-control:focus {
+  background-color: #ffffff;
+  border-color: rgba(10, 132, 255, 0.55);
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.16);
+  outline: none;
+}
+
+#tab-whatsapp .card {
+  border-radius: 24px;
+}
+
+#tab-whatsapp .btn.btn-primary,
+#tab-whatsapp .btn.btn-secondary {
+  border-radius: 999px;
 }
 
 /* Ensure form controls don't force horizontal overflow inside modal */

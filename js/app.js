@@ -5873,6 +5873,10 @@ class ConsultorioApp {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab') || 'panil';
         if (tab === 'financeiro') this.financeViewFilter = 'all';
+        if (tab === 'agenda') {
+          const agendaStatus = document.getElementById('agenda-filter-status');
+          if (agendaStatus) agendaStatus.value = 'todos';
+        }
         this.switchTab(tab);
       });
     });

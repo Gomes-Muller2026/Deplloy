@@ -372,6 +372,7 @@ const CUSTOM_SELECT_IDS = [
   'client-category',
   'client-convenio',
   'client-plano-financeiro',
+  'client-marital-status',
   'expense-category',
   'pay-method'
 ];
@@ -11266,6 +11267,8 @@ class ConsultorioApp {
         } else {
           set('client-dob', this.formatDobForDisplay(c.dob));
         }
+        set('client-occupation', c.occupation);
+        set('client-marital-status', c.maritalStatus);
         set('client-group', c.group);
         set('client-cep', this.formatCep(c.cep));
         set('client-street', c.street);
@@ -11906,6 +11909,8 @@ class ConsultorioApp {
       cpf: String((document.getElementById('client-cpf') || {}).value || '').trim(),
       rg: String((document.getElementById('client-rg') || {}).value || '').trim(),
       dob: dobIso,
+      occupation: String((document.getElementById('client-occupation') || {}).value || '').trim(),
+      maritalStatus: String((document.getElementById('client-marital-status') || {}).value || '').trim(),
       group,
       cep: this.formatCep((document.getElementById('client-cep') || {}).value || ''),
       street: String((document.getElementById('client-street') || {}).value || '').trim(),

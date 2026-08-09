@@ -886,6 +886,8 @@
             <div class="form-group"><label for="client-cpf">CPF</label><input type="text" id="client-cpf" class="form-control" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
             <div class="form-group"><label for="client-rg">RG</label><input type="text" id="client-rg" class="form-control"></div>
             <div class="form-group"><label for="client-dob">Data de Nascimento</label><input type="text" id="client-dob" class="form-control date-input" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" autocomplete="bday"></div>
+            <div class="form-group"><label for="client-occupation">Profissão / Atividade</label><input type="text" id="client-occupation" class="form-control" placeholder="Ex: Professor(a), Autônomo(a)"></div>
+            <div class="form-group"><label for="client-marital-status">Estado civil</label><select id="client-marital-status" class="form-control"><option value="">Selecione</option><option value="Solteiro(a)">Solteiro(a)</option><option value="Casado(a)">Casado(a)</option><option value="União Estável">União Estável</option><option value="Divorciado(a)">Divorciado(a)</option><option value="Viúvo(a)">Viúvo(a)</option><option value="Outro">Outro</option></select></div>
             <div class="form-group"><label for="client-group">Grupo</label><input type="text" id="client-group" class="form-control" list="client-group-options" placeholder="Digite ou selecione um grupo"><datalist id="client-group-options"></datalist><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-groups">Gerenciar grupos</button></div></div>
             <div class="form-group"><label for="client-convenio">Convênio</label><select id="client-convenio" class="form-control"></select><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-convenio">Gerenciar convênios</button></div></div>
             <div class="form-group"><label for="client-plano-financeiro">Plano financeiro</label><select id="client-plano-financeiro" class="form-control"></select><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-plano-financeiro">Gerenciar planos</button></div></div>
@@ -940,40 +942,30 @@
               <div id="anamnese-form-casal" class="anamnese-form" style="display:none;">
                 <div class="anamnese-abordagem">Psicoterapia Transpessoal · Sistêmica · Experiência Somática · Constelação Familiar</div>
 
-                <div class="anamnese-section-title">1. Identificação</div>
-                <div class="anamnese-fields-grid">
-                  <div class="anamnese-field"><label>Parceiro(a) 1</label><input type="text" class="form-control" data-anamnese="casal.id_p1"></div>
-                  <div class="anamnese-field"><label>Data de nascimento / Profissão</label><input type="text" class="form-control" data-anamnese="casal.id_p1_dob"></div>
-                  <div class="anamnese-field"><label>Parceiro(a) 2</label><input type="text" class="form-control" data-anamnese="casal.id_p2"></div>
-                  <div class="anamnese-field"><label>Data de nascimento / Profissão</label><input type="text" class="form-control" data-anamnese="casal.id_p2_dob"></div>
-                  <div class="anamnese-field"><label>Tempo de relacionamento</label><input type="text" class="form-control" data-anamnese="casal.id_tempo_rel"></div>
-                  <div class="anamnese-field"><label>Casados? União estável? Filhos?</label><input type="text" class="form-control" data-anamnese="casal.id_status"></div>
-                </div>
-
-                <div class="anamnese-section-title">2. O que trouxe vocês até aqui?</div>
+                <div class="anamnese-section-title">1. O que trouxe vocês até aqui?</div>
                 <div class="anamnese-field full">
                   <label>Se esta sessão fosse um sucesso, o que precisaria acontecer para cada um sair dizendo: "valeu a pena vir hoje"?</label>
                   <textarea class="form-control" rows="3" data-anamnese="casal.motivo"></textarea>
                 </div>
 
-                <div class="anamnese-section-title">3. História do relacionamento</div>
+                <div class="anamnese-section-title">2. História do relacionamento</div>
                 <div class="anamnese-field full"><label>Como vocês se conheceram?</label><textarea class="form-control" rows="2" data-anamnese="casal.hist_conheceram"></textarea></div>
                 <div class="anamnese-field full"><label>O que fez um escolher o outro?</label><textarea class="form-control" rows="2" data-anamnese="casal.hist_escolha"></textarea></div>
                 <div class="anamnese-field full"><label>Quais foram os melhores momentos da relação?</label><textarea class="form-control" rows="2" data-anamnese="casal.hist_melhores"></textarea></div>
                 <div class="anamnese-field full"><label>Quando perceberam que algo começou a mudar?</label><textarea class="form-control" rows="2" data-anamnese="casal.hist_mudanca"></textarea></div>
 
-                <div class="anamnese-section-title">4. Visão individual</div>
+                <div class="anamnese-section-title">3. Visão individual</div>
                 <div class="anamnese-field full"><label>Parceiro(a) 1 – Qual é a sua principal dor nesta relação?</label><textarea class="form-control" rows="2" data-anamnese="casal.visao_dor_p1"></textarea></div>
                 <div class="anamnese-field full"><label>Parceiro(a) 2 – Qual é a sua principal dor nesta relação?</label><textarea class="form-control" rows="2" data-anamnese="casal.visao_dor_p2"></textarea></div>
                 <div class="anamnese-field full"><label>O que cada um acredita que mantém esse problema acontecendo?</label><textarea class="form-control" rows="2" data-anamnese="casal.visao_manutencao"></textarea></div>
 
-                <div class="anamnese-section-title">5. Comunicação e conflitos</div>
+                <div class="anamnese-section-title">4. Comunicação e conflitos</div>
                 <div class="anamnese-field full"><label>Como costumam discutir?</label><textarea class="form-control" rows="2" data-anamnese="casal.com_discussao"></textarea></div>
                 <div class="anamnese-field full"><label>Como fazem as pazes?</label><textarea class="form-control" rows="2" data-anamnese="casal.com_pazes"></textarea></div>
                 <div class="anamnese-field full"><label>Há críticas, silêncio, ironia, explosões ou afastamento?</label><textarea class="form-control" rows="2" data-anamnese="casal.com_padroes"></textarea></div>
                 <div class="anamnese-field full"><label>Como demonstram carinho e admiração?</label><textarea class="form-control" rows="2" data-anamnese="casal.com_carinho"></textarea></div>
 
-                <div class="anamnese-section-title">6. Áreas do relacionamento</div>
+                <div class="anamnese-section-title">5. Áreas do relacionamento</div>
                 <div class="anamnese-fields-grid">
                   <div class="anamnese-field"><label>Vida sexual (se desejarem abordar)</label><textarea class="form-control" rows="2" data-anamnese="casal.area_sexual"></textarea></div>
                   <div class="anamnese-field"><label>Finanças</label><textarea class="form-control" rows="2" data-anamnese="casal.area_financas"></textarea></div>
@@ -982,20 +974,20 @@
                   <div class="anamnese-field full"><label>Projetos e sonhos em comum</label><textarea class="form-control" rows="2" data-anamnese="casal.area_projetos"></textarea></div>
                 </div>
 
-                <div class="anamnese-section-title">7. Olhar sistêmico</div>
+                <div class="anamnese-section-title">6. Olhar sistêmico</div>
                 <div class="anamnese-field full"><label>Como era o relacionamento dos pais de cada um?</label><textarea class="form-control" rows="2" data-anamnese="casal.sist_pais"></textarea></div>
                 <div class="anamnese-field full"><label>Existe histórico de separações, traições, violência, perdas importantes, adoções, abortos, dependência química ou doenças marcantes?</label><textarea class="form-control" rows="3" data-anamnese="casal.sist_historico"></textarea></div>
                 <div class="anamnese-field full"><label>Há lealdades familiares ou padrões que vocês percebem repetir?</label><textarea class="form-control" rows="2" data-anamnese="casal.sist_lealdades"></textarea></div>
 
-                <div class="anamnese-section-title">8. Recursos</div>
+                <div class="anamnese-section-title">7. Recursos</div>
                 <div class="anamnese-field full"><label>O que ainda funciona entre vocês?</label><textarea class="form-control" rows="2" data-anamnese="casal.rec_funciona"></textarea></div>
                 <div class="anamnese-field full"><label>O que fez vocês permanecerem juntos até hoje?</label><textarea class="form-control" rows="2" data-anamnese="casal.rec_permanencia"></textarea></div>
                 <div class="anamnese-field full"><label>Quais qualidades vocês enxergam um no outro?</label><textarea class="form-control" rows="2" data-anamnese="casal.rec_qualidades"></textarea></div>
 
-                <div class="anamnese-section-title">9. Objetivos terapêuticos</div>
+                <div class="anamnese-section-title">8. Objetivos terapêuticos</div>
                 <div class="anamnese-field full"><label>O que cada um espera construir ao longo do processo?</label><textarea class="form-control" rows="3" data-anamnese="casal.obj_objetivos"></textarea></div>
 
-                <div class="anamnese-section-title">10. Observações da terapeuta</div>
+                <div class="anamnese-section-title">9. Observações da terapeuta</div>
                 <div class="anamnese-field full"><label>Hipóteses sistêmicas iniciais</label><textarea class="form-control" rows="3" data-anamnese="casal.obs_hipoteses"></textarea></div>
                 <div class="anamnese-field full"><label>Recursos do casal</label><textarea class="form-control" rows="2" data-anamnese="casal.obs_recursos"></textarea></div>
                 <div class="anamnese-field full"><label>Plano inicial de intervenção</label><textarea class="form-control" rows="3" data-anamnese="casal.obs_plano"></textarea></div>
@@ -1525,6 +1517,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260809-1"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260809-41"></script>
+  <script src="js/app.js?v=20260809-42"></script>
 </body>
 </html>

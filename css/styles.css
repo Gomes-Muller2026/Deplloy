@@ -2287,6 +2287,13 @@ input[type="date"]:focus {
 .stat-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+.stat-info .stat-label,
+.stat-info .stat-value {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Dashboard Layout Grid */

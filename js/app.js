@@ -9521,7 +9521,7 @@ class ConsultorioApp {
 
   resendAgendaConfirmation(appointmentId) {
     if (window.agendaModule && typeof window.agendaModule.sendAppointmentConfirmationWhatsApp === 'function') {
-      window.agendaModule.sendAppointmentConfirmationWhatsApp(this, appointmentId);
+      window.agendaModule.sendAppointmentConfirmationWhatsApp(this, appointmentId, { reuseTab: true });
     }
   }
 

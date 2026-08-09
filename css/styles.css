@@ -2017,6 +2017,13 @@ input[type="date"]:focus {
   color: var(--text-muted);
 }
 
+/* "Ver Narrativas" keeps the shared .btn-secondary look, just fully rounded
+   to match the pill vocabulary used elsewhere for header-level actions. */
+.clients-report-header .btn {
+  border-radius: var(--radius-full);
+  letter-spacing: -0.006em;
+}
+
 .stat-card {
   padding: 1rem 1.05rem;
   display: flex;
@@ -2109,18 +2116,21 @@ input[type="date"]:focus {
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
   color: inherit;
   cursor: pointer;
   opacity: 0.75;
-  transition: opacity 140ms ease, background 140ms ease;
+  transition: opacity var(--transition), background var(--transition), transform var(--transition), box-shadow var(--transition);
 }
 
 .stat-card-narrative-btn:hover,
 .stat-card-narrative-btn:focus-visible {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+  transform: scale(1.08);
   outline: none;
 }
 
@@ -3490,6 +3500,7 @@ input[type="time"].agenda-hour-range-input {
   min-height: 140px;
   max-height: 420px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .agenda-day-confirm-row {
@@ -3518,8 +3529,10 @@ input[type="time"].agenda-hour-range-input {
 .agenda-day-confirm-row-meta {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding-left: calc(16px + 0.6rem + 44px + 0.6rem);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: 100%;
 }
 
 .agenda-day-confirm-time {
@@ -3543,9 +3556,6 @@ input[type="time"].agenda-hour-range-input {
   margin-left: 0;
 }
 
-.agenda-day-confirm-row-meta .agenda-confirm-resend-btn {
-  margin-left: auto;
-}
 
 .agenda-confirm-resend-btn {
   background: none;
@@ -5789,6 +5799,24 @@ body.analytics-focus-mode .analytics-grid {
   background: rgba(10, 132, 255, 0.65);
 }
 
+#modal-period-narratives .client-sessions-narrative-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+#modal-period-narratives .client-sessions-narrative-list::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.14);
+  border-radius: 999px;
+}
+
+#modal-period-narratives .client-sessions-narrative-list::-webkit-scrollbar-thumb {
+  background: rgba(10, 132, 255, 0.45);
+  border-radius: 999px;
+}
+
+#modal-period-narratives .client-sessions-narrative-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(10, 132, 255, 0.65);
+}
+
 /* Improve field readability inside edit/registration modals
    (appointment, patient, expense, payment — the modals that got the
    Apple/macOS glass treatment; list-management modals are untouched). */
@@ -5951,15 +5979,19 @@ body.analytics-focus-mode .analytics-grid {
 /* ── Apple / macOS-style glass treatment ────────────────────────────────
    Applied to every "edit/registration form" modal (has a Salvar button):
    #modal-appointment (pilot, "Agendar/Editar Consulta"), #modal-client,
-   #modal-expense and #modal-payment. Simple list-management modals (tags,
-   groups, categories, convênios, planos financeiros) intentionally keep
-   the old flat look and are NOT part of this selector list.
+   #modal-expense and #modal-payment — plus #modal-period-narratives, a
+   rich read-only viewer (Narrativas de Sessão) that deserves the same
+   premium finish even though it only has a "Fechar" action. Simple
+   list-management modals (tags, groups, categories, convênios, planos
+   financeiros) intentionally keep the old flat look and are NOT part of
+   this selector list.
    Keeps the app's dark theme; adds vibrancy blur, deep soft shadows,
    larger corner radii and SF Pro-ish typography. Not applied globally. ── */
 #modal-appointment .modal-card,
 #modal-client .modal-card,
 #modal-expense .modal-card,
-#modal-payment .modal-card {
+#modal-payment .modal-card,
+#modal-period-narratives .modal-card {
   border-radius: 26px;
   background: linear-gradient(165deg, rgba(58, 71, 99, 0.6) 0%, rgba(21, 28, 46, 0.82) 48%, rgba(8, 12, 22, 0.92) 100%);
   -webkit-backdrop-filter: blur(42px) saturate(190%);
@@ -5986,10 +6018,20 @@ body.analytics-focus-mode .analytics-grid {
   width: min(560px, calc(100vw - 40px));
 }
 
+/* Narrower than the form modals above — this one is a reading surface
+   (list of narrative paragraphs), so a tighter column keeps line length
+   comfortable instead of stretching edge-to-edge on wide screens. */
+#modal-period-narratives .modal-card {
+  /* .modal-backdrop has 32px of padding on each side, so subtract the full
+     64px to avoid overflowing the viewport on narrow screens. */
+  width: min(720px, calc(100vw - 64px));
+}
+
 #modal-appointment .modal-header,
 #modal-client .modal-header,
 #modal-expense .modal-header,
-#modal-payment .modal-header {
+#modal-payment .modal-header,
+#modal-period-narratives .modal-header {
   padding: 1.3rem 1.6rem 1.05rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.09);
@@ -5998,28 +6040,41 @@ body.analytics-focus-mode .analytics-grid {
 #modal-appointment .modal-header h3,
 #modal-client .modal-header h3,
 #modal-expense .modal-header h3,
-#modal-payment .modal-header h3 {
+#modal-payment .modal-header h3,
+#modal-period-narratives .modal-header h3 {
   font-size: 1.22rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
+#modal-period-narratives .modal-header h3 {
+  /* the title is dynamic and can get long ("Narrativas — <status> (<range>)");
+     keep it on one line with an ellipsis instead of pushing the close button. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 0.75rem;
+}
+
 #modal-appointment .btn-close,
 #modal-client .btn-close,
 #modal-expense .btn-close,
-#modal-payment .btn-close {
+#modal-payment .btn-close,
+#modal-period-narratives .btn-close {
   width: 30px;
   height: 30px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   transition: background-color 0.18s ease, transform 0.18s ease;
+  flex: 0 0 auto;
 }
 
 #modal-appointment .btn-close:hover,
 #modal-client .btn-close:hover,
 #modal-expense .btn-close:hover,
-#modal-payment .btn-close:hover {
+#modal-payment .btn-close:hover,
+#modal-period-narratives .btn-close:hover {
   background-color: rgba(255, 255, 255, 0.18);
   transform: scale(1.06);
 }
@@ -6027,7 +6082,8 @@ body.analytics-focus-mode .analytics-grid {
 #modal-appointment .modal-body,
 #modal-client .modal-body,
 #modal-expense .modal-body,
-#modal-payment .modal-body {
+#modal-payment .modal-body,
+#modal-period-narratives .modal-body {
   padding-top: 1.4rem;
   padding-left: 1.6rem;
   padding-right: 1.6rem;
@@ -6081,7 +6137,8 @@ body.analytics-focus-mode .analytics-grid {
 #modal-appointment .modal-footer,
 #modal-client .modal-footer,
 #modal-expense .modal-footer,
-#modal-payment .modal-footer {
+#modal-payment .modal-footer,
+#modal-period-narratives .modal-footer {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -6095,11 +6152,63 @@ body.analytics-focus-mode .analytics-grid {
 #modal-appointment .modal-footer .btn,
 #modal-client .modal-footer .btn,
 #modal-expense .modal-footer .btn,
-#modal-payment .modal-footer .btn {
+#modal-payment .modal-footer .btn,
+#modal-period-narratives .modal-footer .btn {
   border-radius: 999px;
   padding: 0.62rem 1.3rem;
   font-weight: 600;
   letter-spacing: -0.008em;
+}
+
+/* Narrativa por sessão (#modal-client's inline list + #modal-period-narratives'
+   full-list viewer): bring the item chips in line with the glass treatment
+   (translucent fill instead of the flat --bg-card dark tone, which used to read
+   as a leftover dark-theme block sitting on top of the lighter glass gradient). */
+#modal-client .client-session-narrative-item,
+#modal-period-narratives .client-session-narrative-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+#modal-client .client-session-narrative-item:hover,
+#modal-period-narratives .client-session-narrative-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+#modal-client .client-session-narrative-meta strong,
+#modal-period-narratives .client-session-narrative-meta strong {
+  font-size: 0.95rem;
+  letter-spacing: -0.012em;
+}
+
+#modal-client .client-session-narrative-procedure,
+#modal-period-narratives .client-session-narrative-procedure,
+#modal-client .client-session-narrative-status,
+#modal-period-narratives .client-session-narrative-status {
+  letter-spacing: -0.003em;
+}
+
+#modal-client .client-session-narrative-text,
+#modal-period-narratives .client-session-narrative-text {
+  letter-spacing: -0.003em;
+}
+
+#modal-client .client-sessions-narrative-list,
+#modal-period-narratives .client-sessions-narrative-list {
+  gap: 0.75rem;
+  padding-right: 0.35rem;
+}
+
+/* #modal-period-narratives is dedicated to browsing this list, so it earns
+   more vertical room than the compact inline list inside #modal-client's form. */
+#modal-period-narratives .client-sessions-narrative-list {
+  max-height: min(56vh, 460px);
 }
 
 /* #modal-payment-only: bring its internal info/summary cards in line with

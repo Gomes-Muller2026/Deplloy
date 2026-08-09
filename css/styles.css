@@ -468,6 +468,20 @@ body.config-view .header-actions > * {
     flex: 0 0 auto;
   }
 
+  /* O sound-control-group é, por padrão, um único item flex (nowrap) dentro
+     do group1, contendo vários botões/pílulas. Como um item flex não quebra
+     sozinho, ele acabaria estourando a largura da linha em vez de distribuir
+     seu conteúdo pelas linhas disponíveis. Com display:contents ele deixa de
+     gerar uma caixa própria e seus filhos (botões/pílulas) passam a ser itens
+     do próprio group1, podendo quebrar linha individualmente como os demais. */
+  body.panil-view .header-actions .header-actions-group1 .sound-control-group {
+    display: contents;
+  }
+
+  body.panil-view .header-actions .header-actions-group1 .sound-control-group > * {
+    flex: 0 0 auto;
+  }
+
   /* Reduz um pouco a largura dos badges de status para caber mais conteúdo
      visível de cara nesta linha antes de precisar rolar horizontalmente. */
   body.panil-view .header-actions .header-actions-group1 #header-sync-panel {

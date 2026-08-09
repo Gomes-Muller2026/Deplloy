@@ -248,6 +248,30 @@ const agendaModule = {
     app.showToast('Status de confirmação limpo. Pode enviar novamente quando quiser.', 'info');
   },
 
+  // Permite corrigir manualmente o status de confirmação (ex.: cliente confirmou
+  // mas depois desistiu por telefone) sem precisar reenviar o link de WhatsApp.
+  cycleAppointmentConfirmationStatus(app, appointmentId) {
+    const appointment = app.appointments.find((a) => a.id === appointmentId);
+    if (!appointment) return;
+
+    const current = String(appointment.confirmationStatus || '').trim();
+    if (!current) return;
+
+    const cycle = ['confirmado', 'nao_confirmado', 'pendente'];
+    const labels = { confirmado: 'Confirmado', nao_confirmado: 'Não confirmado', pendente: 'Aguardando resposta' };
+    const currentIndex = cycle.indexOf(current);
+    const next = cycle[(currentIndex === -1 ? 0 : currentIndex + 1) % cycle.length];
+
+    app.appointments = app.appointments.map((a) => (a.id === appointmentId ? {
+      ...a,
+      confirmationStatus: next
+    } : a));
+
+    app.saveData();
+    app.render();
+    app.showToast(`Status de confirmação alterado para "${labels[next]}".`, 'info');
+  },
+
   sendAppointmentConfirmationWhatsApp(app, appointmentId, options = {}) {
     const appointment = app.appointments.find((a) => a.id === appointmentId);
     if (!appointment) return 'not-found';

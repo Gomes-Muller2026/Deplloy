@@ -9455,7 +9455,7 @@ class ConsultorioApp {
         const metaLabel = a.paymentStatus || 'Pendente';
         const confirmBadge = this.getAppointmentConfirmationBadge(a);
         const confirmChip = confirmBadge
-          ? `<span class="agenda-confirm-badge ${confirmBadge.className}">${safeText(confirmBadge.label)}</span>`
+          ? `<span class="agenda-confirm-badge ${confirmBadge.className} is-editable" title="Clique para alterar (ex.: cliente desistiu)" onclick="event.stopPropagation();app.cycleAgendaConfirmationStatus('${a.id}')">${safeText(confirmBadge.label)}</span>`
           : '';
         return `
           <div class="agenda-day-session-row" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')">
@@ -9526,6 +9526,12 @@ class ConsultorioApp {
     }
   }
 
+  cycleAgendaConfirmationStatus(appointmentId) {
+    if (window.agendaModule && typeof window.agendaModule.cycleAppointmentConfirmationStatus === 'function') {
+      window.agendaModule.cycleAppointmentConfirmationStatus(this, appointmentId);
+    }
+  }
+
   sendSelectedAgendaConfirmations() {
     if (window.agendaModule && typeof window.agendaModule.sendSelectedAppointmentConfirmations === 'function') {
       window.agendaModule.sendSelectedAppointmentConfirmations(this, this.agendaConfirmSelectedIds);
@@ -9560,7 +9566,7 @@ class ConsultorioApp {
       const hasPhone = Boolean(this.normalizeWhatsAppPhone((client && client.phone) || ''));
       const confirmBadge = this.getAppointmentConfirmationBadge(a);
       const badgeHtml = confirmBadge
-        ? `<span class="agenda-confirm-badge ${confirmBadge.className}">${safeText(confirmBadge.label)}</span>`
+        ? `<span class="agenda-confirm-badge ${confirmBadge.className} is-editable" title="Clique para alterar (ex.: cliente desistiu)" onclick="event.stopPropagation();app.cycleAgendaConfirmationStatus('${a.id}')">${safeText(confirmBadge.label)}</span>`
         : '<span class="agenda-confirm-badge is-nunca-enviado">Não enviado</span>';
       const isStuckPending = String(a.confirmationStatus || '').trim() === 'pendente';
       const clearBtnHtml = isStuckPending

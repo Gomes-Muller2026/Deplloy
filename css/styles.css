@@ -437,12 +437,52 @@ body.config-view .header-actions > * {
   display: none !important;
 }
 
-.header-actions-break {
+/* Cada "linha" do cabeçalho da view Consultório Control (panil-view) agrupa
+   uma categoria de conteúdo (utilitários, diagnóstico técnico, ações do
+   usuário, resumo financeiro) na largura toda do cabeçalho, com uma leve
+   divisória tracejada entre linhas consecutivas. Nas demais views o conteúdo
+   interno continua sendo mostrado/escondido individualmente por regras
+   próprias de cada view, como já acontecia antes desta divisão em linhas. */
+.header-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.85rem;
   flex-basis: 100%;
-  width: 0;
-  height: 0;
-  margin: 0;
-  padding: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.header-actions-row + .header-actions-row {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(226, 232, 240, 0.12);
+}
+
+/* Grupo A (utilitários: som/notificação + período): mais compacto/discreto,
+   gap reduzido em relação ao padrão das demais linhas. */
+.header-actions-row--utility {
+  gap: 0.5rem 0.7rem;
+}
+
+/* Grupo B (diagnóstico técnico: sincronismo/versão/autenticação): é
+   informativo, não uma ação primária — fica com opacidade reduzida para não
+   competir visualmente com os botões de ação do Grupo C. */
+.header-actions-row--diagnostics {
+  gap: 0.45rem 0.6rem;
+  opacity: 0.82;
+}
+
+/* Grupo C (identidade do usuário + ações do consultório): o mais proeminente,
+   alinhado à direita. */
+.header-actions-row--user {
+  justify-content: flex-end;
+}
+
+/* Grupo D (resumo financeiro do período): linha própria, também alinhada à
+   direita para manter o mesmo ritmo visual do Grupo C logo acima. */
+.header-actions-row--finance {
+  justify-content: flex-end;
 }
 
 /* Agrupa avisos sonoros + status de nuvem/sincronismo/versão/auth numa única
@@ -461,12 +501,9 @@ body.config-view .header-actions > * {
    layout mobile já existente (sound-control-group empilhado em 100% de
    largura, etc.) continua valendo sem interferência deste wrapper.
    O wrapper fica "transparente" (display:contents) nesta view: seus filhos
-   (avisos sonoros + status Firebase Online) passam a ser itens diretos do
-   fluxo único de .header-actions, junto com os botões/pílulas de ação e os
-   indicadores de sincronismo/versão/autenticação (movidos para depois de
-   "Atualizar Agora" no HTML). Isso permite que o próprio flex-wrap distribua
-   tudo em apenas duas linhas (status em cima, ações embaixo) sempre que a
-   largura disponível permitir, sem uma linha extra fixa no meio. */
+   (avisos sonoros + status Firebase Online) passam a ser itens diretos da
+   linha .header-actions-row--utility (Grupo A), podendo quebrar e se
+   distribuir livremente dentro dessa linha conforme o espaço disponível. */
 @media (min-width: 901px) {
   body.panil-view .header-actions .header-actions-group1 {
     display: contents;
@@ -481,21 +518,14 @@ body.config-view .header-actions > * {
      sozinho, ele acabaria estourando a largura da linha em vez de distribuir
      seu conteúdo pelas linhas disponíveis. Com display:contents ele deixa de
      gerar uma caixa própria e seus filhos (botões/pílulas) passam a ser itens
-     do próprio fluxo de .header-actions, podendo quebrar linha individualmente
-     como os demais. */
+     do próprio fluxo da linha .header-actions-row--utility, podendo quebrar
+     linha individualmente como os demais. */
   body.panil-view .header-actions .sound-control-group {
     display: contents;
   }
 
   body.panil-view .header-actions .sound-control-group > * {
     flex: 0 0 auto;
-  }
-
-  /* A quebra fixa entre o bloco de avisos/status e o bloco de ações deixa de
-     ser usada nesta view: sem ela, o flex-wrap de .header-actions distribui
-     livremente os itens pelas duas linhas disponíveis. */
-  body.panil-view .header-actions-break {
-    display: none;
   }
 }
 
@@ -517,11 +547,28 @@ body.agenda-view .header-actions .header-actions-group1 > * {
   display: none !important;
 }
 
-body.panil-view .header-actions .top-date-picker,
-body.panil-view .header-actions .header-finance-pending-pill,
-body.panil-view .header-actions #btn-logout-session,
-body.panil-view .header-actions #btn-header-new-appointment {
+/* As demais views (fora da panil-view) só mostram um subconjunto pontual do
+   cabeçalho. Como os grupos A/B/C/D acima envolvem esse conteúdo em wrappers
+   (.header-actions-row), aplicamos aqui o mesmo padrão já usado para
+   .header-actions-group1: cada wrapper vira "transparente" (display:contents)
+   somente na view que precisa alcançar algo dentro dele, com o restante desse
+   grupo permanecendo oculto explicitamente (mesmo comportamento de antes,
+   apenas adaptado para a nova estrutura em linhas). */
+body.agenda-view .header-actions .header-actions-row--utility,
+body.agenda-view .header-actions .header-actions-row--diagnostics,
+body.agenda-view .header-actions .header-actions-row--user {
+  display: contents !important;
+}
+
+body.agenda-view .header-actions .header-actions-row--utility > *:not(.top-date-picker):not(.header-actions-group1),
+body.agenda-view .header-actions .header-actions-row--diagnostics > *:not(.header-sync-panel),
+body.agenda-view .header-actions .header-actions-row--user > *:not(#btn-header-new-client):not(#btn-open-birthdays) {
   display: none !important;
+}
+
+body.financeiro-view .header-actions .header-actions-row--finance,
+body.despesas-view .header-actions .header-actions-row--finance {
+  display: contents !important;
 }
 
 body.financeiro-view .header-actions .header-finance-pending-pill,
@@ -3470,6 +3517,16 @@ input[type="time"].agenda-hour-range-input {
 .agenda-confirm-badge.is-nunca-enviado {
   background: rgba(15, 23, 42, 0.06);
   color: rgba(15, 23, 42, 0.45);
+}
+
+.agenda-confirm-badge.is-editable {
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.agenda-confirm-badge.is-editable:hover {
+  filter: brightness(0.94);
+  transform: translateY(-1px);
 }
 
 .agenda-day-confirm-header {

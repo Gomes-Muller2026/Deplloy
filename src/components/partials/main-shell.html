@@ -38,98 +38,114 @@
       </button>
 
       <div class="header-actions">
-        <div class="header-actions-group1">
-        <div class="sound-control-group">
-          <button class="btn btn-secondary btn-icon-text active-sound" id="btn-toggle-sound" title="Ativar/Desativar avisos sonoros">
-            <i data-lucide="bell"></i>
-            <span id="sound-status-text">Avisos: ON</span>
-          </button>
-          <button class="btn btn-secondary btn-sm" id="btn-test-sound" title="Tocar som de lembrete agora para testar">
-            <i data-lucide="volume-2"></i>
-            <span>Testar Som</span>
-          </button>
-          <span id="notification-permission-pill" class="notification-permission-pill is-default" title="Status da notificação do sistema">Notificação: ...</span>
-          <button class="btn btn-secondary btn-sm" id="btn-enable-notifications" title="Ativar permissão de notificações do navegador" style="display:none;">
-            <i data-lucide="bell-ring"></i>
-            <span>Ativar Notificação</span>
-          </button>
-          <div class="reminder-mins-box" title="Defina com quantos minutos de antecedência o alarme deve tocar">
-            <span style="font-size:0.75rem;">Avisar</span>
-            <input type="number" id="top-reminder-mins" class="reminder-mins-input" value="15" min="1">
-            <span style="font-size:0.75rem;">min antes</span>
-                <span id="reminder-alert-badge" class="reminder-alert-badge" title="Atendimentos pendentes para aviso" style="display:none;">0</span>
+        <!-- Grupo A: utilitários de config/notificação + período exibido. Mais
+             compacto/discreto que os demais grupos. -->
+        <div class="header-actions-row header-actions-row--utility">
+          <div class="header-actions-group1">
+          <div class="sound-control-group">
+            <button class="btn btn-secondary btn-icon-text active-sound" id="btn-toggle-sound" title="Ativar/Desativar avisos sonoros">
+              <i data-lucide="bell"></i>
+              <span id="sound-status-text">Avisos: ON</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-test-sound" title="Tocar som de lembrete agora para testar">
+              <i data-lucide="volume-2"></i>
+              <span>Testar Som</span>
+            </button>
+            <span id="notification-permission-pill" class="notification-permission-pill is-default" title="Status da notificação do sistema">Notificação: ...</span>
+            <button class="btn btn-secondary btn-sm" id="btn-enable-notifications" title="Ativar permissão de notificações do navegador" style="display:none;">
+              <i data-lucide="bell-ring"></i>
+              <span>Ativar Notificação</span>
+            </button>
+            <div class="reminder-mins-box" title="Defina com quantos minutos de antecedência o alarme deve tocar">
+              <span style="font-size:0.75rem;">Avisar</span>
+              <input type="number" id="top-reminder-mins" class="reminder-mins-input" value="15" min="1">
+              <span style="font-size:0.75rem;">min antes</span>
+                  <span id="reminder-alert-badge" class="reminder-alert-badge" title="Atendimentos pendentes para aviso" style="display:none;">0</span>
+            </div>
+            <div class="reminder-intensity-box" title="Escolha a intensidade do alerta sonoro e vibração">
+              <span style="font-size:0.75rem;">Intensidade</span>
+              <select id="top-reminder-intensity" class="reminder-intensity-input" aria-label="Intensidade do aviso">
+                <option value="normal">Normal</option>
+                <option value="strong" selected>Forte</option>
+                <option value="ultra">Ultra</option>
+              </select>
+            </div>
           </div>
-          <div class="reminder-intensity-box" title="Escolha a intensidade do alerta sonoro e vibração">
-            <span style="font-size:0.75rem;">Intensidade</span>
-            <select id="top-reminder-intensity" class="reminder-intensity-input" aria-label="Intensidade do aviso">
-              <option value="normal">Normal</option>
-              <option value="strong" selected>Forte</option>
-              <option value="ultra">Ultra</option>
-            </select>
+
+          <div id="cloud-sync-status" class="cloud-status-badge offline">
+            <i data-lucide="cloud"></i>
+            <span id="cloud-status-text">Modo Local</span>
+          </div>
+          </div>
+
+          <div class="top-date-picker">
+            <i data-lucide="calendar-range"></i>
+            <input type="text" id="top-date-start" class="top-date-input date-input" title="Data inicial">
+            <button type="button" class="btn-date-picker" id="btn-top-date-start-picker" title="Selecionar data inicial no calendário">
+              <i data-lucide="calendar"></i>
+            </button>
+            <span class="top-date-sep">até</span>
+            <input type="text" id="top-date-end" class="top-date-input date-input" title="Data final">
+            <button type="button" class="btn-date-picker" id="btn-top-date-end-picker" title="Selecionar data final no calendário">
+              <i data-lucide="calendar"></i>
+            </button>
+            <button class="btn-clear-date" id="btn-reset-top-dates" title="Voltar para o mês atual">
+              <i data-lucide="rotate-ccw"></i>
+            </button>
           </div>
         </div>
 
-        <div id="cloud-sync-status" class="cloud-status-badge offline">
-          <i data-lucide="cloud"></i>
-          <span id="cloud-status-text">Modo Local</span>
-        </div>
+        <!-- Grupo B: diagnóstico técnico (sincronismo/versão/autenticação).
+             Informativo, não é ação primária: fica visualmente recuado. -->
+        <div class="header-actions-row header-actions-row--diagnostics">
+          <button class="btn btn-secondary btn-icon-text" id="btn-refresh-firebase-top" data-action="refresh-firebase" title="Atualizar dados agora do Firebase">
+            <i data-lucide="refresh-cw"></i>
+            <span>Atualizar Agora</span>
+          </button>
+          <div id="header-sync-panel" class="header-sync-panel local" title="Sem atualização" aria-live="polite">
+            <span class="header-sync-label">Sincronismo</span>
+            <span id="header-sync-note-text" class="header-sync-note-text">Sem atualização</span>
+          </div>
+          <span id="app-version-badge" class="cloud-sync-meta local">Versão: v00.00/00000000</span>
+          <span id="cloud-sync-last" class="cloud-sync-meta" title="Sem atualização" aria-label="Sem atualização"></span>
+          <span id="firebase-auth-status" class="firebase-auth-meta auth-offline" role="button" tabindex="0" title="Clique para ver diagnóstico de autenticação Firebase">Auth Firebase: Desconectado</span>
         </div>
 
-        <div class="top-date-picker">
-          <i data-lucide="calendar-range"></i>
-          <input type="text" id="top-date-start" class="top-date-input date-input" title="Data inicial">
-          <button type="button" class="btn-date-picker" id="btn-top-date-start-picker" title="Selecionar data inicial no calendário">
-            <i data-lucide="calendar"></i>
+        <!-- Grupo C: identidade do usuário + ações do consultório, alinhado à
+             direita e mais proeminente que os grupos A/B. -->
+        <div class="header-actions-row header-actions-row--user">
+          <span id="header-current-user" class="header-user-pill" title="Usuário da sessão atual">
+            <i data-lucide="user-round"></i>
+            <span id="header-current-user-name">-</span>
+          </span>
+          <button type="button" class="header-user-pill header-client-pill" id="dash-card-clientes" data-action="dashboard-card" data-target="clientes" aria-label="Abrir clientes cadastrados" onclick="app.handleDashboardCardClick('dash-card-clientes', 'clientes')" title="Abrir lista de clientes">
+            <i data-lucide="users"></i>
+            <span>Clientes: <strong id="header-total-clients">0</strong></span>
           </button>
-          <span class="top-date-sep">até</span>
-          <input type="text" id="top-date-end" class="top-date-input date-input" title="Data final">
-          <button type="button" class="btn-date-picker" id="btn-top-date-end-picker" title="Selecionar data final no calendário">
-            <i data-lucide="calendar"></i>
-          </button>
-          <button class="btn-clear-date" id="btn-reset-top-dates" title="Voltar para o mês atual">
-            <i data-lucide="rotate-ccw"></i>
-          </button>
+          <button class="btn btn-secondary btn-icon-text" id="btn-header-new-client" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="user-plus"></i><span>Novo Paciente</span></button>
+          <button class="btn btn-secondary btn-icon-text" id="btn-open-birthdays"><i data-lucide="cake"></i><span>Aniversários</span><span class="btn-notification-badge">0</span></button>
+          <button class="btn btn-secondary btn-icon-text" id="btn-logout-session"><i data-lucide="log-out"></i><span>Sair</span></button>
+          <button class="btn btn-primary btn-icon-text" id="btn-header-new-appointment" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="calendar-plus"></i><span>Agendar Consulta</span></button>
         </div>
 
-        <div class="header-actions-break" aria-hidden="true"></div>
-        <button class="btn btn-secondary btn-icon-text" id="btn-refresh-firebase-top" data-action="refresh-firebase" title="Atualizar dados agora do Firebase">
-          <i data-lucide="refresh-cw"></i>
-          <span>Atualizar Agora</span>
-        </button>
-        <div id="header-sync-panel" class="header-sync-panel local" title="Sem atualização" aria-live="polite">
-          <span class="header-sync-label">Sincronismo</span>
-          <span id="header-sync-note-text" class="header-sync-note-text">Sem atualização</span>
+        <!-- Grupo D: resumo financeiro do período, em linha própria. -->
+        <div class="header-actions-row header-actions-row--finance">
+          <button type="button" class="header-finance-pending-pill" id="header-finance-pending-pill" onclick="app.openFinancePendingGroup()" title="Abrir Financeiro filtrado por pendentes">
+            <i data-lucide="alert-circle"></i>
+            <span>Pacientes em aberto: <strong id="header-finance-pending-count">0</strong></span>
+            <span class="header-finance-pending-amount" id="header-finance-pending-amount">R$ 0,00</span>
+          </button>
+          <button type="button" class="header-finance-pending-pill header-finance-pending-pill--expense" id="header-despesas-pill" onclick="app.openDespesasGroup()" title="Abrir Despesas">
+            <i data-lucide="receipt"></i>
+            <span>Despesas: <strong id="header-despesas-count">0</strong></span>
+            <span class="header-finance-pending-amount" id="header-despesas-amount">R$ 0,00</span>
+          </button>
+          <button type="button" class="header-finance-pending-pill header-finance-pending-pill--result is-positive" id="header-resultado-pill" onclick="app.openResultadoGroup()" title="Abrir Financeiro (resultado do período)">
+            <i data-lucide="trending-up"></i>
+            <span>Resultado:</span>
+            <span class="header-finance-pending-amount" id="header-resultado-amount">R$ 0,00</span>
+          </button>
         </div>
-        <span id="app-version-badge" class="cloud-sync-meta local">Versão: v00.00/00000000</span>
-        <span id="cloud-sync-last" class="cloud-sync-meta" title="Sem atualização" aria-label="Sem atualização"></span>
-        <span id="firebase-auth-status" class="firebase-auth-meta auth-offline" role="button" tabindex="0" title="Clique para ver diagnóstico de autenticação Firebase">Auth Firebase: Desconectado</span>
-        <span id="header-current-user" class="header-user-pill" title="Usuário da sessão atual">
-          <i data-lucide="user-round"></i>
-          <span id="header-current-user-name">-</span>
-        </span>
-        <button type="button" class="header-user-pill header-client-pill" id="dash-card-clientes" data-action="dashboard-card" data-target="clientes" aria-label="Abrir clientes cadastrados" onclick="app.handleDashboardCardClick('dash-card-clientes', 'clientes')" title="Abrir lista de clientes">
-          <i data-lucide="users"></i>
-          <span>Clientes: <strong id="header-total-clients">0</strong></span>
-        </button>
-        <button class="btn btn-secondary btn-icon-text" id="btn-header-new-client" onclick="app.openClientModal()" ontouchstart="app.openClientModal()"><i data-lucide="user-plus"></i><span>Novo Paciente</span></button>
-        <button class="btn btn-secondary btn-icon-text" id="btn-open-birthdays"><i data-lucide="cake"></i><span>Aniversários</span><span class="btn-notification-badge">0</span></button>
-        <button class="btn btn-secondary btn-icon-text" id="btn-logout-session"><i data-lucide="log-out"></i><span>Sair</span></button>
-        <button class="btn btn-primary btn-icon-text" id="btn-header-new-appointment" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="calendar-plus"></i><span>Agendar Consulta</span></button>
-        <button type="button" class="header-finance-pending-pill" id="header-finance-pending-pill" onclick="app.openFinancePendingGroup()" title="Abrir Financeiro filtrado por pendentes">
-          <i data-lucide="alert-circle"></i>
-          <span>Pacientes em aberto: <strong id="header-finance-pending-count">0</strong></span>
-          <span class="header-finance-pending-amount" id="header-finance-pending-amount">R$ 0,00</span>
-        </button>
-        <button type="button" class="header-finance-pending-pill header-finance-pending-pill--expense" id="header-despesas-pill" onclick="app.openDespesasGroup()" title="Abrir Despesas">
-          <i data-lucide="receipt"></i>
-          <span>Despesas: <strong id="header-despesas-count">0</strong></span>
-          <span class="header-finance-pending-amount" id="header-despesas-amount">R$ 0,00</span>
-        </button>
-        <button type="button" class="header-finance-pending-pill header-finance-pending-pill--result is-positive" id="header-resultado-pill" onclick="app.openResultadoGroup()" title="Abrir Financeiro (resultado do período)">
-          <i data-lucide="trending-up"></i>
-          <span>Resultado:</span>
-          <span class="header-finance-pending-amount" id="header-resultado-amount">R$ 0,00</span>
-        </button>
       </div>
     </header>
 

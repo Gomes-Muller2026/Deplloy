@@ -337,6 +337,15 @@
                 <input type="checkbox" id="chk-agenda-confirm-all" onchange="app.toggleAgendaConfirmSelectAll(this.checked)"> Todos
               </label>
             </div>
+            <div class="agenda-confirm-queue-banner" id="agenda-confirm-queue-banner" style="display:none;">
+              <span class="agenda-confirm-queue-banner-text">
+                <i data-lucide="alert-triangle"></i>
+                O navegador bloqueou o envio automático. Continue manualmente:
+              </span>
+              <button type="button" class="btn btn-primary btn-sm" id="btn-continue-agenda-queue" onclick="app.continueAgendaConfirmQueue()">
+                <i data-lucide="send"></i> Enviar próximo: <span id="agenda-confirm-queue-next-name"></span>
+              </button>
+            </div>
             <div class="agenda-day-confirm-list" id="agenda-day-confirm-list"></div>
             <div class="agenda-day-confirm-footer">
               <button class="btn btn-primary btn-sm" id="btn-send-agenda-confirmations" type="button" disabled onclick="app.sendSelectedAgendaConfirmations()"><i data-lucide="message-circle"></i> Enviar confirmação</button>

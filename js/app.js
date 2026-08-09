@@ -9542,6 +9542,11 @@ class ConsultorioApp {
     }
   }
 
+  continueAgendaConfirmQueue() {
+    const nextId = Array.isArray(this.agendaConfirmPendingQueue) ? this.agendaConfirmPendingQueue[0] : null;
+    if (nextId) this.resendAgendaConfirmation(nextId);
+  }
+
   renderAgendaDayConfirmPanel(dayAppointments) {
     const listEl = document.getElementById('agenda-day-confirm-list');
     if (!listEl) return;
@@ -9558,6 +9563,18 @@ class ConsultorioApp {
     const nextQueuedId = Array.isArray(this.agendaConfirmPendingQueue) && this.agendaConfirmPendingQueue.length
       ? this.agendaConfirmPendingQueue[0]
       : null;
+
+    const queueBanner = document.getElementById('agenda-confirm-queue-banner');
+    if (queueBanner) {
+      const nextQueuedAppointment = nextQueuedId ? (dayAppointments || []).find((a) => a.id === nextQueuedId) : null;
+      if (nextQueuedAppointment) {
+        const nameEl = document.getElementById('agenda-confirm-queue-next-name');
+        if (nameEl) nameEl.textContent = `${nextQueuedAppointment.clientName || '-'} (${nextQueuedAppointment.time || '--:--'})`;
+        queueBanner.style.display = '';
+      } else {
+        queueBanner.style.display = 'none';
+      }
+    }
 
     if (!dayAppointments || !dayAppointments.length) {
       listEl.innerHTML = '<div class="agenda-day-list-empty">Nenhuma sessão agendada para este dia.</div>';

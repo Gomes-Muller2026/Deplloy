@@ -2017,7 +2017,7 @@ input[type="date"]:focus {
   color: var(--text-muted);
 }
 
-/* "Ver Narrativas" keeps the shared .btn-secondary look, just fully rounded
+/* Ver Narrativas keeps the shared .btn-secondary look, just fully rounded
    to match the pill vocabulary used elsewhere for header-level actions. */
 .clients-report-header .btn {
   border-radius: var(--radius-full);

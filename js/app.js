@@ -7373,7 +7373,7 @@ class ConsultorioApp {
       status: 'Agendado',
       paymentStatus: 'Pendente',
       notes: notesParts.join('\n\n').trim(),
-      color: '#3b82f6'
+      color: DEFAULT_APPOINTMENT_COLOR
     };
   }
 

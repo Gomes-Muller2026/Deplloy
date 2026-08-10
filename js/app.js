@@ -5335,16 +5335,44 @@ class ConsultorioApp {
       .flatMap((a) => this.parseClientTags(a.procedure));
 
     const seen = new Set();
-    const options = [];
+    const candidates = [];
     defaults.concat(used).forEach((name) => {
       const value = this.normalizeManagedOptionValue(name);
       const key = this.normalizeManagedOptionKey(value);
       if (!key || seen.has(key)) return;
       seen.add(key);
-      options.push(value);
+      candidates.push(value);
     });
 
-    datalist.innerHTML = options.map((name) => `<option value="${safeText(name)}"></option>`).join('');
+    this.appointmentProcedureCandidates = candidates;
+
+    const input = document.getElementById('appt-procedure');
+    this.renderAppointmentProcedureDatalist(input ? input.value : '');
+
+    // O <datalist> nativo casa o texto digitado inteiro contra cada <option>, então num
+    // campo de múltiplos valores separados por vírgula (ex.: "Consulta Individual, Sess")
+    // nenhuma sugestão bateria a partir do 2º item. Por isso reconstruímos as opções a
+    // cada tecla digitada, prefixando cada candidato com o que já foi digitado antes da
+    // última vírgula — assim o navegador volta a conseguir sugerir o restante.
+    if (input && !input.dataset.procedureAutocompleteBound) {
+      input.dataset.procedureAutocompleteBound = 'true';
+      input.addEventListener('input', () => this.renderAppointmentProcedureDatalist(input.value));
+    }
+  }
+
+  renderAppointmentProcedureDatalist(currentValue) {
+    const datalist = document.getElementById('appt-procedure-options');
+    if (!datalist) return;
+
+    const candidates = this.appointmentProcedureCandidates || [];
+    const raw = String(currentValue || '');
+    const lastCommaIndex = raw.lastIndexOf(',');
+    const prefix = lastCommaIndex >= 0 ? `${raw.slice(0, lastCommaIndex + 1)} ` : '';
+
+    const alreadyPicked = new Set(this.parseClientTags(raw).map((tag) => this.normalizeManagedOptionKey(tag)));
+    const remaining = candidates.filter((name) => !alreadyPicked.has(this.normalizeManagedOptionKey(name)));
+
+    datalist.innerHTML = remaining.map((name) => `<option value="${safeText(prefix + name)}"></option>`).join('');
   }
 
   selectAppointmentColor(color) {

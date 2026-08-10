@@ -5986,6 +5986,15 @@ body.analytics-focus-mode .analytics-grid {
   align-items: center;
 }
 
+/* Miniatura circular de foto do paciente usada em listas (ex: tabela de Clientes) */
+.client-photo-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 /* Improve field readability inside edit/registration modals
    (appointment, patient, expense, payment — the modals that got the
    Apple/macOS glass treatment; list-management modals are untouched). */

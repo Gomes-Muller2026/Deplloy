@@ -170,7 +170,17 @@ const agendaModule = {
       ? app.clients.find((client) => String(client.id || '') === String(payload.clientId || ''))
       : app.clients.find((client) => String(client.name || '').trim().toLowerCase() === String(payload.clientName || '').trim().toLowerCase());
 
+    const existing = app.appointments.find((a) => a.id === appointmentId);
+
+    // Começa a partir do registro existente (se houver) e só então aplica o payload do
+    // formulário por cima. O formulário de edição só conhece um subconjunto dos campos
+    // (data, horário, valor, etc.) — campos que vivem fora dele, como confirmationToken/
+    // confirmationStatus/confirmationSentAt (fluxo de confirmação por WhatsApp) e
+    // googleEventId/googleCalendarUpdatedAt/source (sincronização com o Google Calendar),
+    // precisam sobreviver a uma edição comum, senão qualquer "Salvar Consulta" (mesmo só
+    // pra ajustar o preço) apaga silenciosamente esses dados.
     const normalized = {
+      ...(existing || {}),
       ...payload,
       clientId: String((matchedClient && matchedClient.id) || payload.clientId || '').trim(),
       clientName: String((matchedClient && matchedClient.name) || payload.clientName || '').trim(),
@@ -190,7 +200,6 @@ const agendaModule = {
       app.clearAppointmentDeletionTombstone(normalized.id);
     }
 
-    const existing = app.appointments.find((a) => a.id === appointmentId);
     this.reconcileAppointmentPackageBalance(app, existing, normalized);
     let updatedRecurringCount = 0;
     if (existing) {

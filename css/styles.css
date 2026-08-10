@@ -28,6 +28,11 @@
   --shadow-lg: 0 20px 48px rgba(2, 6, 23, 0.48);
   --transition: 180ms ease;
   --chart-columns: 12;
+  /* Glassmorphism (estilo Apple): tokens compartilhados por botão primário, pílulas de
+     cabeçalho e botões circulares de navegação — mude aqui em vez de repetir nos 3 lugares. */
+  --glass-blur: blur(16px) saturate(1.5);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.24);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(2, 6, 23, 0.14);
 }
 
 html, body {
@@ -846,6 +851,9 @@ body.agenda-view .header-actions #btn-open-birthdays {
   border-radius: 999px;
   border: 1px solid rgba(34, 211, 238, 0.34);
   background: linear-gradient(145deg, rgba(34, 211, 238, 0.2), rgba(15, 23, 42, 0.76));
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-highlight);
   color: #e0f2fe;
   font-size: 0.8rem;
   font-weight: 700;
@@ -867,11 +875,13 @@ body.agenda-view .header-actions #btn-open-birthdays {
   border-radius: 999px;
   border: 1px solid rgba(251, 191, 36, 0.55);
   background: linear-gradient(165deg, rgba(251, 191, 36, 0.22), rgba(15, 23, 42, 0.86));
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   color: #fde68a;
   font-size: 0.85rem;
   font-weight: 700;
   white-space: nowrap;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28), var(--glass-highlight);
   font-family: inherit;
   cursor: pointer;
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
@@ -1307,16 +1317,30 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .flatpickr-months .flatpickr-prev-month,
 .flatpickr-months .flatpickr-next-month {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  background: linear-gradient(165deg, rgba(163, 230, 53, 0.3), rgba(15, 23, 42, 0.55));
+  border: 1px solid rgba(163, 230, 53, 0.42);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-highlight);
   color: #f1f5f9;
   fill: #f1f5f9;
   opacity: 0.95;
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition: opacity 160ms ease, transform 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 
 .flatpickr-months .flatpickr-prev-month:hover,
 .flatpickr-months .flatpickr-next-month:hover {
   opacity: 1;
   transform: scale(1.08);
+  background: linear-gradient(165deg, rgba(173, 240, 63, 0.4), rgba(15, 23, 42, 0.6));
+  border-color: rgba(163, 230, 53, 0.68);
 }
 
 span.flatpickr-weekday {
@@ -1842,6 +1866,9 @@ input[type="date"]:focus {
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.34);
   background: rgba(15, 23, 42, 0.72);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-highlight);
   color: #cbd5e1;
   font-size: 0.76rem;
   font-weight: 700;
@@ -1931,11 +1958,15 @@ input[type="date"]:focus {
 }
 
 .btn-primary {
-  background-color: var(--primary);
+  background: linear-gradient(165deg, rgba(190, 240, 100, 0.85), rgba(96, 143, 56, 0.85));
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  box-shadow: 0 10px 22px rgba(15, 46, 12, 0.3), var(--glass-highlight);
   color: white;
 }
 .btn-primary:hover {
-  background-color: var(--primary-hover);
+  background: linear-gradient(165deg, rgba(200, 250, 110, 0.92), rgba(106, 153, 66, 0.9));
 }
 
 .btn-secondary {
@@ -3795,6 +3826,19 @@ input[type="time"].agenda-hour-range-input {
 #agenda-day-mini-calendar .flatpickr-months .flatpickr-next-month svg path {
   color: #1e293b !important;
   fill: #1e293b !important;
+}
+
+/* Mantém o mini-calendário compacto (widget pequeno sobre fundo claro) fora do botão
+   circular de vidro aplicado ao flatpickr em geral — aqui o ícone continua "nu". */
+#agenda-day-mini-calendar .flatpickr-months .flatpickr-prev-month,
+#agenda-day-mini-calendar .flatpickr-months .flatpickr-next-month {
+  width: auto;
+  height: auto;
+  background: none;
+  border: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 #agenda-day-mini-calendar .numInputWrapper span.arrowUp:before {

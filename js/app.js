@@ -102,6 +102,9 @@ const WHATSAPP_CONFIRM_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_confirm_tem
 const WHATSAPP_BIRTHDAY_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_birthday_templates';
 const WHATSAPP_CONFIRM_SELECTED_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_confirm_selected';
 const WHATSAPP_BIRTHDAY_SELECTED_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_birthday_selected';
+const WHATSAPP_REMINDER_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_reminder_template';
+const WHATSAPP_REMINDER_TEMPLATES_STORAGE_KEY = 'consultorio_whatsapp_reminder_templates';
+const WHATSAPP_REMINDER_SELECTED_TEMPLATE_STORAGE_KEY = 'consultorio_whatsapp_reminder_selected';
 const PAYMENT_RECEIPT_TEMPLATE_STORAGE_KEY = 'consultorio_payment_receipt_template';
 const PAYMENT_RECEIPT_COUNTER_STORAGE_KEY = 'consultorio_payment_receipt_counter';
 const PAYMENT_RECEIPT_NUMBER_MAP_STORAGE_KEY = 'consultorio_payment_receipt_number_map';
@@ -211,6 +214,12 @@ const DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE = [
   'Passando para desejar um feliz aniversário! Que seu novo ciclo seja de muita saúde, paz e conquistas.',
   '',
   'Com carinho,',
+  '{{assinatura}}'
+].join('\n');
+const DEFAULT_WHATSAPP_REMINDER_TEMPLATE = [
+  'Olá, {{cliente}}!',
+  'Passando para lembrar do seu atendimento amanhã, às {{hora}}. Patrícia estará lhe aguardando.',
+  'Lembrando também que o pagamento de {{valor}} deve ser realizado via Pix CPF 001.715.930.06, com o comprovante enviado por aqui.',
   '{{assinatura}}'
 ].join('\n');
 const DEFAULT_FIREBASE_CONFIG = {
@@ -2383,6 +2392,19 @@ class ConsultorioApp {
       };
     }
 
+    if (kind === 'reminder') {
+      return {
+        templates: this.whatsAppReminderTemplates,
+        selectedId: this.whatsAppSelectedReminderTemplateId,
+        defaultText: DEFAULT_WHATSAPP_REMINDER_TEMPLATE,
+        defaultName: 'Lembrete Padrão',
+        prefix: 'tpl-reminder',
+        selectId: 'ws-reminder-template-select',
+        nameId: 'ws-reminder-template-name',
+        textId: 'ws-reminder-template'
+      };
+    }
+
     return {
       templates: this.whatsAppConfirmTemplates,
       selectedId: this.whatsAppSelectedConfirmTemplateId,
@@ -2404,6 +2426,8 @@ class ConsultorioApp {
 
     if (kind === 'birthday') {
       this.whatsAppSelectedBirthdayTemplateId = String(templateId || '');
+    } else if (kind === 'reminder') {
+      this.whatsAppSelectedReminderTemplateId = String(templateId || '');
     } else {
       this.whatsAppSelectedConfirmTemplateId = String(templateId || '');
     }
@@ -2414,8 +2438,10 @@ class ConsultorioApp {
   syncActiveWhatsAppTemplateTexts() {
     const confirmSelected = this.whatsAppConfirmTemplates.find((tpl) => tpl.id === this.whatsAppSelectedConfirmTemplateId);
     const birthdaySelected = this.whatsAppBirthdayTemplates.find((tpl) => tpl.id === this.whatsAppSelectedBirthdayTemplateId);
+    const reminderSelected = this.whatsAppReminderTemplates.find((tpl) => tpl.id === this.whatsAppSelectedReminderTemplateId);
     this.whatsAppConfirmTemplate = String((confirmSelected && confirmSelected.text) || DEFAULT_WHATSAPP_CONFIRM_TEMPLATE);
     this.whatsAppBirthdayTemplate = String((birthdaySelected && birthdaySelected.text) || DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE);
+    this.whatsAppReminderTemplate = String((reminderSelected && reminderSelected.text) || DEFAULT_WHATSAPP_REMINDER_TEMPLATE);
   }
 
   ensureWhatsAppTemplateCollections() {
@@ -2435,11 +2461,22 @@ class ConsultorioApp {
       }];
     }
 
+    if (!Array.isArray(this.whatsAppReminderTemplates) || !this.whatsAppReminderTemplates.length) {
+      this.whatsAppReminderTemplates = [{
+        id: 'tpl-reminder-default',
+        name: 'Lembrete Padrão',
+        text: this.whatsAppReminderTemplate || DEFAULT_WHATSAPP_REMINDER_TEMPLATE
+      }];
+    }
+
     if (!this.whatsAppSelectedConfirmTemplateId || !this.whatsAppConfirmTemplates.some((tpl) => tpl.id === this.whatsAppSelectedConfirmTemplateId)) {
       this.whatsAppSelectedConfirmTemplateId = this.whatsAppConfirmTemplates[0].id;
     }
     if (!this.whatsAppSelectedBirthdayTemplateId || !this.whatsAppBirthdayTemplates.some((tpl) => tpl.id === this.whatsAppSelectedBirthdayTemplateId)) {
       this.whatsAppSelectedBirthdayTemplateId = this.whatsAppBirthdayTemplates[0].id;
+    }
+    if (!this.whatsAppSelectedReminderTemplateId || !this.whatsAppReminderTemplates.some((tpl) => tpl.id === this.whatsAppSelectedReminderTemplateId)) {
+      this.whatsAppSelectedReminderTemplateId = this.whatsAppReminderTemplates[0].id;
     }
     this.syncActiveWhatsAppTemplateTexts();
   }
@@ -2448,11 +2485,14 @@ class ConsultorioApp {
     try {
       const legacyConfirm = localStorage.getItem(WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY);
       const legacyBirthday = localStorage.getItem(WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY);
+      const legacyReminder = localStorage.getItem(WHATSAPP_REMINDER_TEMPLATE_STORAGE_KEY);
       this.whatsAppConfirmTemplate = String(legacyConfirm || DEFAULT_WHATSAPP_CONFIRM_TEMPLATE).trim() || DEFAULT_WHATSAPP_CONFIRM_TEMPLATE;
       this.whatsAppBirthdayTemplate = String(legacyBirthday || DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE).trim() || DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE;
+      this.whatsAppReminderTemplate = String(legacyReminder || DEFAULT_WHATSAPP_REMINDER_TEMPLATE).trim() || DEFAULT_WHATSAPP_REMINDER_TEMPLATE;
 
       const confirmRaw = JSON.parse(localStorage.getItem(WHATSAPP_CONFIRM_TEMPLATES_STORAGE_KEY) || '[]');
       const birthdayRaw = JSON.parse(localStorage.getItem(WHATSAPP_BIRTHDAY_TEMPLATES_STORAGE_KEY) || '[]');
+      const reminderRaw = JSON.parse(localStorage.getItem(WHATSAPP_REMINDER_TEMPLATES_STORAGE_KEY) || '[]');
 
       this.whatsAppConfirmTemplates = Array.isArray(confirmRaw)
         ? confirmRaw
@@ -2474,16 +2514,30 @@ class ConsultorioApp {
           .filter((item) => item.id && item.name && item.text)
         : [];
 
+      this.whatsAppReminderTemplates = Array.isArray(reminderRaw)
+        ? reminderRaw
+          .map((item) => ({
+            id: String(item && item.id ? item.id : ''),
+            name: String(item && item.name ? item.name : '').trim(),
+            text: String(item && item.text ? item.text : '').trim()
+          }))
+          .filter((item) => item.id && item.name && item.text)
+        : [];
+
       this.whatsAppSelectedConfirmTemplateId = String(localStorage.getItem(WHATSAPP_CONFIRM_SELECTED_TEMPLATE_STORAGE_KEY) || '').trim();
       this.whatsAppSelectedBirthdayTemplateId = String(localStorage.getItem(WHATSAPP_BIRTHDAY_SELECTED_TEMPLATE_STORAGE_KEY) || '').trim();
+      this.whatsAppSelectedReminderTemplateId = String(localStorage.getItem(WHATSAPP_REMINDER_SELECTED_TEMPLATE_STORAGE_KEY) || '').trim();
       this.ensureWhatsAppTemplateCollections();
     } catch (err) {
       this.whatsAppConfirmTemplate = DEFAULT_WHATSAPP_CONFIRM_TEMPLATE;
       this.whatsAppBirthdayTemplate = DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE;
+      this.whatsAppReminderTemplate = DEFAULT_WHATSAPP_REMINDER_TEMPLATE;
       this.whatsAppConfirmTemplates = [];
       this.whatsAppBirthdayTemplates = [];
+      this.whatsAppReminderTemplates = [];
       this.whatsAppSelectedConfirmTemplateId = '';
       this.whatsAppSelectedBirthdayTemplateId = '';
+      this.whatsAppSelectedReminderTemplateId = '';
       this.ensureWhatsAppTemplateCollections();
     }
   }
@@ -2493,10 +2547,13 @@ class ConsultorioApp {
       this.ensureWhatsAppTemplateCollections();
       localStorage.setItem(WHATSAPP_CONFIRM_TEMPLATES_STORAGE_KEY, JSON.stringify(this.whatsAppConfirmTemplates));
       localStorage.setItem(WHATSAPP_BIRTHDAY_TEMPLATES_STORAGE_KEY, JSON.stringify(this.whatsAppBirthdayTemplates));
+      localStorage.setItem(WHATSAPP_REMINDER_TEMPLATES_STORAGE_KEY, JSON.stringify(this.whatsAppReminderTemplates));
       localStorage.setItem(WHATSAPP_CONFIRM_SELECTED_TEMPLATE_STORAGE_KEY, this.whatsAppSelectedConfirmTemplateId);
       localStorage.setItem(WHATSAPP_BIRTHDAY_SELECTED_TEMPLATE_STORAGE_KEY, this.whatsAppSelectedBirthdayTemplateId);
+      localStorage.setItem(WHATSAPP_REMINDER_SELECTED_TEMPLATE_STORAGE_KEY, this.whatsAppSelectedReminderTemplateId);
       localStorage.setItem(WHATSAPP_CONFIRM_TEMPLATE_STORAGE_KEY, this.whatsAppConfirmTemplate);
       localStorage.setItem(WHATSAPP_BIRTHDAY_TEMPLATE_STORAGE_KEY, this.whatsAppBirthdayTemplate);
+      localStorage.setItem(WHATSAPP_REMINDER_TEMPLATE_STORAGE_KEY, this.whatsAppReminderTemplate);
       this.bumpVersion();
     } catch (err) {
       console.log('Falha ao salvar templates de WhatsApp:', err);
@@ -9237,6 +9294,19 @@ class ConsultorioApp {
     return this.applyTemplateVars(this.whatsAppConfirmTemplate, vars).trim();
   }
 
+  buildAppointmentReminderMessage(appointment, client) {
+    const vars = {
+      cliente: (client && client.name) || appointment.clientName || 'Cliente',
+      data: formatDateBR(appointment.date),
+      hora: appointment.time || '--:--',
+      procedimento: appointment.procedure || 'Consulta',
+      valor: formatCurrency(appointment.price || 0),
+      status: appointment.status || 'Agendado',
+      assinatura: this.getSignatureName()
+    };
+    return this.applyTemplateVars(this.whatsAppReminderTemplate, vars).trim();
+  }
+
   buildBirthdayWhatsAppMessage(client) {
     const firstName = String(client.name || '').trim().split(' ')[0] || 'Cliente';
     const vars = {
@@ -12882,6 +12952,14 @@ class ConsultorioApp {
   sendAppointmentWhatsApp(appointmentId) {
     if (window.agendaModule && typeof window.agendaModule.sendAppointmentWhatsApp === 'function') {
       window.agendaModule.sendAppointmentWhatsApp(this, appointmentId);
+    } else {
+      this.showToast('Módulo de agenda não carregado.', 'warning');
+    }
+  }
+
+  sendAppointmentReminderWhatsApp(appointmentId) {
+    if (window.agendaModule && typeof window.agendaModule.sendAppointmentReminderWhatsApp === 'function') {
+      window.agendaModule.sendAppointmentReminderWhatsApp(this, appointmentId);
     } else {
       this.showToast('Módulo de agenda não carregado.', 'warning');
     }

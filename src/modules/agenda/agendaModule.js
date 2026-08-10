@@ -295,6 +295,33 @@ const agendaModule = {
     app.showToast('Mensagem de WhatsApp preparada.', 'success');
   },
 
+  // Lembrete de pagamento independente do fluxo de confirmação: não lê nem
+  // grava confirmationToken/confirmationStatus/confirmationSentAt/confirmationRespondedAt.
+  sendAppointmentReminderWhatsApp(app, appointmentId) {
+    const appointment = app.appointments.find((a) => a.id === appointmentId);
+    if (!appointment) return;
+
+    const client = app.clients.find((c) => c.id === appointment.clientId);
+    const rawPhone = (client && client.phone) || '';
+    const phone = app.normalizeWhatsAppPhone(rawPhone);
+    if (!phone) {
+      app.showToast('Cliente sem telefone válido para WhatsApp.', 'warning');
+      return;
+    }
+
+    const text = typeof app.buildAppointmentReminderMessage === 'function'
+      ? app.buildAppointmentReminderMessage(appointment, client)
+      : [
+          `Olá, ${(client && client.name) || appointment.clientName || 'cliente'}!`,
+          `Passando para lembrar do seu atendimento amanhã, às ${appointment.time || '--:--'}.`,
+          `Valor: ${formatCurrency(appointment.price || 0)}`
+        ].join('\n');
+
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener');
+    app.showToast('Lembrete de pagamento preparado.', 'success');
+  },
+
   CONFIRMATION_ENDPOINT: 'https://southamerica-east1-consultorio-patricia.cloudfunctions.net/confirmarAgendamento',
 
   generateConfirmationToken() {

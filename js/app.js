@@ -1435,10 +1435,20 @@ class ConsultorioApp {
       ? this.deletedAppointmentTombstones
       : {};
 
+    // Um id com lápide que voltou a existir em this.appointments (ex.: reimportado do Google
+    // Calendar, cujo id "gcal-<eventId>" é determinístico e reaparece igual) deixou de estar
+    // deletado — a lápide ficou obsoleta. Sem isso, o push força um delete desse id no Firebase
+    // a cada ciclo (depois do set, no mesmo batch), apagando o agendamento assim que ele é escrito.
+    const liveAppointmentIds = new Set(
+      (this.appointments || []).map((a) => String((a && a.id) || '').trim()).filter(Boolean)
+    );
+
     let changed = false;
     Object.keys(tombstones).forEach((id) => {
       const at = Number(tombstones[id] || 0);
-      if (!at || (now - at) > ttlMs) {
+      const expired = !at || (now - at) > ttlMs;
+      const resurrected = liveAppointmentIds.has(id);
+      if (expired || resurrected) {
         delete tombstones[id];
         changed = true;
       }
@@ -8987,9 +8997,13 @@ class ConsultorioApp {
         });
       });
 
+      this.pruneDeletedAppointmentTombstones();
       Object.keys(this.deletedAppointmentTombstones || {}).forEach((id) => {
         const normalizedId = String(id || '').trim();
         if (!normalizedId) return;
+        // Nunca force delete de um id que está de volta na agenda local — a lápide já deveria
+        // ter sido removida pelo prune acima; isso é só defesa extra contra reintrodução do bug.
+        if (docsByCollection.appointments.has(normalizedId)) return;
         delete nextState.appointments[normalizedId];
         delete nextState.appointmentConfirmations[normalizedId];
         addOperation({ type: 'delete', collection: 'appointments', id: normalizedId });

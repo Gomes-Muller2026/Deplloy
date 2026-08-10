@@ -369,6 +369,7 @@ const CUSTOM_SELECT_IDS = [
   'appt-recurrence-type',
   'appt-bulk-update-mode',
   'appt-payment-status',
+  'appt-package',
   'client-category',
   'client-convenio',
   'client-plano-financeiro',
@@ -972,6 +973,8 @@ class ConsultorioApp {
     this.clients = [];
     this.appointments = [];
     this.expenses = [];
+    this.packages = [];
+    this.activePackagesClientId = '';
     this.currentTab = 'panil';
     this.localLoginUnlocked = false;
     this.financeViewFilter = 'all';
@@ -1137,6 +1140,7 @@ class ConsultorioApp {
       const c = JSON.parse(localStorage.getItem('consultorio_clients') || '[]');
       const a = JSON.parse(localStorage.getItem('consultorio_appointments') || '[]');
       const e = JSON.parse(localStorage.getItem('consultorio_expenses') || '[]');
+      const pk = JSON.parse(localStorage.getItem('consultorio_packages') || '[]');
       const g = JSON.parse(localStorage.getItem(CLIENT_GROUPS_STORAGE_KEY) || '[]');
       const categories = JSON.parse(localStorage.getItem(CLIENT_CATEGORIES_STORAGE_KEY) || '[]');
       const expenseCategories = JSON.parse(localStorage.getItem(EXPENSE_CATEGORIES_STORAGE_KEY) || '[]');
@@ -1144,6 +1148,7 @@ class ConsultorioApp {
       this.clients = Array.isArray(c) ? c : [];
       this.appointments = this.normalizeAppointmentsCollection(Array.isArray(a) ? a : [], 'local-store');
       this.expenses = Array.isArray(e) ? e : [];
+      this.packages = Array.isArray(pk) ? pk : [];
       this.clientCategories = Array.isArray(categories) ? categories.filter((item) => String(item || '').trim()) : [];
       this.expenseCategories = Array.isArray(expenseCategories) ? expenseCategories.filter((item) => String(item || '').trim()) : [];
       this.clientGroups = Array.isArray(g) ? g.filter((item) => String(item || '').trim()) : [];
@@ -1169,6 +1174,7 @@ class ConsultorioApp {
       this.clients = [];
       this.appointments = [];
       this.expenses = [];
+      this.packages = [];
       this.clientGroups = [];
       this.clientCategories = DEFAULT_CLIENT_CATEGORIES.slice();
       this.expenseCategories = DEFAULT_EXPENSE_CATEGORIES.slice();
@@ -1185,6 +1191,7 @@ class ConsultorioApp {
       const backupClients = Array.isArray(backup.clients) ? backup.clients : [];
       const backupAppointments = Array.isArray(backup.appointments) ? backup.appointments : [];
       const backupExpenses = Array.isArray(backup.expenses) ? backup.expenses : [];
+      const backupPackages = Array.isArray(backup.packages) ? backup.packages : [];
 
       const loadedCollections = [];
 
@@ -1201,6 +1208,11 @@ class ConsultorioApp {
       if (!this.expenses.length && backupExpenses.length) {
         this.expenses = backupExpenses;
         loadedCollections.push('expenses');
+      }
+
+      if (!this.packages.length && backupPackages.length) {
+        this.packages = backupPackages;
+        loadedCollections.push('packages');
       }
 
       if (!loadedCollections.length) return false;
@@ -1398,6 +1410,7 @@ class ConsultorioApp {
     localStorage.setItem('consultorio_clients', JSON.stringify(this.clients));
     localStorage.setItem('consultorio_appointments', JSON.stringify(this.appointments));
     localStorage.setItem('consultorio_expenses', JSON.stringify(this.expenses));
+    localStorage.setItem('consultorio_packages', JSON.stringify(this.packages));
     localStorage.setItem(CLIENT_GROUPS_STORAGE_KEY, JSON.stringify(this.clientGroups));
     localStorage.setItem(CLIENT_CATEGORIES_STORAGE_KEY, JSON.stringify(this.clientCategories));
     localStorage.setItem(EXPENSE_CATEGORIES_STORAGE_KEY, JSON.stringify(this.expenseCategories));
@@ -1494,10 +1507,22 @@ class ConsultorioApp {
     });
   }
 
+  sortPackagesStable(items = []) {
+    const source = Array.isArray(items) ? items.slice() : [];
+    return source.sort((a, b) => {
+      const byClient = String((a && a.clientId) || '').localeCompare(String((b && b.clientId) || ''));
+      if (byClient !== 0) return byClient;
+      const byCreated = String((b && b.createdAt) || '').localeCompare(String((a && a.createdAt) || ''));
+      if (byCreated !== 0) return byCreated;
+      return String((a && a.id) || '').localeCompare(String((b && b.id) || ''));
+    });
+  }
+
   applyStableDataOrdering() {
     this.clients = this.sortClientsStable(this.clients);
     this.appointments = this.sortAppointmentsStable(this.appointments);
     this.expenses = this.sortExpensesStable(this.expenses);
+    this.packages = this.sortPackagesStable(this.packages);
   }
 
   async enforceAppointmentDeletesInFirebase(appointmentIds = []) {
@@ -1773,6 +1798,7 @@ class ConsultorioApp {
     lines.push(`Clientes locais: ${Array.isArray(this.clients) ? this.clients.length : 0}`);
     lines.push(`Consultas locais: ${Array.isArray(this.appointments) ? this.appointments.length : 0}`);
     lines.push(`Despesas locais: ${Array.isArray(this.expenses) ? this.expenses.length : 0}`);
+    lines.push(`Pacotes locais: ${Array.isArray(this.packages) ? this.packages.length : 0}`);
     lines.push(`Tombstones de exclusao (consultas): ${Object.keys(this.deletedAppointmentTombstones || {}).length}`);
     lines.push('');
     lines.push('ULTIMOS EVENTOS:');
@@ -1965,6 +1991,7 @@ class ConsultorioApp {
       clients: {},
       appointments: {},
       expenses: {},
+      packages: {},
       // Sub-shadow tracking only the WhatsApp-confirmation fields of each appointment. Kept
       // separate from the main "appointments" signature so pushAllDataToFirebase can tell whether
       // THIS device is the one that actually changed confirmationStatus/confirmationToken/
@@ -1985,6 +2012,7 @@ class ConsultorioApp {
         clients: (raw.clients && typeof raw.clients === 'object' && !Array.isArray(raw.clients)) ? raw.clients : {},
         appointments: (raw.appointments && typeof raw.appointments === 'object' && !Array.isArray(raw.appointments)) ? raw.appointments : {},
         expenses: (raw.expenses && typeof raw.expenses === 'object' && !Array.isArray(raw.expenses)) ? raw.expenses : {},
+        packages: (raw.packages && typeof raw.packages === 'object' && !Array.isArray(raw.packages)) ? raw.packages : {},
         appointmentConfirmations: (raw.appointmentConfirmations && typeof raw.appointmentConfirmations === 'object' && !Array.isArray(raw.appointmentConfirmations)) ? raw.appointmentConfirmations : {}
       };
     } catch (err) {
@@ -2056,7 +2084,8 @@ class ConsultorioApp {
       [LOGIN_USERS_FIRESTORE_COLLECTION]: new Map(),
       clients: new Map(),
       appointments: new Map(),
-      expenses: new Map()
+      expenses: new Map(),
+      packages: new Map()
     };
 
     getLoginUsers().forEach((user) => {
@@ -2088,6 +2117,12 @@ class ConsultorioApp {
       map.expenses.set(id, expense);
     });
 
+    (this.packages || []).forEach((pkg) => {
+      const id = String((pkg && pkg.id) || '').trim();
+      if (!id) return;
+      map.packages.set(id, pkg);
+    });
+
     return map;
   }
 
@@ -2095,7 +2130,7 @@ class ConsultorioApp {
     const docsByCollection = this.collectCurrentFirebaseDocsForPush();
     const nextState = this.createEmptyFirebasePushShadowState();
 
-    [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses'].forEach((collectionName) => {
+    [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses', 'packages'].forEach((collectionName) => {
       docsByCollection[collectionName].forEach((data, id) => {
         nextState[collectionName][id] = this.computeSyncDocSignature(data);
       });
@@ -2268,7 +2303,7 @@ class ConsultorioApp {
     if (!this.firebaseDb || !this.firebaseConnected) return;
 
     this.stopFirebaseCollectionRealtimeWatchers();
-    const collectionNames = [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses'];
+    const collectionNames = [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses', 'packages'];
     const initializedCollections = new Set();
 
     collectionNames.forEach((collectionName) => {
@@ -2754,6 +2789,8 @@ class ConsultorioApp {
       procedure: String(raw.procedure || raw.abordagem || raw.reason || raw.motivo || 'Consulta').trim() || 'Consulta',
       price: toNumber(raw.price ?? raw.valor ?? raw.amount ?? raw.sessionValue ?? 0),
       amountPaid: toNumber(raw.amountPaid ?? raw.valorPago ?? raw.paidAmount ?? raw.paid ?? 0),
+      packageId: String(raw.packageId || '').trim(),
+      packageAmountApplied: toNumber(raw.packageAmountApplied || 0),
       paymentMethod: String(raw.paymentMethod || raw.formaPagamento || raw.payment || 'Pix').trim() || 'Pix',
       status: this.normalizeAppointmentStatus(raw.status || raw.appointmentStatus || raw.situacao || 'Agendado'),
       paymentStatus: this.normalizeAppointmentPaymentStatus(raw.paymentStatus || raw.pagamentoStatus || raw.financeStatus || 'Pendente'),
@@ -6495,6 +6532,67 @@ class ConsultorioApp {
       }
     });
 
+    // Pacotes pré-pagos: botão "Gerenciar pacotes" do cadastro de cliente, botão homônimo
+    // do modal de agendamento (contextualizado ao paciente selecionado ali) e repopulação
+    // do <select id="appt-package"> sempre que o paciente do agendamento mudar.
+    const btnManageClientPackages = document.getElementById('btn-manage-client-packages');
+    if (btnManageClientPackages) {
+      btnManageClientPackages.addEventListener('click', () => {
+        this.openClientPackagesModal((document.getElementById('client-id') || {}).value || '');
+      });
+    }
+    const btnManageApptPackages = document.getElementById('btn-manage-appt-package');
+    if (btnManageApptPackages) {
+      btnManageApptPackages.addEventListener('click', () => {
+        this.openClientPackagesModal((document.getElementById('appt-client-id') || {}).value || '');
+      });
+    }
+    const modalClientPackages = document.getElementById('modal-client-packages');
+    if (modalClientPackages) {
+      modalClientPackages.querySelectorAll('[data-close-client-packages-modal]').forEach((btn) => {
+        btn.addEventListener('click', () => this.closeClientPackagesModal());
+      });
+    }
+    const apptClientSelectForPackages = document.getElementById('appt-client-id');
+    if (apptClientSelectForPackages) {
+      apptClientSelectForPackages.addEventListener('change', () => this.populateAppointmentPackageOptions());
+    }
+    // Vincular um pacote pré-pago significa que a consulta já foi paga antecipadamente:
+    // pré-preenche Status/Valor Pago como conveniência (a baixa real acontece no save,
+    // em agendaModule.saveAppointment, que é a fonte da verdade mesmo se o usuário editar
+    // esses campos manualmente depois).
+    const apptPackageSelect = document.getElementById('appt-package');
+    if (apptPackageSelect) {
+      apptPackageSelect.addEventListener('change', () => {
+        const packageId = String(apptPackageSelect.value || '').trim();
+        if (!packageId) return;
+        const priceInput = document.getElementById('appt-price');
+        const statusInput = document.getElementById('appt-payment-status');
+        const paidInput = document.getElementById('appt-amount-paid');
+        const price = toNumber((priceInput || {}).value || 0);
+        if (statusInput) statusInput.value = 'Pago';
+        if (paidInput) paidInput.value = price;
+        resyncCustomSelectsWithin(document.getElementById('form-appointment'));
+      });
+    }
+
+    // Marcar o pagamento como "Pago" significa que a sessão foi realizada:
+    // avança o Status para "Presente" automaticamente, evitando o passo manual
+    // de mexer nos dois campos. Não mexe se a sessão já foi marcada como
+    // Ausente/Cancelada, para não apagar um registro de não comparecimento.
+    const apptPaymentStatusSelect = document.getElementById('appt-payment-status');
+    if (apptPaymentStatusSelect) {
+      apptPaymentStatusSelect.addEventListener('change', () => {
+        if (apptPaymentStatusSelect.value !== 'Pago') return;
+        const statusSelect = document.getElementById('appt-status');
+        if (!statusSelect) return;
+        if (statusSelect.value === 'Agendado' || statusSelect.value === 'Confirmado') {
+          statusSelect.value = 'Presente';
+          resyncCustomSelectsWithin(document.getElementById('form-appointment'));
+        }
+      });
+    }
+
     const financeiroSearch = document.getElementById('financeiro-search');
     if (financeiroSearch) financeiroSearch.addEventListener('input', () => this.renderFinanceiroTable());
 
@@ -8382,7 +8480,8 @@ class ConsultorioApp {
         { name: LOGIN_USERS_FIRESTORE_COLLECTION, data: getLoginUsers() },
         { name: 'clients', data: this.clients },
         { name: 'appointments', data: this.appointments },
-        { name: 'expenses', data: this.expenses }
+        { name: 'expenses', data: this.expenses },
+        { name: 'packages', data: this.packages }
       ];
 
       const snapshotsByCollection = {};
@@ -8409,6 +8508,7 @@ class ConsultorioApp {
             if (item.name === 'clients') this.clients = [];
             if (item.name === 'appointments') this.appointments = [];
             if (item.name === 'expenses') this.expenses = [];
+            if (item.name === 'packages') this.packages = [];
           }
           continue;
         }
@@ -8445,6 +8545,7 @@ class ConsultorioApp {
           }
         }
         if (item.name === 'expenses') this.expenses = remoteData;
+        if (item.name === 'packages') this.packages = remoteData;
       }
 
       if (shouldSeedRemoteFromLocal) {
@@ -8465,7 +8566,7 @@ class ConsultorioApp {
       this.render();
       this.rebuildFirebasePushShadowFromCurrentState();
       if (!silent) {
-        const pullDetail = `consultas:${this.appointments.length}, clientes:${this.clients.length}, despesas:${this.expenses.length}`;
+        const pullDetail = `consultas:${this.appointments.length}, clientes:${this.clients.length}, despesas:${this.expenses.length}, pacotes:${this.packages.length}`;
         this.logSyncAudit('pull', `Pull concluído — recebidos ${pullDetail}`);
       }
       return { applied: true, deferred: false, reason: 'ok' };
@@ -8481,7 +8582,7 @@ class ConsultorioApp {
   async pushAllDataToFirebase() {
     if (!this.firebaseDb) return;
     try {
-      const collectionNames = [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses'];
+      const collectionNames = [LOGIN_USERS_FIRESTORE_COLLECTION, 'clients', 'appointments', 'expenses', 'packages'];
       const docsByCollection = this.collectCurrentFirebaseDocsForPush();
       const previousState = this.firebasePushShadowState || this.createEmptyFirebasePushShadowState();
       const nextState = this.createEmptyFirebasePushShadowState();
@@ -8779,7 +8880,8 @@ class ConsultorioApp {
       const collections = [
         { name: 'clients', label: 'Clientes' },
         { name: 'appointments', label: 'Agenda' },
-        { name: 'expenses', label: 'Financeiro' }
+        { name: 'expenses', label: 'Financeiro' },
+        { name: 'packages', label: 'Pacotes' }
       ];
       let latest = null;
 
@@ -11314,6 +11416,7 @@ class ConsultorioApp {
     this.populateClientGroupOptions();
     this.populateClientCategoryOptions();
     this.populateAllManagedSelectsAndFilters();
+    this.renderClientPackagesSummary('');
     const categoryInput = document.getElementById('client-category');
     if (categoryInput) categoryInput.value = 'Paciente';
 
@@ -11360,6 +11463,7 @@ class ConsultorioApp {
         this.populateManagedSelect('convenio', c.convenio);
         this.populateManagedSelect('planoFinanceiro', c.planoFinanceiro);
         this.populateManagedSelect('tags');
+        this.renderClientPackagesSummary(c.id);
         if (title) title.textContent = 'Editar Dados do Paciente';
       }
     }
@@ -11676,6 +11780,248 @@ class ConsultorioApp {
     if (!cfg) return;
     const modal = document.getElementById(cfg.modalId);
     if (modal) modal.classList.remove('active');
+  }
+
+  // ── Pacotes pré-pagos por cliente ──────────────────────────────────────
+  // Diferente de Convênio/Plano financeiro (listas simples de opções), um
+  // "Pacote" é uma entidade própria com saldo (this.packages), sempre
+  // vinculada a um clientId. O modal de gerenciamento é compartilhado entre
+  // o modal de Cliente e o modal de Agendamento — quem abre define o
+  // cliente de contexto via this.activePackagesClientId.
+  openClientPackagesModal(clientId = '') {
+    const id = String(clientId || '').trim();
+    if (!id) {
+      this.showToast('Selecione (e salve) um cliente antes de gerenciar pacotes.', 'warning');
+      return;
+    }
+    const client = this.clients.find((c) => c.id === id);
+    if (!client) {
+      this.showToast('Cliente não encontrado. Salve o cadastro do cliente antes de gerenciar pacotes.', 'warning');
+      return;
+    }
+    const modal = document.getElementById('modal-client-packages');
+    if (!modal) return;
+
+    this.activePackagesClientId = id;
+    const subtitle = document.getElementById('client-packages-modal-subtitle');
+    if (subtitle) subtitle.textContent = `Pacotes de ${client.name || 'cliente'}`;
+    this.renderClientPackagesManager();
+    modal.classList.add('active');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+  }
+
+  closeClientPackagesModal() {
+    const modal = document.getElementById('modal-client-packages');
+    if (modal) modal.classList.remove('active');
+  }
+
+  renderClientPackagesManager() {
+    const container = document.getElementById('client-packages-list');
+    if (!container) return;
+
+    const clientId = this.activePackagesClientId;
+
+    const addBtn = document.getElementById('btn-add-package');
+    const nameInput = document.getElementById('new-package-name-input');
+    const totalInput = document.getElementById('new-package-total-input');
+    const sessionsInput = document.getElementById('new-package-sessions-input');
+    if (addBtn) {
+      addBtn.onclick = () => this.addClientPackage(clientId, nameInput, totalInput, sessionsInput);
+    }
+    [nameInput, totalInput, sessionsInput].forEach((el) => {
+      if (!el) return;
+      el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (addBtn) addBtn.click(); } };
+    });
+
+    const items = (this.packages || [])
+      .filter((p) => String((p && p.clientId) || '') === String(clientId || ''))
+      .slice()
+      .sort((a, b) => String((b && b.createdAt) || '').localeCompare(String((a && a.createdAt) || '')));
+
+    if (!items.length) {
+      container.innerHTML = '<div class="empty-state"><p>Nenhum pacote cadastrado para este cliente.</p></div>';
+      return;
+    }
+
+    container.innerHTML = items.map((pkg) => `
+      <div class="group-manager-card" data-package-row="${safeText(pkg.id)}">
+        <i data-lucide="package"></i>
+        <input type="text" class="form-control group-manager-input" value="${safeText(pkg.name)}" data-package-edit="name" aria-label="Nome do pacote" placeholder="Nome do pacote">
+        <input type="number" step="0.01" min="0" class="form-control group-manager-input" style="max-width:120px;" value="${toNumber(pkg.totalPaid)}" data-package-edit="totalPaid" aria-label="Valor total pago" title="Valor total pago">
+        <input type="number" step="0.01" class="form-control group-manager-input" style="max-width:120px;" value="${toNumber(pkg.remainingBalance)}" data-package-edit="remainingBalance" aria-label="Saldo restante" title="Saldo restante">
+        <div class="group-manager-actions">
+          <button type="button" class="btn btn-sm btn-secondary" data-package-action="save" data-package-id="${safeText(pkg.id)}"><i data-lucide="check"></i> Salvar</button>
+          <button type="button" class="btn btn-sm btn-ghost group-manager-delete" data-package-action="delete" data-package-id="${safeText(pkg.id)}"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('[data-package-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = String(btn.getAttribute('data-package-action') || '');
+        const packageId = String(btn.getAttribute('data-package-id') || '');
+        if (!packageId) return;
+
+        if (action === 'save') {
+          const row = btn.closest('[data-package-row]');
+          const nameEl = row ? row.querySelector('[data-package-edit="name"]') : null;
+          const totalEl = row ? row.querySelector('[data-package-edit="totalPaid"]') : null;
+          const balanceEl = row ? row.querySelector('[data-package-edit="remainingBalance"]') : null;
+          this.updateClientPackage(packageId, {
+            name: nameEl ? nameEl.value : undefined,
+            totalPaid: totalEl ? toNumber(totalEl.value) : undefined,
+            remainingBalance: balanceEl ? toNumber(balanceEl.value) : undefined
+          });
+          return;
+        }
+
+        if (action === 'delete') {
+          this.deleteClientPackage(packageId);
+        }
+      });
+    });
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+  }
+
+  addClientPackage(clientId, nameInput, totalInput, sessionsInput) {
+    const id = String(clientId || '').trim();
+    if (!id) { this.showToast('Cliente inválido para cadastrar pacote.', 'warning'); return; }
+
+    const name = String((nameInput && nameInput.value) || '').trim();
+    const totalPaid = toNumber((totalInput && totalInput.value) || 0);
+    const sessionsRaw = String((sessionsInput && sessionsInput.value) || '').trim();
+    const sessionsTotal = sessionsRaw ? toNumber(sessionsRaw) : null;
+
+    if (!name) { this.showToast('Informe um nome para o pacote.', 'warning'); return; }
+    if (totalPaid <= 0) { this.showToast('Informe o valor total pago pelo pacote.', 'warning'); return; }
+
+    const nowIso = new Date().toISOString();
+    const pkg = {
+      id: `pkg-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      clientId: id,
+      name,
+      totalPaid,
+      remainingBalance: totalPaid,
+      sessionsTotal: (sessionsTotal && sessionsTotal > 0) ? sessionsTotal : null,
+      createdAt: nowIso,
+      updatedAt: nowIso
+    };
+
+    if (!Array.isArray(this.packages)) this.packages = [];
+    this.packages.push(pkg);
+    this.saveData();
+
+    if (nameInput) nameInput.value = '';
+    if (totalInput) totalInput.value = '';
+    if (sessionsInput) sessionsInput.value = '';
+
+    this.renderClientPackagesManager();
+    this.populateAppointmentPackageOptions();
+    this.renderClientPackagesSummary(this.activePackagesClientId);
+    this.showToast(`Pacote "${name}" cadastrado com saldo de ${formatCurrency(totalPaid)}.`, 'success');
+  }
+
+  updateClientPackage(packageId, changes = {}) {
+    const pkg = (this.packages || []).find((p) => p.id === packageId);
+    if (!pkg) return;
+
+    if (changes.name !== undefined) {
+      const name = String(changes.name || '').trim();
+      if (name) pkg.name = name;
+    }
+    if (changes.totalPaid !== undefined && Number.isFinite(changes.totalPaid)) {
+      pkg.totalPaid = Math.max(0, changes.totalPaid);
+    }
+    if (changes.remainingBalance !== undefined && Number.isFinite(changes.remainingBalance)) {
+      pkg.remainingBalance = changes.remainingBalance;
+    }
+    pkg.updatedAt = new Date().toISOString();
+
+    this.saveData();
+    this.renderClientPackagesManager();
+    this.populateAppointmentPackageOptions();
+    this.renderClientPackagesSummary(this.activePackagesClientId);
+    this.showToast('Pacote atualizado.', 'success');
+  }
+
+  async deleteClientPackage(packageId) {
+    const pkg = (this.packages || []).find((p) => p.id === packageId);
+    if (!pkg) return;
+
+    const inUse = (this.appointments || []).some((a) => String((a && a.packageId) || '') === packageId);
+    const message = inUse
+      ? 'Este pacote está vinculado a uma ou mais consultas. Excluí-lo não altera o valor/status dessas consultas, mas elas perderão o vínculo com o pacote. Deseja continuar?'
+      : 'Deseja realmente excluir este pacote?';
+
+    let confirmed = false;
+    if (typeof this.askConfirmation === 'function') {
+      confirmed = await this.askConfirmation(message, { title: 'Excluir pacote', confirmLabel: 'Excluir' });
+    } else {
+      confirmed = confirm(message);
+    }
+    if (!confirmed) return;
+
+    this.packages = (this.packages || []).filter((p) => p.id !== packageId);
+    if (inUse) {
+      this.appointments = this.appointments.map((a) => (String((a && a.packageId) || '') === packageId
+        ? { ...a, packageId: '', packageAmountApplied: 0 }
+        : a));
+    }
+
+    this.saveData();
+    this.renderClientPackagesManager();
+    this.populateAppointmentPackageOptions();
+    this.renderClientPackagesSummary(this.activePackagesClientId);
+    this.render();
+    this.showToast('Pacote excluído.', 'success');
+  }
+
+  // Repopula o <select id="appt-package"> com os pacotes do cliente selecionado
+  // em #appt-client-id, mostrando o saldo restante junto ao nome. Chamado ao
+  // abrir/editar o modal de agendamento e sempre que o paciente selecionado mudar.
+  populateAppointmentPackageOptions(selectedPackageId = '') {
+    const select = document.getElementById('appt-package');
+    if (!select) return;
+
+    const clientId = String((document.getElementById('appt-client-id') || {}).value || '').trim();
+    const preferredId = selectedPackageId !== undefined && String(selectedPackageId).trim()
+      ? String(selectedPackageId).trim()
+      : String(select.value || '').trim();
+
+    const items = (this.packages || [])
+      .filter((p) => String((p && p.clientId) || '') === clientId)
+      .slice()
+      .sort((a, b) => String((a && a.name) || '').localeCompare(String((b && b.name) || ''), 'pt-BR'));
+
+    const optionsHtml = ['<option value="">Nenhum</option>']
+      .concat(items.map((p) => `<option value="${safeText(p.id)}">${safeText(p.name)} — Saldo: ${safeText(formatCurrency(toNumber(p.remainingBalance)))}</option>`))
+      .join('');
+
+    select.innerHTML = optionsHtml;
+    select.value = items.some((p) => p.id === preferredId) ? preferredId : '';
+  }
+
+  // Pequeno resumo exibido no modal de Cliente (campo "Pacotes"), ao lado do botão
+  // "Gerenciar pacotes", com a contagem e o saldo total dos pacotes deste cliente.
+  renderClientPackagesSummary(clientId) {
+    const el = document.getElementById('client-packages-summary');
+    if (!el) return;
+
+    const id = String(clientId || '').trim();
+    if (!id) {
+      el.textContent = 'Salve o cadastro do cliente para cadastrar pacotes.';
+      return;
+    }
+
+    const items = (this.packages || []).filter((p) => String((p && p.clientId) || '') === id);
+    if (!items.length) {
+      el.textContent = 'Nenhum pacote cadastrado.';
+      return;
+    }
+
+    const totalBalance = items.reduce((sum, p) => sum + toNumber(p.remainingBalance), 0);
+    el.textContent = `${items.length} pacote(s) — saldo total: ${formatCurrency(totalBalance)}`;
   }
 
   openClientCategoriesModal() {
@@ -12033,6 +12379,7 @@ class ConsultorioApp {
     resyncCustomSelectsWithin(form);
 
     this.populateClientSelectOptions();
+    this.populateAppointmentPackageOptions();
 
     const idInput = document.getElementById('appointment-id');
     const title = document.getElementById('modal-appointment-title');
@@ -12068,6 +12415,7 @@ class ConsultorioApp {
           if (el) el.value = val == null ? '' : val;
         };
         set('appt-client-id', resolvedClientId);
+        this.populateAppointmentPackageOptions(a.packageId || '');
         if (dateInput && dateInput._flatpickr && a.date) {
           dateInput._flatpickr.setDate(a.date, false, 'Y-m-d');
         } else {
@@ -12277,6 +12625,7 @@ class ConsultorioApp {
       status: String((document.getElementById('appt-status') || {}).value || 'Agendado'),
       paymentStatus: String((document.getElementById('appt-payment-status') || {}).value || 'Pendente'),
       amountPaid: toNumber((document.getElementById('appt-amount-paid') || {}).value || 0),
+      packageId: String((document.getElementById('appt-package') || {}).value || '').trim(),
       recurrenceType: this.normalizeAppointmentRecurrenceType((document.getElementById('appt-recurrence-type') || {}).value || ''),
       bulkUpdateMode: String((document.getElementById('appt-bulk-update-mode') || {}).value || 'nao_aplicar'),
       notes: String((document.getElementById('appt-notes') || {}).value || '').trim(),

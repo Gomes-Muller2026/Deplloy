@@ -891,6 +891,7 @@
             <div class="form-group"><label for="client-group">Grupo</label><input type="text" id="client-group" class="form-control" list="client-group-options" placeholder="Digite ou selecione um grupo"><datalist id="client-group-options"></datalist><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-groups">Gerenciar grupos</button></div></div>
             <div class="form-group"><label for="client-convenio">Convênio</label><select id="client-convenio" class="form-control"></select><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-convenio">Gerenciar convênios</button></div></div>
             <div class="form-group"><label for="client-plano-financeiro">Plano financeiro</label><select id="client-plano-financeiro" class="form-control"></select><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-plano-financeiro">Gerenciar planos</button></div></div>
+            <div class="form-group"><label>Pacotes</label><div class="form-control" style="display:flex; align-items:center; background:transparent;"><span id="client-packages-summary" style="color:var(--text-muted); font-size:0.85rem;">Nenhum pacote cadastrado</span></div><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-packages">Gerenciar pacotes</button></div></div>
             <div class="form-group"><label for="client-tags">Tags</label><input type="text" id="client-tags" class="form-control" list="client-tags-options" placeholder="Digite tags separadas por vírgula"><datalist id="client-tags-options"></datalist><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-client-tags">Gerenciar tags</button></div></div>
             <div class="form-group"><label for="client-cep">CEP</label><input type="text" id="client-cep" class="form-control" inputmode="numeric" maxlength="9" placeholder="00000-000"></div>
             <div class="form-group"><label for="client-street">Rua / Logradouro</label><input type="text" id="client-street" class="form-control"></div>
@@ -1164,6 +1165,28 @@
       </div>
     </div>
 
+    <div class="modal-backdrop" id="modal-client-packages">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="client-packages-modal-subtitle">Pacotes</h3>
+          <button class="btn-close" data-close-client-packages-modal><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-top:0; color:var(--text-muted);">Cadastre um pacote pré-pago (valor total pago de uma vez) para este cliente. Ao vincular uma consulta a um pacote, o valor da consulta é descontado automaticamente do saldo restante.</p>
+          <div class="groups-add-row">
+            <input type="text" id="new-package-name-input" class="form-control" placeholder="Nome do pacote (ex: 10 sessões)...">
+            <input type="number" step="0.01" min="0" id="new-package-total-input" class="form-control" placeholder="Valor total pago (R$)" style="max-width:170px;">
+            <input type="number" step="1" min="1" id="new-package-sessions-input" class="form-control" placeholder="Sessões (opcional)" style="max-width:150px;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-add-package"><i data-lucide="plus"></i> Adicionar</button>
+          </div>
+          <div id="client-packages-list"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-client-packages-modal>Fechar</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-backdrop" id="modal-client-tags">
       <div class="modal-card">
         <div class="modal-header">
@@ -1214,6 +1237,7 @@
             <div class="form-group"><label for="appt-procedure">Procedimento *</label><select id="appt-procedure" class="form-control" required></select></div>
             <div class="form-group"><label for="appt-price">Valor (R$) *</label><input type="number" step="0.01" min="0" id="appt-price" class="form-control" required></div>
             <div class="form-group"><label for="appt-payment-method">Forma de Pagamento</label><select id="appt-payment-method" class="form-control"><option value="Pix">Pix</option><option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option><option value="Transferência">Transferência</option></select></div>
+            <div class="form-group"><label for="appt-package">Pacote</label><select id="appt-package" class="form-control"><option value="">Nenhum</option></select><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-appt-package">Gerenciar pacotes</button></div></div>
             <div class="form-group"><label for="appt-status">Status</label><select id="appt-status" class="form-control"><option value="Agendado">Agendado</option><option value="Confirmado">Confirmado</option><option value="Presente">Presente</option><option value="Ausente">Ausente</option><option value="CanceladoCliente">Cancelado pelo Cliente</option><option value="CanceladoProfissional">Cancelado pelo Profissional</option></select></div>
             <div class="form-group"><label for="appt-recurrence-type">Regra de Recorrência</label><select id="appt-recurrence-type" class="form-control"><option value="nao_recorrente">Não recorrente</option><option value="recorrente">Recorrente</option></select></div>
             <div class="form-group" title="Escolha como aplicar alterações em outros agendamentos futuros do mesmo paciente.">
@@ -1490,8 +1514,8 @@
   <div class="toast-container" id="toast-container"></div>
 
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
-  <script src="src/modules/agenda/agendaModule.js?v=20260809-1"></script>
+  <script src="src/modules/agenda/agendaModule.js?v=20260809-2"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260809-43"></script>
+  <script src="js/app.js?v=20260809-44"></script>
 </body>
 </html>

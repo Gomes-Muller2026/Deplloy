@@ -90,6 +90,76 @@ const agendaModule = {
     return this;
   },
 
+  // Pacotes pré-pagos: um agendamento pode estar vinculado a um `app.packages` (por
+  // clientId), consumindo o valor da consulta (`normalizedAppointment.price`) do
+  // `remainingBalance` do pacote em vez de virar uma cobrança avulsa. Esta função é
+  // chamada em toda gravação (criação ou edição) e faz duas coisas, nesta ordem:
+  //   1) Estorna ao pacote anterior (se havia) o valor que uma gravação anterior desta
+  //      MESMA consulta já havia debitado (`previousAppointment.packageAmountApplied`).
+  //      Isso garante que editar o preço, trocar de pacote ou desvincular o pacote nunca
+  //      vaza saldo nem duplica desconto — sempre parte de um estado "neutro" antes de
+  //      aplicar o novo débito.
+  //   2) Debita do pacote selecionado (se houver) o preço atual da consulta, e marca a
+  //      consulta como já paga (Status "Pago", Valor Pago = preço) para não cobrar de
+  //      novo no financeiro avulso. Se isso deixar o saldo do pacote negativo, avisa via
+  //      toast mas não bloqueia o salvamento (prioridade: não travar o fluxo da profissional).
+  reconcileAppointmentPackageBalance(app, previousAppointment, normalizedAppointment) {
+    if (!Array.isArray(app.packages)) app.packages = [];
+
+    const prevPackageId = String((previousAppointment && previousAppointment.packageId) || '').trim();
+    const prevApplied = toNumber(previousAppointment && previousAppointment.packageAmountApplied);
+    if (prevPackageId && prevApplied > 0) {
+      const prevPkg = app.packages.find((p) => p.id === prevPackageId);
+      if (prevPkg) {
+        prevPkg.remainingBalance = toNumber(prevPkg.remainingBalance) + prevApplied;
+        prevPkg.updatedAt = new Date().toISOString();
+      }
+    }
+
+    const newPackageId = String(normalizedAppointment.packageId || '').trim();
+    if (!newPackageId) {
+      normalizedAppointment.packageId = '';
+      normalizedAppointment.packageAmountApplied = 0;
+      return;
+    }
+
+    const pkg = app.packages.find((p) => p.id === newPackageId);
+    if (!pkg || String(pkg.clientId || '') !== String(normalizedAppointment.clientId || '')) {
+      normalizedAppointment.packageId = '';
+      normalizedAppointment.packageAmountApplied = 0;
+      if (typeof app.showToast === 'function') {
+        app.showToast('O pacote selecionado não pertence a este cliente; a consulta foi salva sem vínculo de pacote.', 'warning');
+      }
+      return;
+    }
+
+    const amount = Math.max(0, toNumber(normalizedAppointment.price));
+    pkg.remainingBalance = toNumber(pkg.remainingBalance) - amount;
+    pkg.updatedAt = new Date().toISOString();
+
+    normalizedAppointment.packageAmountApplied = amount;
+    normalizedAppointment.amountPaid = amount;
+    normalizedAppointment.paymentStatus = 'Pago';
+
+    if (pkg.remainingBalance < 0 && typeof app.showToast === 'function') {
+      app.showToast(`Saldo do pacote "${pkg.name}" ficou negativo (${formatCurrency(pkg.remainingBalance)}). Considere renovar o pacote deste cliente.`, 'warning');
+    }
+  },
+
+  // Contrapartida de reconcileAppointmentPackageBalance para exclusão definitiva de uma
+  // consulta vinculada a pacote: devolve ao saldo o valor que havia sido debitado.
+  refundAppointmentPackageBalance(app, appointment) {
+    const packageId = String((appointment && appointment.packageId) || '').trim();
+    const applied = toNumber(appointment && appointment.packageAmountApplied);
+    if (!packageId || applied <= 0) return;
+    if (!Array.isArray(app.packages)) return;
+
+    const pkg = app.packages.find((p) => p.id === packageId);
+    if (!pkg) return;
+    pkg.remainingBalance = toNumber(pkg.remainingBalance) + applied;
+    pkg.updatedAt = new Date().toISOString();
+  },
+
   saveAppointment(app, payload, appointmentId) {
     if (!payload.clientId && !payload.clientName) {
       app.showToast('Selecione um cliente para agendar.', 'warning');
@@ -109,7 +179,9 @@ const agendaModule = {
       paymentStatus: payload.paymentStatus || 'Pendente',
       recurrenceType: this.normalizeRecurrenceType(payload.recurrenceType),
       price: toNumber(payload.price),
-      amountPaid: toNumber(payload.amountPaid)
+      amountPaid: toNumber(payload.amountPaid),
+      packageId: String(payload.packageId || '').trim(),
+      packageAmountApplied: 0
     };
 
     const bulkUpdateMode = this.normalizeBulkUpdateMode(payload.bulkUpdateMode);
@@ -119,6 +191,7 @@ const agendaModule = {
     }
 
     const existing = app.appointments.find((a) => a.id === appointmentId);
+    this.reconcileAppointmentPackageBalance(app, existing, normalized);
     let updatedRecurringCount = 0;
     if (existing) {
       app.appointments = app.appointments.map((a) => (a.id === appointmentId ? normalized : a));
@@ -162,6 +235,11 @@ const agendaModule = {
       confirmed = confirm('Deseja realmente excluir esta consulta?');
     }
     if (!confirmed) return;
+
+    const targetAppointment = app.appointments.find((a) => a.id === appointmentId);
+    if (targetAppointment) {
+      this.refundAppointmentPackageBalance(app, targetAppointment);
+    }
 
     app.appointments = app.appointments.filter((a) => a.id !== appointmentId);
     if (typeof app.registerAppointmentDeletionTombstone === 'function') {

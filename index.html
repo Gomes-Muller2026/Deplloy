@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260809-79">
+  <link rel="stylesheet" href="css/styles.css?v=20260809-80">
 </head>
 <body>
   <div id="login-root">
@@ -212,7 +212,7 @@
           </div>
         </header>
 
-        <section class="tab-content active" id="tab-dashboard">
+        <section class="tab-content active" id="tab-panil">
           <div class="stats-grid">
             <button type="button" class="stat-card card-blue" id="dash-card-consultas" data-action="dashboard-card" data-target="agenda" aria-label="Consultas de hoje" onclick="app.handleDashboardCardClick('dash-card-consultas', 'agenda')" title="Abrir agenda de consultas de hoje">
               <div class="stat-icon"><i data-lucide="calendar-check"></i></div>
@@ -1182,6 +1182,25 @@
       </div>
     </div>
 
+    <div class="modal-backdrop" id="modal-client-photo-camera">
+      <div class="modal-card modal-card-sm">
+        <div class="modal-header">
+          <h3>Tirar Foto</h3>
+          <button class="btn-close" id="btn-close-client-photo-camera"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="client-photo-camera-viewport">
+            <video id="client-photo-camera-video" autoplay playsinline></video>
+          </div>
+          <p id="client-photo-camera-hint" style="margin:0.75rem 0 0; color:var(--text-muted); font-size:0.85rem;">Posicione o rosto do paciente e clique em Capturar.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-client-photo-camera">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-capture-client-photo-camera"><i data-lucide="camera"></i> Capturar</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-backdrop" id="modal-client-packages">
       <div class="modal-card">
         <div class="modal-header">
@@ -1533,6 +1552,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260809-2"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260809-47"></script>
+  <script src="js/app.js?v=20260809-48"></script>
 </body>
 </html>

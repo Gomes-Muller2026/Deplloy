@@ -6123,9 +6123,15 @@ class ConsultorioApp {
     const clientPhotoRemoveBtn = document.getElementById('btn-client-photo-remove');
     const clientPhotoInputCamera = document.getElementById('client-photo-input-camera');
     const clientPhotoInputGallery = document.getElementById('client-photo-input-gallery');
-    if (clientPhotoCameraBtn && clientPhotoInputCamera) {
-      clientPhotoCameraBtn.addEventListener('click', () => clientPhotoInputCamera.click());
+    if (clientPhotoCameraBtn) {
+      clientPhotoCameraBtn.addEventListener('click', () => this.openClientPhotoCameraModal());
     }
+    const btnCloseClientPhotoCamera = document.getElementById('btn-close-client-photo-camera');
+    const btnCancelClientPhotoCamera = document.getElementById('btn-cancel-client-photo-camera');
+    const btnCaptureClientPhotoCamera = document.getElementById('btn-capture-client-photo-camera');
+    if (btnCloseClientPhotoCamera) btnCloseClientPhotoCamera.addEventListener('click', () => this.closeClientPhotoCameraModal());
+    if (btnCancelClientPhotoCamera) btnCancelClientPhotoCamera.addEventListener('click', () => this.closeClientPhotoCameraModal());
+    if (btnCaptureClientPhotoCamera) btnCaptureClientPhotoCamera.addEventListener('click', () => this.captureClientPhotoFromCamera());
     if (clientPhotoGalleryBtn && clientPhotoInputGallery) {
       clientPhotoGalleryBtn.addEventListener('click', () => clientPhotoInputGallery.click());
     }
@@ -11478,6 +11484,26 @@ class ConsultorioApp {
     return select.value;
   }
 
+  // Redimensiona qualquer fonte "desenhável" (HTMLImageElement, HTMLVideoElement,
+  // HTMLCanvasElement) para um dataURL JPEG, mantendo proporção com base em maxSize.
+  // Reaproveitado tanto pelo fluxo de upload de arquivo quanto pela captura via webcam.
+  resizeDrawableToDataUrl(drawable, sourceWidth, sourceHeight, maxSize = 400, quality = 0.82) {
+    let width = sourceWidth;
+    let height = sourceHeight;
+    if (width > height) {
+      if (width > maxSize) { height = Math.round(height * (maxSize / width)); width = maxSize; }
+    } else if (height > maxSize) {
+      width = Math.round(width * (maxSize / height));
+      height = maxSize;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(drawable, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', quality);
+  }
+
   resizeImageFileToDataUrl(file, maxSize = 400, quality = 0.82) {
     return new Promise((resolve, reject) => {
       if (!file || !String(file.type || '').startsWith('image/')) {
@@ -11490,25 +11516,87 @@ class ConsultorioApp {
         const img = new Image();
         img.onerror = () => reject(new Error('image-load-error'));
         img.onload = () => {
-          let width = img.naturalWidth || img.width;
-          let height = img.naturalHeight || img.height;
-          if (width > height) {
-            if (width > maxSize) { height = Math.round(height * (maxSize / width)); width = maxSize; }
-          } else if (height > maxSize) {
-            width = Math.round(width * (maxSize / height));
-            height = maxSize;
+          try {
+            const dataUrl = this.resizeDrawableToDataUrl(img, img.naturalWidth || img.width, img.naturalHeight || img.height, maxSize, quality);
+            resolve(dataUrl);
+          } catch (err) {
+            reject(err);
           }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
         };
         img.src = String(reader.result || '');
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  // ── Captura de foto do paciente via webcam (getUserMedia) ──────────
+  // Requer contexto seguro (https ou localhost); em file:// ou http:// não-local
+  // o navegador bloqueia getUserMedia e caímos no fallback de seleção de arquivo.
+  stopClientPhotoCameraStream() {
+    if (this._clientPhotoCameraStream) {
+      this._clientPhotoCameraStream.getTracks().forEach((track) => track.stop());
+      this._clientPhotoCameraStream = null;
+    }
+    const video = document.getElementById('client-photo-camera-video');
+    if (video) video.srcObject = null;
+  }
+
+  async openClientPhotoCameraModal() {
+    const modal = document.getElementById('modal-client-photo-camera');
+    const video = document.getElementById('client-photo-camera-video');
+    if (!modal || !video) return;
+
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      this.showToast('Este navegador não suporta acesso à câmera. Selecionando arquivo de imagem...', 'warning');
+      const fallbackInput = document.getElementById('client-photo-input-camera');
+      if (fallbackInput) fallbackInput.click();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      this._clientPhotoCameraStream = stream;
+      video.srcObject = stream;
+      modal.classList.add('active');
+      if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    } catch (err) {
+      this.stopClientPhotoCameraStream();
+      let message = 'Não foi possível acessar a câmera. Selecionando arquivo de imagem...';
+      if (err && err.name === 'NotAllowedError') {
+        message = 'Permissão de câmera negada. Selecionando arquivo de imagem...';
+      } else if (err && err.name === 'NotFoundError') {
+        message = 'Nenhuma câmera encontrada. Selecionando arquivo de imagem...';
+      }
+      this.showToast(message, 'warning');
+      const fallbackInput = document.getElementById('client-photo-input-camera');
+      if (fallbackInput) fallbackInput.click();
+    }
+  }
+
+  closeClientPhotoCameraModal() {
+    const modal = document.getElementById('modal-client-photo-camera');
+    if (modal) modal.classList.remove('active');
+    this.stopClientPhotoCameraStream();
+  }
+
+  captureClientPhotoFromCamera() {
+    const video = document.getElementById('client-photo-camera-video');
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      this.showToast('A câmera ainda não está pronta. Aguarde um instante e tente novamente.', 'warning');
+      return;
+    }
+    // Espelha o frame capturado para bater com o preview espelhado do <video>.
+    const mirrorCanvas = document.createElement('canvas');
+    mirrorCanvas.width = video.videoWidth;
+    mirrorCanvas.height = video.videoHeight;
+    const mirrorCtx = mirrorCanvas.getContext('2d');
+    mirrorCtx.translate(mirrorCanvas.width, 0);
+    mirrorCtx.scale(-1, 1);
+    mirrorCtx.drawImage(video, 0, 0, mirrorCanvas.width, mirrorCanvas.height);
+
+    const dataUrl = this.resizeDrawableToDataUrl(mirrorCanvas, mirrorCanvas.width, mirrorCanvas.height);
+    this.closeClientPhotoCameraModal();
+    this.setClientPhotoPreview(dataUrl);
   }
 
   setClientPhotoPreview(dataUrl) {
@@ -11657,6 +11745,7 @@ class ConsultorioApp {
   closeClientModal() {
     const modal = document.getElementById('modal-client');
     if (modal) modal.classList.remove('active');
+    this.closeClientPhotoCameraModal();
   }
 
   openClientGroupsModal() {

@@ -960,6 +960,25 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="modal-client-photo-camera">
+  <div class="modal-card modal-card-sm">
+    <div class="modal-header">
+      <h3>Tirar Foto</h3>
+      <button class="btn-close" id="btn-close-client-photo-camera"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="client-photo-camera-viewport">
+        <video id="client-photo-camera-video" autoplay playsinline></video>
+      </div>
+      <p id="client-photo-camera-hint" style="margin:0.75rem 0 0; color:var(--text-muted); font-size:0.85rem;">Posicione o rosto do paciente e clique em Capturar.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="btn-cancel-client-photo-camera">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="btn-capture-client-photo-camera"><i data-lucide="camera"></i> Capturar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="modal-client-packages">
   <div class="modal-card">
     <div class="modal-header">

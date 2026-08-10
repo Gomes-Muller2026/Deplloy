@@ -5560,6 +5560,13 @@ body.analytics-focus-mode .analytics-grid {
   z-index: 1200;
 }
 
+/* Aberto de dentro do modal de Consulta/Financeiro: precisa ficar acima dele,
+   senão o backdrop do modal de Consulta (que vem depois no DOM) intercepta
+   todos os cliques e trava o cadastro de pacote/valor. */
+#modal-client-packages.active {
+  z-index: 1300;
+}
+
 .modal-header {
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--border-color);
@@ -5935,6 +5942,48 @@ body.analytics-focus-mode .analytics-grid {
 
 #modal-period-narratives .client-sessions-narrative-list::-webkit-scrollbar-thumb:hover {
   background: rgba(10, 132, 255, 0.65);
+}
+
+/* ── Client photo uploader (avatar + camera/gallery buttons) ───────── */
+.client-photo-uploader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.client-photo-avatar {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.client-photo-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.client-photo-avatar i {
+  width: 34px;
+  height: 34px;
+  color: var(--text-muted);
+}
+
+.client-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 /* Improve field readability inside edit/registration modals

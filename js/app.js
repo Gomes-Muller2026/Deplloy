@@ -6090,6 +6090,33 @@ class ConsultorioApp {
     const formClient = document.getElementById('form-client');
     if (formClient) formClient.addEventListener('submit', (e) => { e.preventDefault(); this.saveClientForm(); });
 
+    const clientPhotoCameraBtn = document.getElementById('btn-client-photo-camera');
+    const clientPhotoGalleryBtn = document.getElementById('btn-client-photo-gallery');
+    const clientPhotoRemoveBtn = document.getElementById('btn-client-photo-remove');
+    const clientPhotoInputCamera = document.getElementById('client-photo-input-camera');
+    const clientPhotoInputGallery = document.getElementById('client-photo-input-gallery');
+    if (clientPhotoCameraBtn && clientPhotoInputCamera) {
+      clientPhotoCameraBtn.addEventListener('click', () => clientPhotoInputCamera.click());
+    }
+    if (clientPhotoGalleryBtn && clientPhotoInputGallery) {
+      clientPhotoGalleryBtn.addEventListener('click', () => clientPhotoInputGallery.click());
+    }
+    if (clientPhotoRemoveBtn) {
+      clientPhotoRemoveBtn.addEventListener('click', () => this.resetClientPhotoUploader());
+    }
+    const handleClientPhotoInputChange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      this.resizeImageFileToDataUrl(file).then((dataUrl) => {
+        this.setClientPhotoPreview(dataUrl);
+      }).catch(() => {
+        this.showToast('Não foi possível carregar essa imagem.', 'warning');
+      });
+    };
+    if (clientPhotoInputCamera) clientPhotoInputCamera.addEventListener('change', handleClientPhotoInputChange);
+    if (clientPhotoInputGallery) clientPhotoInputGallery.addEventListener('change', handleClientPhotoInputChange);
+
     const clientDobInput = document.getElementById('client-dob');
     if (clientDobInput) {
       if (window.flatpickr) {
@@ -10533,7 +10560,12 @@ class ConsultorioApp {
             onchange="app.toggleClientReportSelection('${c.id}', this.checked)">
         </td>
         <td><strong>${c.registrationNumber || '-'}</strong></td>
-        <td>${safeText(c.name || '-')}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            ${c.foto ? `<img src="${safeText(c.foto)}" alt="" style="width:28px;height:28px;border-radius:999px;object-fit:cover;flex-shrink:0;">` : ''}
+            <span>${safeText(c.name || '-')}</span>
+          </div>
+        </td>
         <td>${safeText(this.normalizeClientCategory(c.category))}</td>
         <td>${safeText(c.phone || '-')}</td>
         <td>${formatDateBR(c.dob || '')}</td>
@@ -11408,6 +11440,57 @@ class ConsultorioApp {
     return select.value;
   }
 
+  resizeImageFileToDataUrl(file, maxSize = 400, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      if (!file || !String(file.type || '').startsWith('image/')) {
+        reject(new Error('invalid-file'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error('read-error'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('image-load-error'));
+        img.onload = () => {
+          let width = img.naturalWidth || img.width;
+          let height = img.naturalHeight || img.height;
+          if (width > height) {
+            if (width > maxSize) { height = Math.round(height * (maxSize / width)); width = maxSize; }
+          } else if (height > maxSize) {
+            width = Math.round(width * (maxSize / height));
+            height = maxSize;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = String(reader.result || '');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  setClientPhotoPreview(dataUrl) {
+    const previewImg = document.getElementById('client-photo-preview-img');
+    const placeholderIcon = document.getElementById('client-photo-placeholder-icon');
+    const removeBtn = document.getElementById('btn-client-photo-remove');
+    const hiddenInput = document.getElementById('client-photo-data');
+    if (hiddenInput) hiddenInput.value = dataUrl || '';
+    if (previewImg) {
+      previewImg.src = dataUrl || '';
+      previewImg.style.display = dataUrl ? 'block' : 'none';
+    }
+    if (placeholderIcon) placeholderIcon.style.display = dataUrl ? 'none' : '';
+    if (removeBtn) removeBtn.style.display = dataUrl ? 'inline-flex' : 'none';
+  }
+
+  resetClientPhotoUploader() {
+    this.setClientPhotoPreview('');
+  }
+
   openClientModal(clientId = '') {
     const modal = document.getElementById('modal-client');
     if (!modal) return;
@@ -11415,6 +11498,7 @@ class ConsultorioApp {
     const form = document.getElementById('form-client');
     if (form) form.reset();
     resyncCustomSelectsWithin(form);
+    this.resetClientPhotoUploader();
     const clientDobInput = document.getElementById('client-dob');
     if (clientDobInput && clientDobInput._flatpickr) clientDobInput._flatpickr.clear();
 
@@ -11435,6 +11519,7 @@ class ConsultorioApp {
       if (c) {
         if (idInput) idInput.value = c.id;
         _anamneseData = c.anamnese || null;
+        this.setClientPhotoPreview(c.foto || '');
         const set = (id, val) => {
           const el = document.getElementById(id);
           if (el) el.value = val || '';
@@ -12354,7 +12439,8 @@ class ConsultorioApp {
       convenio: this.normalizeManagedOptionValue((document.getElementById('client-convenio') || {}).value || ''),
       planoFinanceiro: this.normalizeManagedOptionValue((document.getElementById('client-plano-financeiro') || {}).value || ''),
       tags: this.parseClientTags((document.getElementById('client-tags') || {}).value || '').join(', '),
-      anamnese: this.getAnamneseData()
+      anamnese: this.getAnamneseData(),
+      foto: String((document.getElementById('client-photo-data') || {}).value || '')
     };
 
     this.rememberClientCategory(category);

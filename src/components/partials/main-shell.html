@@ -830,6 +830,23 @@
     <form id="form-client">
       <input type="hidden" id="client-id">
       <div class="modal-body grid-2">
+        <div class="form-group grid-col-span-2 client-photo-field">
+          <label>Foto do Paciente</label>
+          <div class="client-photo-uploader">
+            <div class="client-photo-avatar" id="client-photo-avatar">
+              <img id="client-photo-preview-img" alt="Foto do paciente" style="display:none;">
+              <i data-lucide="user-round" id="client-photo-placeholder-icon"></i>
+            </div>
+            <div class="client-photo-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-client-photo-camera"><i data-lucide="camera"></i> Tirar foto</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-client-photo-gallery"><i data-lucide="image"></i> Escolher da galeria</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-client-photo-remove" style="display:none;color:var(--danger);"><i data-lucide="trash-2"></i> Remover foto</button>
+            </div>
+            <input type="file" accept="image/*" capture="environment" id="client-photo-input-camera" style="display:none;">
+            <input type="file" accept="image/*" id="client-photo-input-gallery" style="display:none;">
+            <input type="hidden" id="client-photo-data">
+          </div>
+        </div>
         <div class="form-group grid-col-span-2"><label for="client-name">Nome *</label><input type="text" id="client-name" class="form-control" required></div>
         <div class="form-group"><label for="client-phone">Telefone</label><input type="tel" id="client-phone" class="form-control" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000"></div>
         <div class="form-group"><label for="client-email">E-mail</label><input type="email" id="client-email" class="form-control"></div>

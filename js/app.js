@@ -8519,25 +8519,35 @@ class ConsultorioApp {
 
     try {
       if (this.isFirebaseSyncDirty() && !skipDirtyPush) {
+        // IMPORTANT: always push local dirty changes before pulling — never skip the push based
+        // on a *global* remote timestamp comparison. An earlier version of this code compared
+        // remoteUpdatedMillis (last write to app_meta/sync_state, from ANY device/collection) to
+        // getLocalLastPushMillis() and, if remote looked newer, skipped the local push entirely
+        // and accepted the remote snapshot instead — clearing the dirty flag without ever sending
+        // the pending edit. That heuristic predates pushAllDataToFirebase() becoming incremental
+        // (per-document, diffed against firebasePushShadowState): today, pushing can never clobber
+        // a document this device hasn't itself changed, since only docs whose local signature
+        // differs from the last known-synced shadow are actually written. So the old skip-push
+        // branch no longer protects anything — it only discarded genuine local edits whenever
+        // *any* unrelated remote write (e.g. another terminal saving something else, or even this
+        // same device's own immediate appointment-delete call) landed after this device's last
+        // confirmed push and before a pending push had a chance to finish (classic case: user
+        // saves an edit — including a bulk "apply to future appointments" update — then reloads or
+        // closes the tab before the async push completes). That was confirmed as a real data-loss
+        // bug: the edit survived in localStorage until this exact pull overwrote it with the stale
+        // remote copy. Delete-vs-newer-edit conflicts on the very same appointment are handled
+        // separately (and correctly) at pull time via filterRemoteAppointmentsByTombstones()/
+        // enforceAppointmentDeletesInFirebase(), so removing this global gate does not remove that
+        // protection.
         const remoteState = await this.getRemoteSyncState();
         const remoteUpdatedMillis = Number((remoteState && remoteState.updatedAtMillis) || 0);
-        const localLastPushMillis = this.getLocalLastPushMillis();
-        const shouldSkipPushToAvoidOverwrite = remoteUpdatedMillis > localLastPushMillis;
-
-        if (shouldSkipPushToAvoidOverwrite) {
-          // Another device has newer committed data; pull first to avoid overriding it.
-          if (!silent) {
-            this.showToast('Detectei dados mais novos em outro dispositivo. Atualizando sem sobrescrever.', 'info');
-          }
-          // Local pending flag must be cleared after accepting fresher remote snapshot.
-          this.setFirebaseSyncDirty(false);
-          if (remoteUpdatedMillis > 0) this.setLocalLastPushMillis(remoteUpdatedMillis);
-          this.logSyncAudit('warning', 'Push local bloqueado para não sobrescrever remoção remota mais nova.');
-        } else {
-          // Local changes (including deletions) can be safely sent first.
-          await this.pushAllDataToFirebase();
-          this.setFirebaseSyncDirty(false);
+        const remoteUpdatedByDeviceId = String((remoteState && remoteState.updatedByDeviceId) || '').trim();
+        if (remoteUpdatedMillis > this.getLocalLastPushMillis() && remoteUpdatedByDeviceId && remoteUpdatedByDeviceId !== this.firebaseDeviceId) {
+          this.logSyncAudit('info', 'Dados mais novos detectados em outro dispositivo; enviando alterações locais pendentes antes de sincronizar (push incremental é seguro por documento).');
         }
+
+        await this.pushAllDataToFirebase();
+        this.setFirebaseSyncDirty(false);
       }
 
       const collections = [

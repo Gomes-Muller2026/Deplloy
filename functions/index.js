@@ -204,7 +204,17 @@ exports.confirmarAgendamento = onRequest({
   try {
     const db = getFirestore();
     const docRef = db.collection('appointments').doc(appointmentId);
-    const doc = await docRef.get();
+    let doc = await docRef.get();
+
+    // O envio da confirmação salva o token localmente e abre o WhatsApp na hora, mas o
+    // push para o Firestore acontece em segundo plano (não é aguardado, para não travar
+    // o gesto do usuário que abre a janela do WhatsApp). Se o link for clicado quase
+    // imediatamente após o envio, o documento pode ainda não refletir o token novo —
+    // espera um pouco e tenta de novo antes de declarar o link inválido.
+    for (let attempt = 0; attempt < 5 && (!doc.exists || String(doc.data().confirmationToken || '') !== token); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      doc = await docRef.get();
+    }
 
     if (!doc.exists || String(doc.data().confirmationToken || '') !== token) {
       response.status(404).send(renderConfirmationPage({

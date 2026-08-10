@@ -355,6 +355,24 @@ const agendaModule = {
     if (!appointment) return 'not-found';
 
     const client = app.clients.find((c) => c.id === appointment.clientId);
+
+    // Reenviar gera SEMPRE um confirmationToken novo, o que invalida silenciosamente qualquer
+    // link já entregue ao paciente (o link antigo passa a bater "Link inválido ou expirado" na
+    // Cloud Function confirmarAgendamento). Se já existe uma confirmação pendente com token
+    // (ou seja, um link que pode já estar na conversa de WhatsApp do paciente), confirmamos com
+    // quem está operando antes de invalidá-lo — evita reenvios acidentais (duplo clique, clique
+    // repetido por não perceber que já foi enviado, etc.) quebrarem um link que o paciente ainda
+    // não abriu. Usa window.confirm (síncrono) de propósito: um modal assíncrono quebraria o
+    // "user gesture" exigido pelo navegador para o window.open do wa.me logo abaixo.
+    const hasPendingUnansweredLink = String(appointment.confirmationStatus || '').trim() === 'pendente' && Boolean(appointment.confirmationToken);
+    if (hasPendingUnansweredLink && !options.skipConfirm) {
+      const clientLabel = (client && client.name) || appointment.clientName || 'este cliente';
+      const whenLabel = `${formatDateBR(appointment.date)} às ${appointment.time || '--:--'}`;
+      const confirmMessage = `Já existe uma confirmação enviada para ${clientLabel} (${whenLabel}) que ainda está aguardando resposta.\n\nReenviar agora vai gerar um novo link — o link já enviado ao paciente deixará de funcionar.\n\nDeseja reenviar mesmo assim?`;
+      const proceed = window.confirm(confirmMessage);
+      if (!proceed) return 'cancelled';
+    }
+
     const rawPhone = (client && client.phone) || '';
     const phone = app.normalizeWhatsAppPhone(rawPhone);
     if (!phone) {

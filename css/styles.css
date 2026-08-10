@@ -4160,6 +4160,13 @@ input[type="time"].agenda-hour-range-input {
   padding-right: 1.9rem;
 }
 
+.agenda-event-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
 .agenda-event .agenda-event-whatsapp {
   width: 22px;
   height: 22px;

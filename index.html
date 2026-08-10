@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260809-80">
+  <link rel="stylesheet" href="css/styles.css?v=20260810-1">
 </head>
 <body>
   <div id="login-root">
@@ -638,6 +638,39 @@
                   <button class="btn btn-secondary" type="button" id="btn-ws-confirm-duplicate"><i data-lucide="copy"></i> Duplicar Selecionado</button>
                   <button class="btn btn-secondary" type="button" id="btn-ws-confirm-reset"><i data-lucide="rotate-ccw"></i> Restaurar Texto</button>
                   <button class="btn btn-ghost" type="button" id="btn-ws-confirm-delete" style="color:var(--danger);"><i data-lucide="trash-2"></i> Excluir Selecionado</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card grid-col-span-2">
+              <div class="card-header">
+                <h3><i data-lucide="banknote"></i> Lembrete de Pagamento</h3>
+              </div>
+              <div class="card-body">
+                <p>Mensagem enviada separadamente da confirmação (ex.: na véspera), sem link de confirmação, cobrando o pagamento via Pix.</p>
+                <div class="grid-2" style="margin-top:0.8rem;">
+                  <div class="form-group">
+                    <label for="ws-reminder-template-select">Envios cadastrados</label>
+                    <select id="ws-reminder-template-select" class="form-control"></select>
+                  </div>
+                  <div class="form-group">
+                    <label for="ws-reminder-template-name">Nome do envio</label>
+                    <input type="text" id="ws-reminder-template-name" class="form-control" placeholder="Ex: Lembrete véspera">
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top:0.8rem;">
+                  <label for="ws-reminder-template">Mensagem de lembrete</label>
+                  <textarea id="ws-reminder-template" class="form-control" rows="10" placeholder="Digite o template de lembrete..."></textarea>
+                </div>
+                <div style="background: #f1f5f9; padding:0.85rem 1rem; border-radius: var(--radius-md); border:1px solid rgba(15,23,42,0.1); font-size:0.82rem; color:#334155; margin-top:1rem;">
+                  Variáveis disponíveis: <strong>{{cliente}}</strong>, <strong>{{data}}</strong>, <strong>{{hora}}</strong>, <strong>{{procedimento}}</strong>, <strong>{{valor}}</strong>, <strong>{{status}}</strong>, <strong>{{assinatura}}</strong>
+                </div>
+                <div class="config-actions" style="margin-top:1rem;">
+                  <button class="btn btn-primary" type="button" id="btn-ws-reminder-save-new"><i data-lucide="plus"></i> Cadastrar Novo Envio</button>
+                  <button class="btn btn-secondary" type="button" id="btn-ws-reminder-update"><i data-lucide="save"></i> Atualizar Selecionado</button>
+                  <button class="btn btn-secondary" type="button" id="btn-ws-reminder-duplicate"><i data-lucide="copy"></i> Duplicar Selecionado</button>
+                  <button class="btn btn-secondary" type="button" id="btn-ws-reminder-reset"><i data-lucide="rotate-ccw"></i> Restaurar Texto</button>
+                  <button class="btn btn-ghost" type="button" id="btn-ws-reminder-delete" style="color:var(--danger);"><i data-lucide="trash-2"></i> Excluir Selecionado</button>
                 </div>
               </div>
             </div>
@@ -1550,8 +1583,8 @@
   <div class="toast-container" id="toast-container"></div>
 
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
-  <script src="src/modules/agenda/agendaModule.js?v=20260809-3"></script>
+  <script src="src/modules/agenda/agendaModule.js?v=20260810-1"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260809-48"></script>
+  <script src="js/app.js?v=20260810-1"></script>
 </body>
 </html>

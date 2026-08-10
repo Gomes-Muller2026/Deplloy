@@ -1016,10 +1016,13 @@ class ConsultorioApp {
     };
     this.whatsAppConfirmTemplate = DEFAULT_WHATSAPP_CONFIRM_TEMPLATE;
     this.whatsAppBirthdayTemplate = DEFAULT_WHATSAPP_BIRTHDAY_TEMPLATE;
+    this.whatsAppReminderTemplate = DEFAULT_WHATSAPP_REMINDER_TEMPLATE;
     this.whatsAppConfirmTemplates = [];
     this.whatsAppBirthdayTemplates = [];
+    this.whatsAppReminderTemplates = [];
     this.whatsAppSelectedConfirmTemplateId = '';
     this.whatsAppSelectedBirthdayTemplateId = '';
+    this.whatsAppSelectedReminderTemplateId = '';
     this.paymentReceiptTemplate = DEFAULT_PAYMENT_RECEIPT_TEMPLATE;
     this.paymentReceiptProfile = { ...DEFAULT_PAYMENT_RECEIPT_PROFILE };
     this.paymentReceiptLogoDataUrl = '';
@@ -3802,6 +3805,9 @@ class ConsultorioApp {
     if (kind === 'birthday') {
       this.whatsAppBirthdayTemplates.unshift(next);
       this.whatsAppSelectedBirthdayTemplateId = next.id;
+    } else if (kind === 'reminder') {
+      this.whatsAppReminderTemplates.unshift(next);
+      this.whatsAppSelectedReminderTemplateId = next.id;
     } else {
       this.whatsAppConfirmTemplates.unshift(next);
       this.whatsAppSelectedConfirmTemplateId = next.id;
@@ -3828,6 +3834,12 @@ class ConsultorioApp {
     if (kind === 'birthday') {
       this.whatsAppBirthdayTemplates = this.whatsAppBirthdayTemplates.map((tpl) => {
         if (tpl.id !== this.whatsAppSelectedBirthdayTemplateId) return tpl;
+        changed = true;
+        return { ...tpl, name, text };
+      });
+    } else if (kind === 'reminder') {
+      this.whatsAppReminderTemplates = this.whatsAppReminderTemplates.map((tpl) => {
+        if (tpl.id !== this.whatsAppSelectedReminderTemplateId) return tpl;
         changed = true;
         return { ...tpl, name, text };
       });
@@ -3860,6 +3872,9 @@ class ConsultorioApp {
     if (kind === 'birthday') {
       this.whatsAppBirthdayTemplates = this.whatsAppBirthdayTemplates.filter((tpl) => tpl.id !== this.whatsAppSelectedBirthdayTemplateId);
       this.whatsAppSelectedBirthdayTemplateId = this.whatsAppBirthdayTemplates[0].id;
+    } else if (kind === 'reminder') {
+      this.whatsAppReminderTemplates = this.whatsAppReminderTemplates.filter((tpl) => tpl.id !== this.whatsAppSelectedReminderTemplateId);
+      this.whatsAppSelectedReminderTemplateId = this.whatsAppReminderTemplates[0].id;
     } else {
       this.whatsAppConfirmTemplates = this.whatsAppConfirmTemplates.filter((tpl) => tpl.id !== this.whatsAppSelectedConfirmTemplateId);
       this.whatsAppSelectedConfirmTemplateId = this.whatsAppConfirmTemplates[0].id;
@@ -3888,6 +3903,9 @@ class ConsultorioApp {
     if (kind === 'birthday') {
       this.whatsAppBirthdayTemplates.unshift(copy);
       this.whatsAppSelectedBirthdayTemplateId = copy.id;
+    } else if (kind === 'reminder') {
+      this.whatsAppReminderTemplates.unshift(copy);
+      this.whatsAppSelectedReminderTemplateId = copy.id;
     } else {
       this.whatsAppConfirmTemplates.unshift(copy);
       this.whatsAppSelectedConfirmTemplateId = copy.id;
@@ -3905,6 +3923,10 @@ class ConsultorioApp {
 
     if (kind === 'birthday') {
       this.whatsAppBirthdayTemplates = this.whatsAppBirthdayTemplates.map((tpl) =>
+        tpl.id === selectedId ? { ...tpl, text: state.defaultText } : tpl
+      );
+    } else if (kind === 'reminder') {
+      this.whatsAppReminderTemplates = this.whatsAppReminderTemplates.map((tpl) =>
         tpl.id === selectedId ? { ...tpl, text: state.defaultText } : tpl
       );
     } else {
@@ -6918,6 +6940,11 @@ class ConsultorioApp {
       birthdaySelect.addEventListener('change', () => this.selectWhatsAppTemplate('birthday', birthdaySelect.value));
     }
 
+    const reminderSelect = document.getElementById('ws-reminder-template-select');
+    if (reminderSelect) {
+      reminderSelect.addEventListener('change', () => this.selectWhatsAppTemplate('reminder', reminderSelect.value));
+    }
+
     const btnConfirmSaveNew = document.getElementById('btn-ws-confirm-save-new');
     if (btnConfirmSaveNew) btnConfirmSaveNew.addEventListener('click', () => this.saveNewWhatsAppTemplate('confirm'));
 
@@ -6947,6 +6974,21 @@ class ConsultorioApp {
 
     const btnResetBirthdayTemplate = document.getElementById('btn-ws-birthday-reset');
     if (btnResetBirthdayTemplate) btnResetBirthdayTemplate.addEventListener('click', () => this.resetSelectedWhatsAppTemplate('birthday'));
+
+    const btnReminderSaveNew = document.getElementById('btn-ws-reminder-save-new');
+    if (btnReminderSaveNew) btnReminderSaveNew.addEventListener('click', () => this.saveNewWhatsAppTemplate('reminder'));
+
+    const btnReminderUpdate = document.getElementById('btn-ws-reminder-update');
+    if (btnReminderUpdate) btnReminderUpdate.addEventListener('click', () => this.updateSelectedWhatsAppTemplate('reminder'));
+
+    const btnReminderDelete = document.getElementById('btn-ws-reminder-delete');
+    if (btnReminderDelete) btnReminderDelete.addEventListener('click', () => this.deleteSelectedWhatsAppTemplate('reminder'));
+
+    const btnReminderDuplicate = document.getElementById('btn-ws-reminder-duplicate');
+    if (btnReminderDuplicate) btnReminderDuplicate.addEventListener('click', () => this.duplicateSelectedWhatsAppTemplate('reminder'));
+
+    const btnResetReminderTemplate = document.getElementById('btn-ws-reminder-reset');
+    if (btnResetReminderTemplate) btnResetReminderTemplate.addEventListener('click', () => this.resetSelectedWhatsAppTemplate('reminder'));
 
     const btnRefreshBirthdays = document.getElementById('btn-ws-birthday-refresh');
     if (btnRefreshBirthdays) btnRefreshBirthdays.addEventListener('click', () => this.renderWhatsAppBirthdayList());
@@ -9537,6 +9579,7 @@ class ConsultorioApp {
     this.ensureWhatsAppTemplateCollections();
     this.renderWhatsAppTemplateEditor('confirm');
     this.renderWhatsAppTemplateEditor('birthday');
+    this.renderWhatsAppTemplateEditor('reminder');
 
     this.renderWhatsAppBirthdayList();
   }
@@ -10078,9 +10121,14 @@ class ConsultorioApp {
             <div class="agenda-event ${statusClass} ${isReminderTarget ? 'agenda-reminder-target' : ''} ${a.stackSize > 1 ? 'agenda-event-cascade' : ''}" style="${agendaEventInlineStyle(a.color || DEFAULT_APPOINTMENT_COLOR)} ${positionStyle}" role="button" tabindex="0" data-appointment-id="${safeText(a.id || '')}" onclick="app.openAppointmentModal('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.openAppointmentModal('${a.id}');}">
               <div class="agenda-event-header">
                 <span class="agenda-event-time">${safeText(a.time || '--:--')}</span>
-                <button class="agenda-event-whatsapp" type="button" title="Enviar confirmação no WhatsApp" onclick="event.stopPropagation();app.sendAppointmentWhatsApp('${a.id}')">
-                  <i data-lucide="message-circle"></i>
-                </button>
+                <span class="agenda-event-actions">
+                  <button class="agenda-event-whatsapp" type="button" title="Enviar confirmação no WhatsApp" onclick="event.stopPropagation();app.sendAppointmentWhatsApp('${a.id}')">
+                    <i data-lucide="message-circle"></i>
+                  </button>
+                  <button class="agenda-event-whatsapp" type="button" title="Enviar lembrete de pagamento no WhatsApp" onclick="event.stopPropagation();app.sendAppointmentReminderWhatsApp('${a.id}')">
+                    <i data-lucide="banknote"></i>
+                  </button>
+                </span>
               </div>
               <div class="agenda-event-title">${safeText(a.clientName || '-')}</div>
               <div class="agenda-event-meta">${safeText(a.procedure || 'Consulta')}</div>

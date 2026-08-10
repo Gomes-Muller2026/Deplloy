@@ -363,7 +363,6 @@ const safeText = (value) => String(value == null ? '' : value)
    ========================================================================== */
 const CUSTOM_SELECT_IDS = [
   'appt-client-id',
-  'appt-procedure',
   'appt-payment-method',
   'appt-status',
   'appt-recurrence-type',
@@ -5322,9 +5321,8 @@ class ConsultorioApp {
   }
 
   ensureAppointmentProcedureOptions() {
-    const select = document.getElementById('appt-procedure');
-    if (!select) return;
-    if (select.options && select.options.length > 0) return;
+    const datalist = document.getElementById('appt-procedure-options');
+    if (!datalist) return;
 
     const defaults = [
       'Consulta Individual',
@@ -5333,9 +5331,20 @@ class ConsultorioApp {
       'Avaliação Inicial'
     ];
 
-    select.innerHTML = ['<option value="">Selecione uma abordagem</option>']
-      .concat(defaults.map((name) => `<option value="${safeText(name)}">${safeText(name)}</option>`))
-      .join('');
+    const used = (this.appointments || [])
+      .flatMap((a) => this.parseClientTags(a.procedure));
+
+    const seen = new Set();
+    const options = [];
+    defaults.concat(used).forEach((name) => {
+      const value = this.normalizeManagedOptionValue(name);
+      const key = this.normalizeManagedOptionKey(value);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      options.push(value);
+    });
+
+    datalist.innerHTML = options.map((name) => `<option value="${safeText(name)}"></option>`).join('');
   }
 
   selectAppointmentColor(color) {
@@ -12380,6 +12389,7 @@ class ConsultorioApp {
 
     this.populateClientSelectOptions();
     this.populateAppointmentPackageOptions();
+    this.ensureAppointmentProcedureOptions();
 
     const idInput = document.getElementById('appointment-id');
     const title = document.getElementById('modal-appointment-title');
@@ -12591,7 +12601,7 @@ class ConsultorioApp {
     const dateRaw = String((document.getElementById('appt-date') || {}).value || '').trim();
     const date = this.normalizeDobToIso(dateRaw);
     const time = String((document.getElementById('appt-time') || {}).value || '').trim();
-    const procedure = String((document.getElementById('appt-procedure') || {}).value || '').trim();
+    const procedure = this.parseClientTags((document.getElementById('appt-procedure') || {}).value || '').join(', ');
     const price = toNumber((document.getElementById('appt-price') || {}).value || 0);
 
     if (dateRaw && !date) {

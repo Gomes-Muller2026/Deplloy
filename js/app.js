@@ -5400,8 +5400,8 @@ class ConsultorioApp {
   }
 
   ensureAppointmentProcedureOptions() {
-    const datalist = document.getElementById('appt-procedure-options');
-    if (!datalist) return;
+    const wrapper = document.getElementById('appt-procedure-multiselect');
+    if (!wrapper) return;
 
     const defaults = [
       'Consulta Individual',
@@ -5424,34 +5424,199 @@ class ConsultorioApp {
     });
 
     this.appointmentProcedureCandidates = candidates;
+    this.renderAppointmentProcedureTags();
+    this.renderAppointmentProcedurePanel('');
 
-    const input = document.getElementById('appt-procedure');
-    this.renderAppointmentProcedureDatalist(input ? input.value : '');
+    if (wrapper.dataset.procedureMultiselectBound) return;
+    wrapper.dataset.procedureMultiselectBound = 'true';
 
-    // O <datalist> nativo casa o texto digitado inteiro contra cada <option>, então num
-    // campo de múltiplos valores separados por vírgula (ex.: "Consulta Individual, Sess")
-    // nenhuma sugestão bateria a partir do 2º item. Por isso reconstruímos as opções a
-    // cada tecla digitada, prefixando cada candidato com o que já foi digitado antes da
-    // última vírgula — assim o navegador volta a conseguir sugerir o restante.
-    if (input && !input.dataset.procedureAutocompleteBound) {
-      input.dataset.procedureAutocompleteBound = 'true';
-      input.addEventListener('input', () => this.renderAppointmentProcedureDatalist(input.value));
+    // Movido para document.body para escapar do overflow:hidden + backdrop-filter
+    // do .modal-card (ver comentário do CSS de .procedure-multiselect-panel).
+    const panel = document.getElementById('appt-procedure-panel');
+    if (panel && panel.parentNode !== document.body) {
+      document.body.appendChild(panel);
+    }
+
+    const searchInput = document.getElementById('appt-procedure-input');
+    const openPanel = () => {
+      if (panel) panel.classList.add('is-open');
+      this.renderAppointmentProcedurePanel(searchInput ? searchInput.value : '');
+      this.positionAppointmentProcedurePanel();
+    };
+    const closePanel = () => {
+      if (panel) panel.classList.remove('is-open');
+    };
+
+    if (searchInput) {
+      searchInput.addEventListener('focus', openPanel);
+      searchInput.addEventListener('click', openPanel);
+      searchInput.addEventListener('input', () => this.renderAppointmentProcedurePanel(searchInput.value));
+      searchInput.addEventListener('keydown', (evt) => {
+        if (evt.key === 'Enter') {
+          evt.preventDefault();
+          const typed = searchInput.value.trim();
+          if (typed) this.addAppointmentProcedureValue(typed);
+        } else if (evt.key === 'Escape') {
+          closePanel();
+        } else if (evt.key === 'Backspace' && !searchInput.value) {
+          const values = this.getAppointmentProcedureValues();
+          if (values.length) this.removeAppointmentProcedureValue(values[values.length - 1]);
+        }
+      });
+    }
+
+    document.addEventListener('click', (evt) => {
+      if (!wrapper.contains(evt.target) && !(panel && panel.contains(evt.target))) closePanel();
+    });
+
+    window.addEventListener('resize', () => {
+      if (panel && panel.classList.contains('is-open')) this.positionAppointmentProcedurePanel();
+    });
+  }
+
+  getAppointmentProcedureValues() {
+    const hidden = document.getElementById('appt-procedure');
+    return this.parseClientTags(hidden ? hidden.value : '');
+  }
+
+  setAppointmentProcedureValues(values) {
+    const hidden = document.getElementById('appt-procedure');
+    if (!hidden) return;
+    hidden.value = (values || []).join(', ');
+    this.renderAppointmentProcedureTags();
+    const searchInput = document.getElementById('appt-procedure-input');
+    this.renderAppointmentProcedurePanel(searchInput ? searchInput.value : '');
+  }
+
+  addAppointmentProcedureValue(name) {
+    const value = this.normalizeManagedOptionValue(name);
+    if (!value) return;
+    const key = this.normalizeManagedOptionKey(value);
+    const values = this.getAppointmentProcedureValues();
+    if (values.some((existing) => this.normalizeManagedOptionKey(existing) === key)) return;
+
+    if (!(this.appointmentProcedureCandidates || []).some((c) => this.normalizeManagedOptionKey(c) === key)) {
+      this.appointmentProcedureCandidates = [...(this.appointmentProcedureCandidates || []), value];
+    }
+
+    this.setAppointmentProcedureValues([...values, value]);
+    const searchInput = document.getElementById('appt-procedure-input');
+    if (searchInput) {
+      searchInput.value = '';
+      searchInput.focus();
     }
   }
 
-  renderAppointmentProcedureDatalist(currentValue) {
-    const datalist = document.getElementById('appt-procedure-options');
-    if (!datalist) return;
+  removeAppointmentProcedureValue(name) {
+    const key = this.normalizeManagedOptionKey(name);
+    const values = this.getAppointmentProcedureValues().filter((v) => this.normalizeManagedOptionKey(v) !== key);
+    this.setAppointmentProcedureValues(values);
+  }
+
+  renderAppointmentProcedureTags() {
+    const container = document.getElementById('appt-procedure-tags');
+    if (!container) return;
+    const values = this.getAppointmentProcedureValues();
+    container.innerHTML = values.map((name) => `
+      <span class="procedure-tag">
+        ${safeText(name)}
+        <button type="button" class="procedure-tag-remove" data-procedure-remove="${safeText(name)}" aria-label="Remover ${safeText(name)}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </span>
+    `).join('');
+
+    container.querySelectorAll('[data-procedure-remove]').forEach((btn) => {
+      btn.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        this.removeAppointmentProcedureValue(btn.getAttribute('data-procedure-remove'));
+      });
+    });
+  }
+
+  renderAppointmentProcedurePanel(filterText) {
+    const panel = document.getElementById('appt-procedure-panel');
+    if (!panel) return;
 
     const candidates = this.appointmentProcedureCandidates || [];
-    const raw = String(currentValue || '');
-    const lastCommaIndex = raw.lastIndexOf(',');
-    const prefix = lastCommaIndex >= 0 ? `${raw.slice(0, lastCommaIndex + 1)} ` : '';
+    const selectedValues = this.getAppointmentProcedureValues();
+    const selectedKeys = new Set(selectedValues.map((v) => this.normalizeManagedOptionKey(v)));
+    const filter = String(filterText || '').trim().toLowerCase();
 
-    const alreadyPicked = new Set(this.parseClientTags(raw).map((tag) => this.normalizeManagedOptionKey(tag)));
-    const remaining = candidates.filter((name) => !alreadyPicked.has(this.normalizeManagedOptionKey(name)));
+    const visible = filter
+      ? candidates.filter((name) => name.toLowerCase().includes(filter))
+      : candidates;
 
-    datalist.innerHTML = remaining.map((name) => `<option value="${safeText(prefix + name)}"></option>`).join('');
+    const rowsHtml = visible.length
+      ? visible.map((name) => {
+          const isSelected = selectedKeys.has(this.normalizeManagedOptionKey(name));
+          return `
+            <div class="procedure-option-row${isSelected ? ' is-selected' : ''}" data-procedure-option="${safeText(name)}">
+              <input type="checkbox" ${isSelected ? 'checked' : ''} tabindex="-1">
+              <span>${safeText(name)}</span>
+            </div>
+          `;
+        }).join('')
+      : '<div class="procedure-empty-row">Nenhum procedimento encontrado.</div>';
+
+    const exactMatch = filter && candidates.some((name) => name.toLowerCase() === filter);
+    const addNewHtml = filter && !exactMatch
+      ? `<div class="procedure-add-new-row" data-procedure-add="${safeText(filterText.trim())}"><i data-lucide="plus"></i> Adicionar "${safeText(filterText.trim())}"</div>`
+      : '';
+
+    panel.innerHTML = rowsHtml + addNewHtml;
+
+    panel.querySelectorAll('[data-procedure-option]').forEach((row) => {
+      row.addEventListener('click', () => {
+        const name = row.getAttribute('data-procedure-option');
+        const key = this.normalizeManagedOptionKey(name);
+        if (selectedKeys.has(key)) {
+          this.removeAppointmentProcedureValue(name);
+        } else {
+          this.addAppointmentProcedureValue(name);
+        }
+      });
+    });
+
+    const addRow = panel.querySelector('[data-procedure-add]');
+    if (addRow) {
+      addRow.addEventListener('click', () => {
+        this.addAppointmentProcedureValue(addRow.getAttribute('data-procedure-add'));
+      });
+      if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    }
+
+    if (panel.classList.contains('is-open')) this.positionAppointmentProcedurePanel();
+  }
+
+  // Painel usa position:fixed (não absolute) porque o modal-body é scroll-clipping
+  // (overflow-y:scroll) — um painel absolute cortaria/sumiria ao abrir perto do fim
+  // da área visível. Calculamos as coordenadas em viewport a partir do input,
+  // mesma técnica já usada por positionCustomSelectList para os outros dropdowns.
+  positionAppointmentProcedurePanel() {
+    const input = document.getElementById('appt-procedure-input');
+    const panel = document.getElementById('appt-procedure-panel');
+    if (!input || !panel) return;
+
+    const rect = input.getBoundingClientRect();
+    const viewportH = window.innerHeight || document.documentElement.clientHeight;
+    const gap = 6;
+    const preferredMax = 220;
+    const spaceBelow = viewportH - rect.bottom - gap;
+    const spaceAbove = rect.top - gap;
+
+    panel.style.left = `${Math.round(rect.left)}px`;
+    panel.style.width = `${Math.round(rect.width)}px`;
+
+    if (spaceBelow < 140 && spaceAbove > spaceBelow) {
+      panel.style.top = 'auto';
+      panel.style.bottom = `${Math.round(viewportH - rect.top + gap)}px`;
+      panel.style.maxHeight = `${Math.max(120, Math.min(preferredMax, spaceAbove))}px`;
+    } else {
+      panel.style.bottom = 'auto';
+      panel.style.top = `${Math.round(rect.bottom + gap)}px`;
+      panel.style.maxHeight = `${Math.max(120, Math.min(preferredMax, spaceBelow))}px`;
+    }
   }
 
   selectAppointmentColor(color) {
@@ -12764,6 +12929,7 @@ class ConsultorioApp {
         }
         set('appt-time', a.time);
         set('appt-procedure', a.procedure);
+        this.renderAppointmentProcedureTags();
         set('appt-price', this.getEffectiveAppointmentPrice(a));
         set('appt-payment-method', a.paymentMethod || 'Pix');
         set('appt-status', a.status || 'Agendado');
@@ -12786,6 +12952,12 @@ class ConsultorioApp {
     const modal = document.getElementById('modal-appointment');
     if (modal) modal.classList.remove('active');
     this.stopVoiceNarrationRecording();
+    // O painel de Procedimento vive em document.body (fora do modal, ver
+    // ensureAppointmentProcedureOptions) para escapar do clipping do
+    // .modal-card — por isso precisa ser fechado manualmente aqui, senão
+    // ficaria flutuando visível sobre o app depois do modal fechar.
+    const procedurePanel = document.getElementById('appt-procedure-panel');
+    if (procedurePanel) procedurePanel.classList.remove('is-open');
   }
 
   openPaymentModal(appointmentId) {

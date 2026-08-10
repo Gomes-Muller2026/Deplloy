@@ -6339,6 +6339,138 @@ body.analytics-focus-mode .analytics-grid {
     inset 0 0 0 1px rgba(10, 132, 255, 0.16);
 }
 
+/* ── Procedimento: dropdown multi-seleção com checkboxes ─────────────── */
+#appt-procedure-multiselect {
+  position: relative;
+}
+
+#appt-procedure-multiselect .procedure-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+#appt-procedure-multiselect .procedure-tags:not(:empty) {
+  margin-bottom: 0.4rem;
+}
+
+#appt-procedure-multiselect .procedure-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.35rem 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e0f2fe;
+  background: rgba(10, 132, 255, 0.22);
+  border: 1px solid rgba(10, 132, 255, 0.4);
+}
+
+#appt-procedure-multiselect .procedure-tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+#appt-procedure-multiselect .procedure-tag-remove:hover {
+  background: rgba(239, 68, 68, 0.5);
+}
+
+#appt-procedure-multiselect .procedure-tag-remove svg {
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
+
+/* O painel é movido para document.body via JS assim que o campo é montado
+   (ver ensureAppointmentProcedureOptions), por isso as regras abaixo NÃO
+   ficam escopadas sob #appt-procedure-multiselect — em tempo de execução o
+   painel deixa de ser descendente do wrapper. Motivo da mudança: .modal-card
+   usa backdrop-filter + overflow:hidden, o que cria um "containing block"
+   para descendentes position:fixed e os corta nas bordas do modal; um
+   painel position:fixed só escapa desse recorte se sair da árvore do modal
+   por completo — mesma técnica já usada por positionCustomSelectList/
+   document.body.appendChild(list) para os outros dropdowns customizados. */
+.procedure-multiselect-panel {
+  display: none;
+  position: fixed;
+  z-index: 1300;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 0.4rem;
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 18px 34px rgba(2, 6, 23, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+
+.procedure-multiselect-panel.is-open {
+  display: block;
+}
+
+.procedure-multiselect-panel .procedure-option-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 9px;
+  cursor: pointer;
+  color: #f1f5f9;
+  font-size: 0.86rem;
+}
+
+.procedure-multiselect-panel .procedure-option-row:hover {
+  background: rgba(10, 132, 255, 0.16);
+}
+
+.procedure-multiselect-panel .procedure-option-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #0A84FF;
+  pointer-events: none;
+}
+
+.procedure-multiselect-panel .procedure-option-row.is-selected {
+  color: #7dd3fc;
+  font-weight: 700;
+}
+
+.procedure-multiselect-panel .procedure-add-new-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 9px;
+  cursor: pointer;
+  color: #bef264;
+  font-size: 0.86rem;
+  font-weight: 600;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  margin-top: 0.25rem;
+  padding-top: 0.6rem;
+}
+
+.procedure-multiselect-panel .procedure-add-new-row:hover {
+  background: rgba(190, 242, 100, 0.14);
+}
+
+.procedure-multiselect-panel .procedure-empty-row {
+  padding: 0.5rem 0.6rem;
+  color: rgba(226, 232, 240, 0.55);
+  font-size: 0.82rem;
+}
+
 #modal-appointment .modal-footer,
 #modal-client .modal-footer,
 #modal-expense .modal-footer,

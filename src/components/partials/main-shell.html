@@ -1081,7 +1081,15 @@
         <div class="form-group"><label for="appt-client-id">Paciente *</label><select id="appt-client-id" class="form-control" required></select></div>
         <div class="form-group"><label for="appt-date">Data *</label><input type="text" id="appt-date" class="form-control date-input" required></div>
         <div class="form-group"><label for="appt-time">Horário *</label><input type="time" id="appt-time" class="form-control" required></div>
-        <div class="form-group"><label for="appt-procedure">Procedimento *</label><input type="text" id="appt-procedure" class="form-control" list="appt-procedure-options" placeholder="Digite ou selecione procedimentos, separados por vírgula" autocomplete="off" required><datalist id="appt-procedure-options"></datalist></div>
+        <div class="form-group">
+          <label for="appt-procedure-input">Procedimento *</label>
+          <div class="procedure-multiselect" id="appt-procedure-multiselect">
+            <div class="procedure-tags" id="appt-procedure-tags"></div>
+            <input type="text" id="appt-procedure-input" class="form-control procedure-multiselect-input" placeholder="Selecionar ou digitar procedimento..." autocomplete="off">
+            <input type="hidden" id="appt-procedure">
+            <div class="procedure-multiselect-panel" id="appt-procedure-panel"></div>
+          </div>
+        </div>
         <div class="form-group"><label for="appt-price">Valor (R$) *</label><input type="number" step="0.01" min="0" id="appt-price" class="form-control" required></div>
         <div class="form-group"><label for="appt-payment-method">Forma de Pagamento</label><select id="appt-payment-method" class="form-control"><option value="Pix">Pix</option><option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option><option value="Transferência">Transferência</option></select></div>
         <div class="form-group"><label for="appt-package">Pacote</label><select id="appt-package" class="form-control"><option value="">Nenhum</option></select><div style="display:flex; justify-content:flex-end; margin-top:0.45rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-manage-appt-package">Gerenciar pacotes</button></div></div>

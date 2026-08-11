@@ -433,22 +433,19 @@ const agendaModule = {
     const text = `${baseText}\n\nPor favor, confirme clicando no link abaixo:\n${link}`;
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-    const opened = window.open(url, '_blank', 'noopener');
 
-    // O navegador pode bloquear pop-ups abertos em sequência no mesmo clique
-    // (Chrome, por padrão, só permite 1 por gesto do usuário). Nesse caso
-    // window.open retorna null/undefined: tratamos como "bloqueado" em vez de
-    // marcar como enviado, e deixamos o item na fila para um clique manual.
-    if (!opened) {
-      if (typeof app.logSyncAudit === 'function') {
-        app.logSyncAudit('warning', `Confirmação: pop-up do WhatsApp bloqueado pelo navegador para consulta ${appointmentId}; token NÃO foi salvo, aguardando clique manual.`);
-      }
-      if (!Array.isArray(app.agendaConfirmPendingQueue)) app.agendaConfirmPendingQueue = [];
-      if (!app.agendaConfirmPendingQueue.includes(appointmentId)) app.agendaConfirmPendingQueue.push(appointmentId);
-      if (!options.skipRender) app.render();
-      return 'blocked';
-    }
-
+    // CRÍTICO: salva o token ANTES de checar se o WhatsApp abriu, não depois. Quando o WhatsApp
+    // Desktop está instalado, o navegador mostra um diálogo nativo "Abrir WhatsApp?" e, durante
+    // essa transição, window.open() costuma retornar null/undefined — exatamente como um pop-up
+    // bloqueado — MESMO QUE o usuário em seguida clique "Abrir WhatsApp" e a mensagem seja
+    // realmente enviada ao paciente. Se a gente só persiste o token quando `opened` é truthy
+    // (como era antes), a mensagem sai com um link cujo token nunca existiu em lugar nenhum: o
+    // paciente recebe um link que bate "Link inválido ou expirado" pra sempre, sem nenhum jeito
+    // de perceber isso depois. O texto da mensagem (com o link) já está 100% determinado neste
+    // ponto de qualquer forma, então não custa nada persistir sempre — o pior caso de salvar sem
+    // o WhatsApp de fato ter aberto é uma confirmação "pendente" que ninguém recebeu ainda, o que
+    // é inofensivo (o botão de reenvio manual cobre esse caso) comparado a um link que nunca vai
+    // funcionar.
     app.appointments = app.appointments.map((a) => (a.id === appointmentId ? {
       ...a,
       confirmationStatus: 'pendente',
@@ -456,15 +453,34 @@ const agendaModule = {
       confirmationSentAt: new Date().toISOString()
     } : a));
 
-    if (Array.isArray(app.agendaConfirmPendingQueue)) {
-      app.agendaConfirmPendingQueue = app.agendaConfirmPendingQueue.filter((id) => id !== appointmentId);
-    }
-
     if (typeof app.logSyncAudit === 'function') {
       app.logSyncAudit('info', `Confirmação: token gerado e salvo localmente para consulta ${appointmentId}; iniciando push.`);
     }
 
     app.saveData();
+
+    const opened = window.open(url, '_blank', 'noopener');
+
+    // O navegador pode bloquear/adiar a abertura em sequência no mesmo clique, ou mostrar o
+    // diálogo nativo de "Abrir WhatsApp?" descrito acima. Nesse caso window.open retorna
+    // null/undefined: o token já está salvo e válido, mas não temos certeza se a mensagem foi
+    // de fato entregue ao paciente — deixa o item na fila para um clique manual reabrir o
+    // WhatsApp (o link já funciona, então mesmo que o paciente tenha recebido pela via nativa,
+    // nada quebra).
+    if (!opened) {
+      if (typeof app.logSyncAudit === 'function') {
+        app.logSyncAudit('warning', `Confirmação: WhatsApp não abriu automaticamente para consulta ${appointmentId} (token já salvo); aguardando clique manual para reabrir.`);
+      }
+      if (!Array.isArray(app.agendaConfirmPendingQueue)) app.agendaConfirmPendingQueue = [];
+      if (!app.agendaConfirmPendingQueue.includes(appointmentId)) app.agendaConfirmPendingQueue.push(appointmentId);
+      if (!options.skipRender) app.render();
+      return 'blocked';
+    }
+
+    if (Array.isArray(app.agendaConfirmPendingQueue)) {
+      app.agendaConfirmPendingQueue = app.agendaConfirmPendingQueue.filter((id) => id !== appointmentId);
+    }
+
     if (!options.skipRender) app.render();
     return 'sent';
   },

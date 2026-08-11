@@ -4948,7 +4948,6 @@ class ConsultorioApp {
     if (startDateInput && !startDateInput.value) startDateInput.value = this.formatTopDateForInput(currentMonth.start);
     if (endDateInput && !endDateInput.value) endDateInput.value = this.formatTopDateForInput(currentMonth.end);
 
-    this.syncTopDatesToAgendaFilters();
     this.ensureAppointmentProcedureOptions();
     this.loadSoundSettings();
     this.updateSoundControlsUI();

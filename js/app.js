@@ -1475,6 +1475,44 @@ class ConsultorioApp {
     this.saveStore();
   }
 
+  // Espelha, no lado do pull, a mesma proteção que pushAllDataToFirebase já aplica no lado do
+  // push (extractAppointmentConfirmationFields/stripAppointmentConfirmationFields): campos de
+  // confirmação (confirmationStatus/confirmationToken/confirmationSentAt/confirmationRespondedAt)
+  // só devem vir do remoto se ESTE dispositivo não tiver uma mudança local desses campos ainda
+  // não confirmada como enviada. Sem isso, um pull automático (roda a cada ~20s) que aconteça na
+  // janela entre "token de confirmação gerado localmente" e "push confirmado no Firestore" apaga
+  // o token da memória local silenciosamente, antes mesmo dele ser persistido — o link de
+  // WhatsApp já enviado ao paciente nunca chega a funcionar, sem nenhum erro visível no log.
+  preserveUnpushedConfirmationFields(remoteAppointments) {
+    const source = Array.isArray(remoteAppointments) ? remoteAppointments : [];
+    const shadowConfirmations = (this.firebasePushShadowState && this.firebasePushShadowState.appointmentConfirmations
+      && typeof this.firebasePushShadowState.appointmentConfirmations === 'object'
+      && !Array.isArray(this.firebasePushShadowState.appointmentConfirmations))
+      ? this.firebasePushShadowState.appointmentConfirmations
+      : {};
+    const localById = new Map((this.appointments || []).map((a) => [String((a && a.id) || '').trim(), a]));
+
+    return source.map((remoteAppt) => {
+      const id = String((remoteAppt && remoteAppt.id) || '').trim();
+      if (!id) return remoteAppt;
+      const localAppt = localById.get(id);
+      if (!localAppt) return remoteAppt;
+
+      const localConfirmationSignature = this.computeSyncDocSignature(this.extractAppointmentConfirmationFields(localAppt));
+      const knownPushedSignature = shadowConfirmations[id];
+      const hasUnpushedConfirmationChange = knownPushedSignature === undefined || knownPushedSignature !== localConfirmationSignature;
+      if (!hasUnpushedConfirmationChange) return remoteAppt;
+
+      return {
+        ...remoteAppt,
+        confirmationStatus: localAppt.confirmationStatus,
+        confirmationToken: localAppt.confirmationToken,
+        confirmationSentAt: localAppt.confirmationSentAt,
+        confirmationRespondedAt: localAppt.confirmationRespondedAt
+      };
+    });
+  }
+
   filterRemoteAppointmentsByTombstones(remoteAppointments) {
     const source = Array.isArray(remoteAppointments) ? remoteAppointments : [];
     this.pruneDeletedAppointmentTombstones();
@@ -8886,7 +8924,8 @@ class ConsultorioApp {
         if (item.name === 'clients') this.clients = remoteData;
         if (item.name === 'appointments') {
           const normalizedRemoteAppointments = this.normalizeAppointmentsCollection(remoteData, 'firebase-pull');
-          const filteredResult = this.filterRemoteAppointmentsByTombstones(normalizedRemoteAppointments);
+          const protectedRemoteAppointments = this.preserveUnpushedConfirmationFields(normalizedRemoteAppointments);
+          const filteredResult = this.filterRemoteAppointmentsByTombstones(protectedRemoteAppointments);
           this.appointments = filteredResult.filtered;
           if (filteredResult.blockedIds.length) {
             this.logSyncAudit('warning', `Consultas bloqueadas no pull por tombstone local: ${filteredResult.blockedIds.join(', ')}.`);

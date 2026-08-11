@@ -440,6 +440,9 @@ const agendaModule = {
     // window.open retorna null/undefined: tratamos como "bloqueado" em vez de
     // marcar como enviado, e deixamos o item na fila para um clique manual.
     if (!opened) {
+      if (typeof app.logSyncAudit === 'function') {
+        app.logSyncAudit('warning', `Confirmação: pop-up do WhatsApp bloqueado pelo navegador para consulta ${appointmentId}; token NÃO foi salvo, aguardando clique manual.`);
+      }
       if (!Array.isArray(app.agendaConfirmPendingQueue)) app.agendaConfirmPendingQueue = [];
       if (!app.agendaConfirmPendingQueue.includes(appointmentId)) app.agendaConfirmPendingQueue.push(appointmentId);
       if (!options.skipRender) app.render();
@@ -455,6 +458,10 @@ const agendaModule = {
 
     if (Array.isArray(app.agendaConfirmPendingQueue)) {
       app.agendaConfirmPendingQueue = app.agendaConfirmPendingQueue.filter((id) => id !== appointmentId);
+    }
+
+    if (typeof app.logSyncAudit === 'function') {
+      app.logSyncAudit('info', `Confirmação: token gerado e salvo localmente para consulta ${appointmentId}; iniciando push.`);
     }
 
     app.saveData();

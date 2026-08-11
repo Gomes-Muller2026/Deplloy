@@ -1235,20 +1235,16 @@ class ConsultorioApp {
       this.reconcileAppointmentsClientLinks();
 
       if (loadedCollections.includes('appointments') && this.appointments.length) {
-        const dates = this.appointments
-          .map((item) => String(item && item.date || '').trim())
-          .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
-          .sort();
         const { start: startDate, end: endDate } = getCurrentMonthRange();
         const topStart = document.getElementById('top-date-start');
         const topEnd = document.getElementById('top-date-end');
         const agendaStart = document.getElementById('agenda-filter-start');
         const agendaEnd = document.getElementById('agenda-filter-end');
-        this.agendaCalendarStartDate = getWeekStartMondayIso(startDate);
+        this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
         if (topStart) topStart.value = this.formatTopDateForInput(startDate);
         if (topEnd) topEnd.value = this.formatTopDateForInput(endDate);
-        if (agendaStart) agendaStart.value = this.formatAgendaDateForInput(startDate);
-        if (agendaEnd) agendaEnd.value = this.formatAgendaDateForInput(endDate);
+        if (agendaStart) agendaStart.value = this.formatAgendaDateForInput(this.agendaCalendarStartDate);
+        if (agendaEnd) agendaEnd.value = this.formatAgendaDateForInput(addDaysIso(this.agendaCalendarStartDate, 6));
       }
 
       this.saveStore();

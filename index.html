@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260810-2">
+  <link rel="stylesheet" href="css/styles.css?v=20260815-1">
 </head>
 <body>
   <div id="login-root">
@@ -71,6 +71,12 @@
             <h2>Patricia Grando Muller</h2>
             <p>Psicoterapeuta</p>
           </div>
+          <button type="button" class="btn-mobile-menu-toggle" id="btn-mobile-menu-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="app-shell">
+            <i data-lucide="menu"></i>
+          </button>
+          <button type="button" class="btn-mobile-nav-close" id="btn-mobile-nav-close" aria-label="Fechar menu">
+            <i data-lucide="chevron-left"></i>
+          </button>
         </div>
 
         <nav class="sidebar-nav">
@@ -401,10 +407,6 @@
                   </label>
                 </div>
                 <div class="agenda-confirm-queue-banner" id="agenda-confirm-queue-banner" style="display:none;">
-                  <span class="agenda-confirm-queue-banner-text">
-                    <i data-lucide="alert-triangle"></i>
-                    O navegador bloqueou o envio automático. Continue manualmente:
-                  </span>
                   <button type="button" class="btn btn-primary btn-sm" id="btn-continue-agenda-queue" onclick="app.continueAgendaConfirmQueue()">
                     <i data-lucide="send"></i> Enviar próximo: <span id="agenda-confirm-queue-next-name"></span>
                   </button>
@@ -1593,6 +1595,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260810-3"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260811-2"></script>
+  <script src="js/app.js?v=20260815-1"></script>
 </body>
 </html>

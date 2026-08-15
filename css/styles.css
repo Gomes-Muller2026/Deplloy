@@ -280,6 +280,39 @@ img {
   color: #0f172a;
 }
 
+/* Botão hambúrguer (abre o menu em gaveta) e botão de voltar da gaveta:
+   ficam ocultos por padrão e só aparecem no breakpoint mobile abaixo,
+   onde a navegação vira uma gaveta em tela cheia. */
+.btn-mobile-menu-toggle,
+.btn-mobile-nav-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.88);
+  background: rgba(248, 250, 252, 0.96);
+  color: #334155;
+  cursor: pointer;
+  transition: background-color var(--transition), border-color var(--transition);
+}
+
+.btn-mobile-menu-toggle:hover,
+.btn-mobile-nav-close:hover {
+  background: rgba(134, 179, 91, 0.14);
+  border-color: rgba(134, 179, 91, 0.5);
+  color: #4d6b32;
+}
+
+.btn-mobile-menu-toggle i,
+.btn-mobile-nav-close i {
+  width: 20px;
+  height: 20px;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: row;
@@ -7370,17 +7403,6 @@ textarea.form-control,
     border-radius: 11px;
   }
 
-  .sidebar-nav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    overflow: visible;
-  }
-
-  .sidebar-nav .nav-item {
-    width: 100%;
-    min-width: 0;
-  }
-
   .header-title {
     gap: 0.35rem;
   }
@@ -7480,6 +7502,144 @@ textarea.form-control,
   .data-table th,
   .data-table td {
     padding: 0.7rem 0.75rem;
+  }
+}
+
+/* ==========================================================================
+   Menu mobile em gaveta (drawer) — telas de celular (<=760px)
+   Substitui a lista horizontal de pílulas por uma gaveta em tela cheia com
+   cards verticais estilo neumórfico (fundo claro, sombra suave de "relevo",
+   efeito de pressão ao tocar), item ativo em verde musgo (--primary).
+   ========================================================================== */
+@media (max-width: 760px) {
+  .sidebar-header {
+    position: relative;
+  }
+
+  .btn-mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar-nav {
+    display: none;
+  }
+
+  .sidebar.mobile-nav-open {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+    background: linear-gradient(180deg, #f4f6fb 0%, #e8ecf4 100%);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    animation: mobileNavDrawerIn 220ms ease;
+  }
+
+  .sidebar.mobile-nav-open .sidebar-header {
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 1.1rem 1.15rem 0.9rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+  }
+
+  .sidebar.mobile-nav-open .btn-mobile-menu-toggle {
+    display: none;
+  }
+
+  .sidebar.mobile-nav-open .btn-mobile-nav-close {
+    display: inline-flex;
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex: 1 1 auto;
+    gap: 0.7rem;
+    padding: 1rem 1.15rem 1.6rem;
+    overflow: visible;
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item,
+  .sidebar.mobile-nav-open .sidebar-nav .btn-quick-action {
+    width: 100%;
+    justify-content: flex-start;
+    min-width: 0;
+    padding: 0.95rem 1.1rem;
+    border-radius: 20px;
+    border: none;
+    background: #fbfcff;
+    color: #33415a;
+    font-size: 0.98rem;
+    font-weight: 700;
+    box-shadow:
+      7px 7px 14px rgba(163, 177, 198, 0.45),
+      -7px -7px 14px rgba(255, 255, 255, 0.9);
+    transition: box-shadow 150ms ease, transform 150ms ease, background 150ms ease, color 150ms ease;
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item i {
+    width: 20px;
+    height: 20px;
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item:hover {
+    color: #4d6b32;
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item:active {
+    box-shadow:
+      inset 5px 5px 10px rgba(163, 177, 198, 0.45),
+      inset -5px -5px 10px rgba(255, 255, 255, 0.85);
+    transform: scale(0.98);
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item.active {
+    background: linear-gradient(145deg, #92c164, var(--primary-hover));
+    color: #ffffff;
+    box-shadow:
+      6px 6px 14px rgba(76, 105, 47, 0.4),
+      -4px -4px 10px rgba(255, 255, 255, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item.active:active {
+    box-shadow:
+      inset 4px 4px 9px rgba(53, 74, 33, 0.45),
+      inset -3px -3px 7px rgba(160, 210, 120, 0.4);
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .badge-pending-count {
+    background: var(--danger);
+    color: #fff;
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item-logout {
+    margin-top: 0.4rem;
+    color: #c0324a;
+  }
+
+  body.mobile-nav-locked {
+    overflow: hidden;
+  }
+}
+
+@keyframes mobileNavDrawerIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

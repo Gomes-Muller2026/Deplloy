@@ -5052,6 +5052,52 @@ class ConsultorioApp {
     this.applyLandscapeSidebarState();
   }
 
+  openMobileNav() {
+    const sidebar = document.querySelector('.sidebar');
+    const toggleBtn = document.getElementById('btn-mobile-menu-toggle');
+    if (!sidebar) return;
+    sidebar.classList.add('mobile-nav-open');
+    document.body.classList.add('mobile-nav-locked');
+    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  closeMobileNav() {
+    const sidebar = document.querySelector('.sidebar');
+    const toggleBtn = document.getElementById('btn-mobile-menu-toggle');
+    if (!sidebar) return;
+    sidebar.classList.remove('mobile-nav-open');
+    document.body.classList.remove('mobile-nav-locked');
+    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  bindMobileNavToggle() {
+    const openBtn = document.getElementById('btn-mobile-menu-toggle');
+    const closeBtn = document.getElementById('btn-mobile-nav-close');
+    const sidebarNav = document.querySelector('.sidebar-nav');
+
+    if (openBtn) {
+      openBtn.addEventListener('click', () => this.openMobileNav());
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.closeMobileNav());
+    }
+    if (sidebarNav) {
+      sidebarNav.addEventListener('click', (event) => {
+        if (event.target.closest('.nav-item')) this.closeMobileNav();
+      });
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') this.closeMobileNav();
+    });
+
+    const closeIfDesktopWidth = () => {
+      if (window.innerWidth > 760) this.closeMobileNav();
+    };
+    window.addEventListener('resize', closeIfDesktopWidth);
+    window.addEventListener('orientationchange', closeIfDesktopWidth);
+  }
+
   loadSoundSettings() {
     try {
       const rawEnabled = localStorage.getItem(SOUND_ENABLED_STORAGE_KEY);
@@ -5980,6 +6026,7 @@ class ConsultorioApp {
     }
 
     this.bindLandscapeSidebarToggle();
+    this.bindMobileNavToggle();
 
     const resolveDashboardTarget = (cardId) => {
       if (!cardId) return null;

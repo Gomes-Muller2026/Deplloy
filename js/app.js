@@ -7582,6 +7582,9 @@ class ConsultorioApp {
     }
 
     this.applyLandscapeSidebarState();
+    if (window.innerWidth <= 760) {
+      this.openMobileNav();
+    }
     void this.tryAutoConnectGoogleCalendar();
   }
 

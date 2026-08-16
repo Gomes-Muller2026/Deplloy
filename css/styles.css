@@ -318,6 +318,18 @@ img {
   height: 20px;
 }
 
+.btn-mobile-menu-toggle .icon-back {
+  display: none;
+}
+
+.btn-mobile-menu-toggle.is-back .icon-menu {
+  display: none;
+}
+
+.btn-mobile-menu-toggle.is-back .icon-back {
+  display: inline-flex;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: row;
@@ -653,6 +665,7 @@ body.agenda-view .header-actions #btn-open-birthdays {
 }
 
 body.agenda-view .header-actions {
+  display: flex !important;
   flex-wrap: nowrap !important;
   justify-content: flex-start !important;
   overflow-x: auto;
@@ -4409,17 +4422,26 @@ input[type="time"].agenda-hour-range-input {
    ========================================================================== */
 @media (max-width: 760px) {
   .top-header {
-    background: #ffffff;
-    border-color: rgba(15, 23, 42, 0.08);
+    background: #eef5e4;
+    border-color: rgba(134, 179, 91, 0.32);
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
     color: #1e293b;
   }
 
   /* O título mantém o verde musgo da marca (antes era #d9f1b8 sobre fundo
      escuro) mesmo com o card agora claro — só escurece o tom pra manter
-     contraste legível sobre fundo branco. */
+     contraste legível sobre fundo claro. */
   .header-title h1 {
     color: #4d6b32;
+  }
+
+  /* .header-title herdava "flex: 1 1 260px" da regra de desktop, onde
+     260px é a largura preferida (layout em linha). No mobile o
+     .top-header vira flex-direction:column, e esse mesmo flex-basis
+     passa a valer no eixo principal — que agora é a ALTURA — esticando
+     o card bem além do que "Agenda & Consultas" + subtítulo precisam. */
+  .header-title {
+    flex: 0 1 auto;
   }
 
   .header-title p {

@@ -4081,14 +4081,16 @@ input[type="time"].agenda-hour-range-input {
     text-align: center;
   }
 
-  /* A grade semanal do calendário e o alternador Calendário/Lista não
-     fazem sentido em celular (a JS força sempre a lista de cartões por
-     dia via updateAgendaViewModeUI) — some esses controles e o filtro
-     de intervalo de datas, substituídos pelas setas de navegação de dia
-     abaixo. Busca e status continuam úteis, então ficam. */
-  #tab-agenda .agenda-view-toggle,
+  /* Em celular, tanto o Calendário (grade semanal) quanto a Lista (período
+     inteiro) viram visão de um dia só — o alternador Calendário/Lista
+     continua, mas a navegação de data passa a ser só pelas setas
+     ◀/▶ compartilhadas (#agenda-mobile-day-nav), então o filtro de
+     intervalo de datas e os botões Anterior/Voltar/Próxima do calendário
+     (que navegavam por semana) somem. Busca e status continuam úteis. */
   #tab-agenda #agenda-filter-start,
-  #tab-agenda #agenda-filter-end {
+  #tab-agenda #agenda-filter-end,
+  #tab-agenda .agenda-nav-group,
+  #tab-agenda .agenda-calendar-range {
     display: none;
   }
 
@@ -4177,6 +4179,44 @@ input[type="time"].agenda-hour-range-input {
     font-weight: 500;
     font-size: 0.78rem;
     color: rgba(15, 23, 42, 0.5);
+  }
+
+  /* Os campos "Exibir de/até" da grade do calendário herdavam o
+     input[type=time] escuro padrão do app, destoando do card/toolbar
+     claro ao redor — uniformiza pro mesmo tom claro do resto. */
+  #tab-agenda input[type="time"].agenda-hour-range-input {
+    background-color: #f8faff;
+    background-image: none;
+    border: 1px solid rgba(15, 23, 42, 0.16);
+    color: #0f172a;
+    color-scheme: light;
+  }
+
+  #tab-agenda input[type="time"].agenda-hour-range-input:focus {
+    background-color: #ffffff;
+    border-color: rgba(134, 179, 91, 0.65);
+    box-shadow: 0 0 0 3px rgba(134, 179, 91, 0.18);
+  }
+
+  #tab-agenda .agenda-calendar-toolbar {
+    justify-content: center;
+  }
+
+  #tab-agenda .agenda-hour-range-group {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Grade de 1 dia só: a coluna de horário fica larga o bastante pra
+     não espremer os cartões de consulta. */
+  #tab-agenda .agenda-calendar-grid {
+    grid-template-columns: 64px minmax(0, 1fr) !important;
+  }
+
+  #tab-agenda .agenda-header,
+  #tab-agenda .agenda-time-axis {
+    padding: 0.5rem;
+    font-size: 0.85rem;
   }
 }
 

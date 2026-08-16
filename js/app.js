@@ -10329,9 +10329,14 @@ class ConsultorioApp {
     }
 
     if (calendarGrid) {
+      const mobileDayMode = this.isAgendaMobileDayMode();
       const start = agendaStartInput ? (this.normalizeAgendaDateToIso(agendaStartInput.value) || this.agendaCalendarStartDate) : this.agendaCalendarStartDate;
-      const days = Array.from({ length: 7 }, (_, idx) => addDaysIso(start, idx));
+      const days = mobileDayMode
+        ? [this.agendaMobileDayDate || getTodayStr()]
+        : Array.from({ length: 7 }, (_, idx) => addDaysIso(start, idx));
       const todayIso = getTodayStr();
+
+      calendarGrid.style.gridTemplateColumns = `80px repeat(${days.length}, minmax(0, 1fr))`;
 
       const rangeStartHour = Math.max(0, Math.min(23, Number.isInteger(this.agendaHourRangeStart) ? this.agendaHourRangeStart : AGENDA_HOUR_RANGE_DEFAULT_START));
       const rangeEndHour = Math.max(rangeStartHour + 1, Math.min(23, Number.isInteger(this.agendaHourRangeEnd) ? this.agendaHourRangeEnd : AGENDA_HOUR_RANGE_DEFAULT_END));
@@ -10644,11 +10649,10 @@ class ConsultorioApp {
     const btnList = document.getElementById('btn-agenda-view-list');
     const btnCalendar = document.getElementById('btn-agenda-view-calendar');
 
-    // Em celular a grade semanal do calendário não cabe de forma legível
-    // (7 colunas espremidas) — força sempre a lista de cartões por dia,
-    // independente da preferência salva de Calendário/Lista.
-    const isMobile = window.innerWidth <= 760;
-    const isCalendar = this.agendaViewMode === 'calendar' && !isMobile;
+    // Em celular, tanto Calendário quanto Lista viram visão de um dia só
+    // (ver renderAgendaTable/isAgendaMobileDayMode), então o alternador
+    // continua funcionando normalmente entre os dois formatos.
+    const isCalendar = this.agendaViewMode === 'calendar';
     if (calendarCard) calendarCard.style.display = isCalendar ? 'block' : 'none';
     if (tableCard) tableCard.style.display = isCalendar ? 'none' : 'block';
 

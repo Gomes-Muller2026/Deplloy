@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=20260816-8">
+  <link rel="stylesheet" href="css/styles.css?v=20260816-9">
 </head>
 <body>
   <div id="login-root">
@@ -333,6 +333,12 @@
               <button class="btn btn-primary" id="btn-new-appointment-agenda" type="button" onclick="app.openAppointmentModal()" ontouchstart="app.openAppointmentModal()"><i data-lucide="plus"></i> Agendar Consulta</button>
             </div>
 
+            <div class="agenda-mobile-day-nav" id="agenda-mobile-day-nav" style="display:none;">
+              <button type="button" class="agenda-mobile-day-nav-btn" onclick="app.goToAgendaMobileDay(-1)" aria-label="Dia anterior"><i data-lucide="chevron-left"></i></button>
+              <button type="button" class="agenda-mobile-day-nav-label" id="agenda-mobile-day-nav-label" onclick="app.goToAgendaMobileDayToday()" title="Toque para voltar para hoje"></button>
+              <button type="button" class="agenda-mobile-day-nav-btn" onclick="app.goToAgendaMobileDay(1)" aria-label="Próximo dia"><i data-lucide="chevron-right"></i></button>
+            </div>
+
             <div class="card agenda-calendar-card" id="agenda-calendar-card" style="display:none;">
               <div class="agenda-calendar-toolbar" id="agenda-calendar-toolbar">
                 <div class="agenda-nav-group">
@@ -354,12 +360,6 @@
               <div class="card-body">
                 <div id="agenda-calendar-grid" class="agenda-calendar-grid"></div>
               </div>
-            </div>
-
-            <div class="agenda-mobile-day-nav" id="agenda-mobile-day-nav" style="display:none;">
-              <button type="button" class="agenda-mobile-day-nav-btn" onclick="app.goToAgendaMobileDay(-1)" aria-label="Dia anterior"><i data-lucide="chevron-left"></i></button>
-              <button type="button" class="agenda-mobile-day-nav-label" id="agenda-mobile-day-nav-label" onclick="app.goToAgendaMobileDayToday()" title="Toque para voltar para hoje"></button>
-              <button type="button" class="agenda-mobile-day-nav-btn" onclick="app.goToAgendaMobileDay(1)" aria-label="Próximo dia"><i data-lucide="chevron-right"></i></button>
             </div>
 
             <div class="card agenda-table-card" id="agenda-table-card">
@@ -1601,6 +1601,6 @@
   <script src="src/modules/clientes/clientModule.js?v=20260801-3"></script>
   <script src="src/modules/agenda/agendaModule.js?v=20260810-3"></script>
   <script src="src/modules/financeiro/financeiroModule.js?v=20260801-1"></script>
-  <script src="js/app.js?v=20260816-3"></script>
+  <script src="js/app.js?v=20260816-4"></script>
 </body>
 </html>

@@ -7528,8 +7528,10 @@ textarea.form-control,
     position: fixed;
     inset: 0;
     z-index: 1200;
-    width: 100%;
+    width: 100vw;
+    max-width: 100vw;
     height: 100%;
+    box-sizing: border-box;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
@@ -7538,6 +7540,7 @@ textarea.form-control,
     border: none;
     box-shadow: none;
     background: linear-gradient(180deg, #f4f6fb 0%, #e8ecf4 100%);
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     animation: mobileNavDrawerIn 220ms ease;
@@ -7546,6 +7549,8 @@ textarea.form-control,
   .sidebar.mobile-nav-open .sidebar-header {
     flex: 0 0 auto;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     padding: 1.1rem 1.15rem 0.9rem;
     border-bottom: 1px solid rgba(148, 163, 184, 0.28);
   }
@@ -7562,6 +7567,8 @@ textarea.form-control,
     display: flex;
     flex-direction: column;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     flex: 1 1 auto;
     gap: 0.7rem;
     padding: 1rem 1.15rem 1.6rem;
@@ -7575,6 +7582,8 @@ textarea.form-control,
   .sidebar.mobile-nav-open .sidebar-nav .nav-item,
   .sidebar.mobile-nav-open .sidebar-nav .btn-quick-action {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     justify-content: flex-start;
     min-width: 0;
     padding: 0.95rem 1.1rem;
@@ -7591,13 +7600,14 @@ textarea.form-control,
   .sidebar.mobile-nav-open .sidebar-nav .nav-item i {
     width: 20px;
     height: 20px;
+    flex: 0 0 auto;
     color: #94a3b8;
     transition: color 150ms ease;
   }
 
   .sidebar.mobile-nav-open .sidebar-nav .nav-item:hover,
   .sidebar.mobile-nav-open .sidebar-nav .nav-item:focus-visible {
-    background: #fbfcff;
+    background: #eef1f6;
     color: #33415a;
     box-shadow:
       7px 7px 14px rgba(163, 177, 198, 0.45),

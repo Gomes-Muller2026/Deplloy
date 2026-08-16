@@ -6424,7 +6424,19 @@ body.analytics-focus-mode .analytics-grid {
 
 @media (max-width: 760px) {
   .modal-body.grid-2 {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
+  }
+
+  /* "span 2" força o grid a criar uma 2ª coluna IMPLÍCITA mesmo com
+     grid-template-columns:1fr acima (o span pede uma coluna que a
+     grade explícita não tem) — troca pra "1/-1" (ocupar a única
+     coluna existente, seja qual for a contagem) pra não recriar as
+     2 colunas por baixo dos panos. !important pq a regra base
+     ".grid-col-span-2 { grid-column: span 2 }" vem DEPOIS deste bloco
+     no arquivo (linha ~7180) e venceria por ordem, mesmo dentro do
+     media query aqui. */
+  .grid-col-span-2 {
+    grid-column: 1 / -1 !important;
   }
 }
 

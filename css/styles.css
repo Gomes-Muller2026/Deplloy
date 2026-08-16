@@ -4415,25 +4415,21 @@ input[type="time"].agenda-hour-range-input {
 }
 
 /* ==========================================================================
-   Cabeçalho superior (.top-header) claro no celular — vale pra TODAS as
-   abas, não só Agenda, já que esse cabeçalho é compartilhado. Antes ficava
-   escuro (tema padrão do app) logo acima de conteúdo que agora é claro
-   (gaveta de menu, cartões da Agenda), quebrando a harmonia visual.
+   Cabeçalho superior (.top-header) no celular — vale pra TODAS as abas,
+   não só Agenda, já que esse cabeçalho é compartilhado. O card em si
+   (.top-header) voltou a ser escuro por pedido explícito do usuário
+   (ver comentário abaixo); os controles dentro dele (botões de ação,
+   seletor de data, badge de sincronismo, etc.) continuam no tema claro
+   já ajustado — não mexer nisso sem pedido explícito.
    ========================================================================== */
 @media (max-width: 760px) {
-  .top-header {
-    background: #eef5e4;
-    border-color: rgba(134, 179, 91, 0.32);
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
-    color: #1e293b;
-  }
-
-  /* O título mantém o verde musgo da marca (antes era #d9f1b8 sobre fundo
-     escuro) mesmo com o card agora claro — só escurece o tom pra manter
-     contraste legível sobre fundo claro. */
-  .header-title h1 {
-    color: #4d6b32;
-  }
+  /* O card "Agenda & Consultas" (.top-header) volta a ser o padrão
+     escuro original (fundo azul-marinho, título verde-limão vibrante) —
+     pedido explícito do usuário depois de ver o card claro, mesmo
+     destoando do resto do tema claro do celular (menu, tabelas, botões
+     continuam claros como já estava). Antes desse pedido, a ideia era
+     uniformizar tudo pra claro; aqui é uma exceção deliberada só neste
+     card. Não remexer nisso de novo sem pedido explícito. */
 
   /* .header-title herdava "flex: 1 1 260px" da regra de desktop, onde
      260px é a largura preferida (layout em linha). No mobile o
@@ -4450,14 +4446,6 @@ input[type="time"].agenda-hour-range-input {
      mesmo problema só nessa aba. */
   body.agenda-view .header-title {
     flex: 0 1 auto;
-  }
-
-  .header-title p {
-    color: rgba(15, 23, 42, 0.6);
-  }
-
-  .header-actions {
-    border-top-color: rgba(15, 23, 42, 0.1);
   }
 
   /* Botões de ação (Novo Paciente, Aniversários, atualizar, som, etc.) */

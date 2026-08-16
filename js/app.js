@@ -5077,10 +5077,19 @@ class ConsultorioApp {
     const sidebarNav = document.querySelector('.sidebar-nav');
 
     if (openBtn) {
-      openBtn.addEventListener('click', () => this.openMobileNav());
+      openBtn.addEventListener('click', () => {
+        if (openBtn.classList.contains('is-back')) {
+          this.switchTab('panil');
+        } else {
+          this.openMobileNav();
+        }
+      });
     }
     if (closeBtn) {
-      closeBtn.addEventListener('click', () => this.closeMobileNav());
+      closeBtn.addEventListener('click', () => {
+        this.closeMobileNav();
+        this.switchTab('panil');
+      });
     }
     if (sidebarNav) {
       sidebarNav.addEventListener('click', (event) => {
@@ -7355,6 +7364,13 @@ class ConsultorioApp {
     if (btnHeaderBack) {
       const showBack = this.currentTab !== 'panil';
       btnHeaderBack.style.display = showBack ? 'inline-flex' : 'none';
+    }
+
+    const btnMobileMenuToggle = document.getElementById('btn-mobile-menu-toggle');
+    if (btnMobileMenuToggle) {
+      const showMenuBack = this.currentTab !== 'panil';
+      btnMobileMenuToggle.classList.toggle('is-back', showMenuBack);
+      btnMobileMenuToggle.setAttribute('aria-label', showMenuBack ? 'Voltar' : 'Abrir menu');
     }
 
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {

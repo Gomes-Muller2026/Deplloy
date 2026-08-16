@@ -7530,7 +7530,6 @@ textarea.form-control,
     z-index: 1200;
     width: 100vw;
     max-width: 100vw;
-    height: 100%;
     box-sizing: border-box;
     flex-direction: column;
     align-items: stretch;

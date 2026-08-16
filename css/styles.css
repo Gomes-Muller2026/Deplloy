@@ -37,6 +37,11 @@
 
 html, body {
   min-height: 100%;
+  /* Sem isso, toques em <button>/<a> no Chrome Android piscam um
+     retângulo azul translúcido padrão do navegador por cima do
+     :active/.active da UI (ex.: pill verde do menu mobile) — não é
+     um bug de CSS de cor, é o tap-highlight nativo do WebKit/Blink. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 * {
@@ -4221,6 +4226,182 @@ input[type="time"].agenda-hour-range-input {
 }
 
 /* ==========================================================================
+   Mesmo problema da tabela da Agenda ("D A T A / H O R Á R I O" quebrando
+   letra por letra em celular) acontece nas tabelas de Clientes, Financeiro
+   e Despesas — todas usam a mesma .data-table de várias colunas. Aplica a
+   mesma conversão pra lista de cartões (thead some, cada <tr> vira cartão,
+   cada <td> ganha rótulo via ::before, ações viram uma linha de botões).
+   ========================================================================== */
+@media (max-width: 760px) {
+  #tab-clientes .table-responsive,
+  #tab-financeiro .table-responsive,
+  #tab-despesas .table-responsive {
+    overflow-x: visible;
+  }
+
+  #tab-clientes .data-table thead,
+  #tab-financeiro .data-table thead,
+  #tab-despesas .data-table thead {
+    display: none;
+  }
+
+  #tab-clientes .data-table,
+  #tab-clientes .data-table tbody,
+  #tab-clientes .data-table tr,
+  #tab-financeiro .data-table,
+  #tab-financeiro .data-table tbody,
+  #tab-financeiro .data-table tr,
+  #tab-despesas .data-table,
+  #tab-despesas .data-table tbody,
+  #tab-despesas .data-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  #tab-clientes .data-table tbody tr,
+  #tab-financeiro .data-table tbody tr,
+  #tab-despesas .data-table tbody tr {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: #f8faff;
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+    margin: 0.75rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+
+  #tab-clientes .data-table td,
+  #tab-financeiro .data-table td,
+  #tab-despesas .data-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.45rem 0;
+    border: none;
+    text-align: right;
+  }
+
+  #tab-clientes .data-table td:not(:last-child),
+  #tab-financeiro .data-table td:not(:last-child),
+  #tab-despesas .data-table td:not(:last-child) {
+    border-bottom: 1px dashed rgba(15, 23, 42, 0.1);
+  }
+
+  #tab-clientes .data-table td::before,
+  #tab-financeiro .data-table td::before,
+  #tab-despesas .data-table td::before {
+    content: attr(data-col-label);
+    flex: 0 0 auto;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: rgba(15, 23, 42, 0.45);
+  }
+
+  #tab-clientes .data-table td[colspan],
+  #tab-financeiro .data-table td[colspan],
+  #tab-despesas .data-table td[colspan] {
+    justify-content: center;
+    text-align: center;
+    border: none;
+  }
+
+  /* Clientes: checkbox de impressão vira um selo no canto superior
+     direito do cartão (fora do fluxo), e o Nome funciona como cabeçalho. */
+  #tab-clientes .data-table td:first-child {
+    position: absolute;
+    top: 0.8rem;
+    right: 1rem;
+    padding: 0;
+    border: none;
+    width: auto;
+  }
+
+  #tab-clientes .data-table td:nth-child(3) {
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 1rem;
+    font-weight: 700;
+    padding-right: 2.4rem;
+    padding-bottom: 0.6rem;
+  }
+
+  #tab-clientes .data-table td:nth-child(2)::before { content: "ID"; }
+  #tab-clientes .data-table td:nth-child(4)::before { content: "Categoria"; }
+  #tab-clientes .data-table td:nth-child(5)::before { content: "Telefone"; }
+  #tab-clientes .data-table td:nth-child(6)::before { content: "Aniversário"; }
+  #tab-clientes .data-table td:nth-child(7)::before { content: "Cadastro"; }
+
+  #tab-clientes .data-table td:last-child {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    border: none;
+    padding-top: 0.7rem;
+    margin-top: 0.2rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.1);
+  }
+
+  /* Financeiro: mesma ideia — checkbox vira selo, Cliente é o cabeçalho. */
+  #tab-financeiro .data-table td:first-child {
+    position: absolute;
+    top: 0.8rem;
+    right: 1rem;
+    padding: 0;
+    border: none;
+    width: auto;
+  }
+
+  #tab-financeiro .data-table td:nth-child(2) {
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 1rem;
+    font-weight: 700;
+    padding-right: 2.4rem;
+    padding-bottom: 0.6rem;
+  }
+
+  #tab-financeiro .data-table td:nth-child(3)::before { content: "Qtd"; }
+  #tab-financeiro .data-table td:nth-child(4)::before { content: "Total"; }
+  #tab-financeiro .data-table td:nth-child(5)::before { content: "Pendente"; }
+  #tab-financeiro .data-table td:nth-child(6)::before { content: "Pago"; }
+  #tab-financeiro .data-table td:nth-child(7)::before { content: "Status"; }
+
+  #tab-financeiro .data-table td:last-child {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    border: none;
+    padding-top: 0.7rem;
+    margin-top: 0.2rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.1);
+  }
+
+  /* Despesas: sem checkbox — Descrição já é o primeiro filho/cabeçalho. */
+  #tab-despesas .data-table td:first-child {
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 1rem;
+    font-weight: 700;
+    padding-bottom: 0.6rem;
+  }
+
+  #tab-despesas .data-table td:nth-child(2)::before { content: "Categoria"; }
+  #tab-despesas .data-table td:nth-child(3)::before { content: "Valor"; }
+  #tab-despesas .data-table td:nth-child(4)::before { content: "Data"; }
+
+  #tab-despesas .data-table td:last-child {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    border: none;
+    padding-top: 0.7rem;
+    margin-top: 0.2rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.1);
+  }
+}
+
+/* ==========================================================================
    Cabeçalho superior (.top-header) claro no celular — vale pra TODAS as
    abas, não só Agenda, já que esse cabeçalho é compartilhado. Antes ficava
    escuro (tema padrão do app) logo acima de conteúdo que agora é claro
@@ -5858,6 +6039,43 @@ button.money-pill:active {
 
 .chart-axis-labels-grouped {
   grid-template-columns: repeat(var(--chart-columns), minmax(0, 1fr));
+}
+
+/* Em celular, .analytics-grid usava minmax(420px, 1fr): como 420px é
+   maior que a própria tela, o segundo cartão ("Despesas x Receita")
+   ficava espremido pra fora da viewport em vez de empilhar. E com
+   muitas colunas (--chart-columns alto) cada rótulo de data ficava tão
+   estreito que overflow-wrap:anywhere quebrava letra por letra — mesmo
+   problema das tabelas, agora no eixo do gráfico. */
+@media (max-width: 760px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-chart-shell,
+  .analytics-chart-panel,
+  .analytics-chart-stage {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .chart-axis-labels span {
+    overflow-wrap: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.62rem;
+  }
+
+  .analytics-legend {
+    gap: 0.5rem;
+  }
+
+  .analytics-legend span,
+  .analytics-legend-item {
+    font-size: 0.76rem;
+    padding: 0.28rem 0.5rem;
+  }
 }
 
 .analytics-empty-state {

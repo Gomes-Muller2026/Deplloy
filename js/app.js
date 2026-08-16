@@ -995,6 +995,7 @@ class ConsultorioApp {
     this.reminderIntensity = 'strong';
     this.agendaViewMode = 'calendar';
     this.agendaCalendarStartDate = getWeekStartMondayIso(getTodayStr());
+    this.agendaMobileDayDate = getTodayStr();
     this.agendaHourRangeStart = AGENDA_HOUR_RANGE_DEFAULT_START;
     this.agendaHourRangeEnd = AGENDA_HOUR_RANGE_DEFAULT_END;
     this.loadAgendaHourRangePreference();
@@ -9880,8 +9881,12 @@ class ConsultorioApp {
       );
     }
 
-    if (start) filtered = filtered.filter((a) => String(a.date || '') >= start);
-    if (end) filtered = filtered.filter((a) => String(a.date || '') <= end);
+    // Em modo dia-a-dia no celular, o filtro de intervalo (campos ocultos)
+    // não deve limitar quais dias as setas conseguem alcançar.
+    if (!this.isAgendaMobileDayMode()) {
+      if (start) filtered = filtered.filter((a) => String(a.date || '') >= start);
+      if (end) filtered = filtered.filter((a) => String(a.date || '') <= end);
+    }
     if (status === 'todos_cancelados') {
       filtered = filtered.filter((a) => this.normalizeAppointmentStatus(a.status).startsWith('Cancelado'));
     } else if (status !== 'todos') {
@@ -10420,12 +10425,18 @@ class ConsultorioApp {
 
     if (!tbody) return;
 
-    if (!filtered.length) {
+    this.updateAgendaMobileDayNavUI();
+    const mobileDayMode = this.isAgendaMobileDayMode();
+    const tableRows = mobileDayMode
+      ? filtered.filter((a) => a.date === (this.agendaMobileDayDate || getTodayStr()))
+      : filtered;
+
+    if (!tableRows.length) {
       tbody.innerHTML = `
         <tr>
           <td colspan="7">
             <div class="empty-state">
-              <p>Nenhum agendamento encontrado no período.</p>
+              <p>${mobileDayMode ? 'Nenhum agendamento encontrado neste dia.' : 'Nenhum agendamento encontrado no período.'}</p>
             </div>
           </td>
         </tr>
@@ -10433,7 +10444,7 @@ class ConsultorioApp {
       return;
     }
 
-    tbody.innerHTML = filtered.map((a) => {
+    tbody.innerHTML = tableRows.map((a) => {
       const isReminderTarget = String(this.agendaAttentionAppointmentId || '') === String(a.id || '');
       const payment = String(a.paymentStatus || 'Pendente');
       const meta = this.getAppointmentStatusMeta(a.status);
@@ -10633,12 +10644,46 @@ class ConsultorioApp {
     const btnList = document.getElementById('btn-agenda-view-list');
     const btnCalendar = document.getElementById('btn-agenda-view-calendar');
 
-    const isCalendar = this.agendaViewMode === 'calendar';
+    // Em celular a grade semanal do calendário não cabe de forma legível
+    // (7 colunas espremidas) — força sempre a lista de cartões por dia,
+    // independente da preferência salva de Calendário/Lista.
+    const isMobile = window.innerWidth <= 760;
+    const isCalendar = this.agendaViewMode === 'calendar' && !isMobile;
     if (calendarCard) calendarCard.style.display = isCalendar ? 'block' : 'none';
     if (tableCard) tableCard.style.display = isCalendar ? 'none' : 'block';
 
     if (btnList) btnList.classList.toggle('active', !isCalendar);
     if (btnCalendar) btnCalendar.classList.toggle('active', isCalendar);
+  }
+
+  isAgendaMobileDayMode() {
+    return window.innerWidth <= 760 && this.agendaSubtab !== 'por-dia';
+  }
+
+  goToAgendaMobileDay(offsetDays) {
+    this.agendaMobileDayDate = addDaysIso(this.agendaMobileDayDate || getTodayStr(), offsetDays);
+    this.renderAgendaTable();
+  }
+
+  goToAgendaMobileDayToday() {
+    this.agendaMobileDayDate = getTodayStr();
+    this.renderAgendaTable();
+  }
+
+  updateAgendaMobileDayNavUI() {
+    const nav = document.getElementById('agenda-mobile-day-nav');
+    const label = document.getElementById('agenda-mobile-day-nav-label');
+    if (!nav || !label) return;
+
+    if (!this.isAgendaMobileDayMode()) {
+      nav.style.display = 'none';
+      return;
+    }
+
+    nav.style.display = 'flex';
+    const date = this.agendaMobileDayDate || getTodayStr();
+    const isToday = date === getTodayStr();
+    label.innerHTML = `${isToday ? 'Hoje, ' : ''}${safeText(formatDateBR(date))} <span class="agenda-mobile-day-nav-weekday">(${safeText(weekdayLongPt(date))})</span>`;
   }
 
   loadAgendaHourRangePreference() {

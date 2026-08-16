@@ -4080,6 +4080,104 @@ input[type="time"].agenda-hour-range-input {
     justify-content: center;
     text-align: center;
   }
+
+  /* A grade semanal do calendário e o alternador Calendário/Lista não
+     fazem sentido em celular (a JS força sempre a lista de cartões por
+     dia via updateAgendaViewModeUI) — some esses controles e o filtro
+     de intervalo de datas, substituídos pelas setas de navegação de dia
+     abaixo. Busca e status continuam úteis, então ficam. */
+  #tab-agenda .agenda-view-toggle,
+  #tab-agenda #agenda-filter-start,
+  #tab-agenda #agenda-filter-end {
+    display: none;
+  }
+
+  /* Uniformiza o que sobra da barra de filtro (busca + status) com o
+     card branco em vez do estilo escuro padrão do resto do app —
+     antes ficavam desiguais (busca clara, status escuro). */
+  #tab-agenda .filter-bar.card {
+    background: #ffffff;
+  }
+
+  #tab-agenda .filter-bar .input-icon input,
+  #tab-agenda .filter-bar #agenda-filter-status {
+    background: #f8faff;
+    background-image: none;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    color: #0f172a;
+    color-scheme: light;
+  }
+
+  #tab-agenda .filter-bar .input-icon input:focus,
+  #tab-agenda .filter-bar #agenda-filter-status:focus {
+    background: #ffffff;
+    border-color: rgba(134, 179, 91, 0.65);
+    box-shadow: 0 0 0 3px rgba(134, 179, 91, 0.18);
+  }
+
+  #tab-agenda .filter-bar .input-icon i {
+    color: rgba(15, 23, 42, 0.4);
+  }
+
+  #tab-agenda #btn-new-appointment-agenda {
+    width: 100%;
+  }
+
+  .agenda-mobile-day-nav {
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 0.6rem 0.65rem;
+    margin: 0 0 0.9rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+
+  .agenda-mobile-day-nav-btn {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: #f8faff;
+    color: #334155;
+    cursor: pointer;
+  }
+
+  .agenda-mobile-day-nav-btn:hover {
+    background: rgba(134, 179, 91, 0.14);
+    border-color: rgba(134, 179, 91, 0.5);
+    color: #4d6b32;
+  }
+
+  .agenda-mobile-day-nav-btn i {
+    width: 18px;
+    height: 18px;
+  }
+
+  .agenda-mobile-day-nav-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e293b;
+    cursor: pointer;
+    padding: 0.4rem;
+  }
+
+  .agenda-mobile-day-nav-weekday {
+    display: block;
+    font-weight: 500;
+    font-size: 0.78rem;
+    color: rgba(15, 23, 42, 0.5);
+  }
 }
 
 #tab-agenda .data-table thead th {

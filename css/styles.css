@@ -3568,6 +3568,42 @@ input[type="time"].agenda-hour-range-input {
   font-size: 0.9rem;
 }
 
+/* Em celular a linha [hora][avatar][nome][status][confirmação] não cabe
+   numa única linha — nome longo empurrava os badges pra fora da tela
+   (cortados). Vira um card que quebra em duas linhas: hora+avatar+nome
+   em cima, badges embaixo, sempre dentro da largura da tela. */
+@media (max-width: 760px) {
+  .agenda-day-session-row {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+    padding: 0.85rem 0.75rem;
+    border-radius: 14px;
+    background: rgba(79, 70, 229, 0.045);
+  }
+
+  .agenda-day-session-row:hover {
+    background: rgba(79, 70, 229, 0.08);
+  }
+
+  .agenda-day-session-name {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+
+  .agenda-day-session-meta,
+  .agenda-day-session-row .agenda-confirm-badge {
+    margin-left: 0;
+  }
+
+  .agenda-day-session-meta {
+    order: 4;
+  }
+
+  .agenda-day-session-row .agenda-confirm-badge {
+    order: 5;
+  }
+}
+
 .agenda-confirm-badge {
   margin-left: 0.4rem;
   font-size: 0.72rem;

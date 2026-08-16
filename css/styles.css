@@ -7660,6 +7660,20 @@ textarea.form-control,
   body.mobile-nav-locked {
     overflow: hidden;
   }
+
+  /* O toast-container tem z-index maior que a gaveta (fica acima de
+     qualquer coisa) e por padrão nasce no topo direito da tela — com a
+     gaveta aberta isso empilha "Login realizado com sucesso" / "Firebase
+     conectado" etc. bem em cima dos primeiros itens do menu, cobrindo-os
+     (bug real: parecia "menu em branco"). Move os toasts para o rodapé
+     enquanto a gaveta estiver aberta, para nunca tampar a navegação. */
+  body.mobile-nav-locked .toast-container {
+    top: auto;
+    bottom: 0.9rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+  }
 }
 
 @keyframes mobileNavDrawerIn {

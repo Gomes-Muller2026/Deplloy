@@ -3997,6 +3997,91 @@ input[type="time"].agenda-hour-range-input {
   border-radius: 0;
 }
 
+/* Em celular, a tabela de 7 colunas não cabe: com word-break:break-word
+   e colunas espremidas, o cabeçalho quebrava letra por letra ("D A T A
+   / H O R Á R I O" em coluna) — ilegível. Vira uma lista de cartões:
+   cada <tr> é um cartão, cada <td> mostra um rótulo (via ::before) à
+   esquerda e o valor à direita, exceto a primeira célula (data/hora,
+   que funciona como cabeçalho do cartão) e a de ações (linha própria
+   de botões no rodapé do cartão). */
+@media (max-width: 760px) {
+  #agenda-table-card .table-responsive {
+    overflow-x: visible;
+  }
+
+  #agenda-table-card .data-table thead {
+    display: none;
+  }
+
+  #agenda-table-card .data-table,
+  #agenda-table-card .data-table tbody,
+  #agenda-table-card .data-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  #agenda-table-card .data-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    background: #f8faff;
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+    margin: 0.75rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+
+  #agenda-table-card .data-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.45rem 0;
+    border: none;
+    text-align: right;
+  }
+
+  #agenda-table-card .data-table td:not(:last-child) {
+    border-bottom: 1px dashed rgba(15, 23, 42, 0.1);
+  }
+
+  #agenda-table-card .data-table td::before {
+    content: attr(data-col-label);
+    flex: 0 0 auto;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: rgba(15, 23, 42, 0.45);
+  }
+
+  #agenda-table-card .data-table td:nth-child(2)::before { content: "Cliente"; }
+  #agenda-table-card .data-table td:nth-child(3)::before { content: "Procedimento"; }
+  #agenda-table-card .data-table td:nth-child(4)::before { content: "Valor"; }
+  #agenda-table-card .data-table td:nth-child(5)::before { content: "Status"; }
+  #agenda-table-card .data-table td:nth-child(6)::before { content: "Pagamento"; }
+
+  #agenda-table-card .data-table td:first-child {
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 1rem;
+    padding-bottom: 0.6rem;
+  }
+
+  #agenda-table-card .data-table td.agenda-actions-cell {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    border: none;
+    padding-top: 0.7rem;
+    margin-top: 0.2rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.1);
+  }
+
+  #agenda-table-card .data-table td[colspan] {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
 #tab-agenda .data-table thead th {
   position: sticky;
   top: 0;

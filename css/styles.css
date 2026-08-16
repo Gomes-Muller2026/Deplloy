@@ -7568,6 +7568,10 @@ textarea.form-control,
     overflow: visible;
   }
 
+  /* Por padrão os itens ficam "planos" (sem cartão), como no print de
+     referência — só o item ativo é um pill sólido, e os demais só ganham
+     o relevo neumórfico ao passar o dedo/tocar (:hover/:focus-visible),
+     ou o efeito de pressão ao clicar (:active). */
   .sidebar.mobile-nav-open .sidebar-nav .nav-item,
   .sidebar.mobile-nav-open .sidebar-nav .btn-quick-action {
     width: 100%;
@@ -7576,26 +7580,37 @@ textarea.form-control,
     padding: 0.95rem 1.1rem;
     border-radius: 20px;
     border: none;
-    background: #fbfcff;
-    color: #33415a;
+    background: transparent;
+    color: #64748b;
     font-size: 0.98rem;
-    font-weight: 700;
-    box-shadow:
-      7px 7px 14px rgba(163, 177, 198, 0.45),
-      -7px -7px 14px rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+    box-shadow: none;
     transition: box-shadow 150ms ease, transform 150ms ease, background 150ms ease, color 150ms ease;
   }
 
   .sidebar.mobile-nav-open .sidebar-nav .nav-item i {
     width: 20px;
     height: 20px;
+    color: #94a3b8;
+    transition: color 150ms ease;
   }
 
-  .sidebar.mobile-nav-open .sidebar-nav .nav-item:hover {
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item:hover,
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item:focus-visible {
+    background: #fbfcff;
+    color: #33415a;
+    box-shadow:
+      7px 7px 14px rgba(163, 177, 198, 0.45),
+      -7px -7px 14px rgba(255, 255, 255, 0.9);
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item:hover i,
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item:focus-visible i {
     color: #4d6b32;
   }
 
   .sidebar.mobile-nav-open .sidebar-nav .nav-item:active {
+    background: #f2f4f9;
     box-shadow:
       inset 5px 5px 10px rgba(163, 177, 198, 0.45),
       inset -5px -5px 10px rgba(255, 255, 255, 0.85);
@@ -7605,10 +7620,15 @@ textarea.form-control,
   .sidebar.mobile-nav-open .sidebar-nav .nav-item.active {
     background: linear-gradient(145deg, #92c164, var(--primary-hover));
     color: #ffffff;
+    font-weight: 800;
     box-shadow:
       6px 6px 14px rgba(76, 105, 47, 0.4),
       -4px -4px 10px rgba(255, 255, 255, 0.5),
       inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  .sidebar.mobile-nav-open .sidebar-nav .nav-item.active i {
+    color: #ffffff;
   }
 
   .sidebar.mobile-nav-open .sidebar-nav .nav-item.active:active {

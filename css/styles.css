@@ -4444,6 +4444,14 @@ input[type="time"].agenda-hour-range-input {
     flex: 0 1 auto;
   }
 
+  /* Na aba Agenda existe uma regra ainda mais específica
+     (body.agenda-view .header-title { flex: 0 1 240px }, pensada pra
+     largura no layout desktop) que vencia a regra acima e recriava o
+     mesmo problema só nessa aba. */
+  body.agenda-view .header-title {
+    flex: 0 1 auto;
+  }
+
   .header-title p {
     color: rgba(15, 23, 42, 0.6);
   }

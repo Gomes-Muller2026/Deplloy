@@ -4220,6 +4220,190 @@ input[type="time"].agenda-hour-range-input {
   }
 }
 
+/* ==========================================================================
+   Cabeçalho superior (.top-header) claro no celular — vale pra TODAS as
+   abas, não só Agenda, já que esse cabeçalho é compartilhado. Antes ficava
+   escuro (tema padrão do app) logo acima de conteúdo que agora é claro
+   (gaveta de menu, cartões da Agenda), quebrando a harmonia visual.
+   ========================================================================== */
+@media (max-width: 760px) {
+  .top-header {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    color: #1e293b;
+  }
+
+  .header-title h1 {
+    color: #1e293b;
+  }
+
+  .header-title p {
+    color: rgba(15, 23, 42, 0.6);
+  }
+
+  .header-actions {
+    border-top-color: rgba(15, 23, 42, 0.1);
+  }
+
+  /* Botões de ação (Novo Paciente, Aniversários, atualizar, som, etc.) */
+  .header-actions .btn-secondary,
+  .header-actions .btn-secondary.btn-icon-text,
+  .header-actions .btn-secondary.active-sound,
+  .header-actions #btn-test-sound,
+  .header-actions #btn-enable-notifications,
+  .header-actions #btn-refresh-firebase-top {
+    background-color: #f8faff;
+    border-color: rgba(15, 23, 42, 0.14);
+    color: #334155;
+  }
+
+  .header-actions .btn-secondary:hover,
+  .header-actions .btn-secondary.btn-icon-text:hover,
+  .header-actions .btn-secondary.active-sound:hover,
+  .header-actions #btn-test-sound:hover,
+  .header-actions #btn-enable-notifications:hover,
+  .header-actions #btn-refresh-firebase-top:hover {
+    background-color: rgba(134, 179, 91, 0.14);
+  }
+
+  .header-actions .btn-secondary i,
+  .header-actions .header-user-pill i,
+  .header-actions .cloud-status-badge i,
+  .header-actions .btn-icon-text i {
+    color: #5c7a3d;
+  }
+
+  /* Seletor de período (datas) */
+  .top-date-picker {
+    background-color: #f8faff;
+    border-color: rgba(15, 23, 42, 0.14);
+    color: rgba(15, 23, 42, 0.6);
+  }
+
+  .top-date-picker i {
+    color: #5c7a3d;
+  }
+
+  .top-date-input,
+  .date-input {
+    background: #ffffff;
+    background-image: none;
+    border: 1px solid rgba(15, 23, 42, 0.16);
+    color: #0f172a;
+    color-scheme: light;
+  }
+
+  .top-date-input:focus,
+  .date-input:focus {
+    background: #ffffff;
+    border-color: rgba(134, 179, 91, 0.65);
+    box-shadow: 0 0 0 3px rgba(134, 179, 91, 0.18);
+  }
+
+  .btn-clear-date,
+  .btn-date-picker {
+    color: rgba(15, 23, 42, 0.55);
+  }
+
+  /* Badge de sincronismo — mantém a cor semântica (verde=ao vivo,
+     ciano=remoto, âmbar=local), só em tom pastel com texto escuro. */
+  .header-sync-panel {
+    background: #f1f4fa;
+    border-color: rgba(15, 23, 42, 0.14);
+    color: rgba(15, 23, 42, 0.6);
+  }
+
+  .header-sync-label {
+    color: rgba(15, 23, 42, 0.5);
+  }
+
+  .header-sync-note-text {
+    color: #1e293b;
+  }
+
+  .header-sync-panel.live {
+    background: rgba(34, 197, 94, 0.14);
+    border-color: rgba(21, 128, 61, 0.35);
+  }
+
+  .header-sync-panel.live .header-sync-note-text {
+    color: #15803d;
+  }
+
+  .header-sync-panel.remote {
+    background: rgba(8, 145, 178, 0.14);
+    border-color: rgba(14, 116, 144, 0.35);
+  }
+
+  .header-sync-panel.remote .header-sync-note-text {
+    color: #0e7490;
+  }
+
+  .header-sync-panel.local {
+    background: rgba(245, 158, 11, 0.16);
+    border-color: rgba(180, 83, 9, 0.35);
+  }
+
+  .header-sync-panel.local .header-sync-note-text {
+    color: #b45309;
+  }
+
+  /* Badge "Modo Local"/"Sincronizado" simples (fora da Agenda) */
+  .cloud-status-badge {
+    background-color: #f1f4fa;
+    border-color: rgba(15, 23, 42, 0.14);
+    color: rgba(15, 23, 42, 0.6);
+  }
+
+  .cloud-status-badge:not(.offline) {
+    background-color: rgba(34, 197, 94, 0.14);
+    border-color: rgba(21, 128, 61, 0.35);
+    color: #15803d;
+  }
+
+  .header-actions .cloud-status-badge i {
+    color: inherit;
+  }
+
+  /* Controles de aviso sonoro/lembrete (Notificação, Avisar Xmin, Intensidade) */
+  .notification-permission-pill,
+  .reminder-mins-box,
+  .reminder-intensity-box {
+    background-color: #f1f4fa;
+    border-color: rgba(15, 23, 42, 0.14);
+    color: rgba(15, 23, 42, 0.6);
+  }
+
+  .reminder-mins-box span,
+  .reminder-intensity-box span {
+    color: rgba(15, 23, 42, 0.6);
+  }
+
+  .reminder-mins-input,
+  .reminder-intensity-input {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.16);
+    color: #b45309;
+  }
+
+  .notification-permission-pill.is-granted {
+    color: #15803d;
+  }
+
+  .notification-permission-pill.is-prompt {
+    color: #b45309;
+  }
+
+  .notification-permission-pill.is-denied {
+    color: #be123c;
+  }
+
+  .notification-permission-pill.is-unsupported {
+    color: rgba(15, 23, 42, 0.5);
+  }
+}
+
 #tab-agenda .data-table thead th {
   position: sticky;
   top: 0;
@@ -8128,6 +8312,28 @@ input[type="time"] {
 input[type="date"]:focus,
 input[type="time"]:focus {
   background-color: #263449;
+}
+
+/* Em celular, o cabeçalho/agenda ficaram claros — as regras acima (fundo
+   escuro opaco) foram escritas pro tema padrão e vêm depois no arquivo,
+   então ganham dos overrides claros de mobile mais acima. Reafirma o
+   fundo claro aqui, já depois delas, só pra telas de celular. */
+@media (max-width: 760px) {
+  .date-input,
+  .top-date-input,
+  .agenda-filter-date,
+  input[type="date"],
+  input[type="time"] {
+    background-color: #ffffff;
+  }
+
+  .date-input:focus,
+  .top-date-input:focus,
+  .agenda-filter-date:focus,
+  input[type="date"]:focus,
+  input[type="time"]:focus {
+    background-color: #ffffff;
+  }
 }
 
 /* ==========================================================================

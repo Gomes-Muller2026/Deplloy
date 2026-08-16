@@ -5834,6 +5834,9 @@ class ConsultorioApp {
         this.restoreAgendaFiltersForLoadedAppointments();
         this.render();
         this.applyPendingReminderRoute();
+        if (window.innerWidth <= 760) {
+          this.openMobileNav();
+        }
         this.showToast('Login realizado com sucesso!', 'success');
       });
     }
@@ -7582,9 +7585,6 @@ class ConsultorioApp {
     }
 
     this.applyLandscapeSidebarState();
-    if (window.innerWidth <= 760) {
-      this.openMobileNav();
-    }
     void this.tryAutoConnectGoogleCalendar();
   }
 

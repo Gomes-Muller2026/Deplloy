@@ -298,9 +298,9 @@ img {
   flex: 0 0 auto;
   margin-left: auto;
   border-radius: 999px;
-  border: 1px solid rgba(203, 213, 225, 0.88);
-  background: rgba(248, 250, 252, 0.96);
-  color: #334155;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #f8faff;
+  color: #4d6b32;
   cursor: pointer;
   transition: background-color var(--transition), border-color var(--transition);
 }
@@ -4482,9 +4482,28 @@ input[type="time"].agenda-hour-range-input {
     box-shadow: 0 0 0 3px rgba(134, 179, 91, 0.18);
   }
 
-  .btn-clear-date,
+  /* .btn-date-picker mantinha o fundo escuro padrão do app
+     (rgba(15,23,42,0.7)) — só a cor do ícone virava escura também,
+     resultando em ícone escuro sobre fundo escuro (quase invisível,
+     parecia uma bolinha preta) dentro do card claro do seletor de data. */
   .btn-date-picker {
+    background: #f8faff;
+    border-color: rgba(15, 23, 42, 0.16);
+    color: #4d6b32;
+  }
+
+  .btn-date-picker:hover {
+    background: rgba(134, 179, 91, 0.16);
+    border-color: rgba(134, 179, 91, 0.5);
+  }
+
+  .btn-clear-date {
     color: rgba(15, 23, 42, 0.55);
+  }
+
+  .btn-clear-date:hover {
+    color: #4d6b32;
+    background-color: rgba(134, 179, 91, 0.16);
   }
 
   /* Badge de sincronismo — mantém a cor semântica (verde=ao vivo,

@@ -8144,7 +8144,13 @@ textarea.form-control,
     padding: 0.65rem;
   }
 
-  .top-date-picker > i {
+  /* O ícone calendar-range vira <svg class="lucide lucide-calendar-range">
+     depois que o Lucide substitui o <i data-lucide="..."> original — o
+     seletor de tag "i" não alcança mais o elemento renderizado, então o
+     ícone ficava visível e ocupava uma célula do grid, desalinhando o
+     par input/botão de cada linha. */
+  .top-date-picker > i,
+  .top-date-picker > svg.lucide-calendar-range {
     display: none;
   }
 

@@ -5086,10 +5086,7 @@ class ConsultorioApp {
       });
     }
     if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
-        this.closeMobileNav();
-        this.switchTab('panil');
-      });
+      closeBtn.addEventListener('click', () => this.closeMobileNav());
     }
     if (sidebarNav) {
       sidebarNav.addEventListener('click', (event) => {

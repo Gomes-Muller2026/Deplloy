@@ -318,6 +318,18 @@ img {
   height: 20px;
 }
 
+.btn-mobile-menu-toggle .icon-back {
+  display: none;
+}
+
+.btn-mobile-menu-toggle.is-back .icon-menu {
+  display: none;
+}
+
+.btn-mobile-menu-toggle.is-back .icon-back {
+  display: inline-flex;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: row;
@@ -8115,15 +8127,33 @@ textarea.form-control,
     border-radius: 14px;
   }
 
+  /* Antes era flex-wrap com o input a 50% de largura, mas o ícone do
+     calendário e os botões (largura automática, não 50%) quebravam a
+     conta do wrap — cada input acabava sozinho numa linha, seguido do
+     botão sozinho na linha de baixo (input / botão / input / botão
+     empilhados). Vira um grid de 2 colunas (campo flexível + botão fixo)
+     pra cada data ficar emparelhada com seu botão de calendário na
+     mesma linha. */
   .top-date-picker {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
     gap: 0.5rem;
     padding: 0.65rem;
   }
 
+  .top-date-picker > i {
+    display: none;
+  }
+
   .top-date-picker .top-date-input {
-    width: calc(50% - 0.25rem);
+    width: auto;
     min-width: 0;
+  }
+
+  .top-date-picker .btn-clear-date {
+    grid-column: 1 / -1;
+    justify-self: center;
   }
 
   .top-date-sep {
@@ -8445,8 +8475,7 @@ textarea.form-control,
   }
 
   .top-date-picker .top-date-input {
-    flex: 1 1 calc(50% - 0.25rem);
-    width: calc(50% - 0.25rem);
+    width: auto;
     min-width: 0;
   }
 

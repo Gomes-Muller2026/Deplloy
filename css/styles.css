@@ -4326,11 +4326,15 @@ input[type="time"].agenda-hour-range-input {
      direito do cartão (fora do fluxo), e o Nome funciona como cabeçalho. */
   #tab-clientes .data-table td:first-child {
     position: absolute;
-    top: 0.8rem;
-    right: 1rem;
-    padding: 0;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.3rem;
     border: none;
     width: auto;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+    line-height: 0;
   }
 
   #tab-clientes .data-table td:nth-child(3) {
@@ -4360,11 +4364,15 @@ input[type="time"].agenda-hour-range-input {
   /* Financeiro: mesma ideia — checkbox vira selo, Cliente é o cabeçalho. */
   #tab-financeiro .data-table td:first-child {
     position: absolute;
-    top: 0.8rem;
-    right: 1rem;
-    padding: 0;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.3rem;
     border: none;
     width: auto;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+    line-height: 0;
   }
 
   #tab-financeiro .data-table td:nth-child(2) {
@@ -4381,6 +4389,17 @@ input[type="time"].agenda-hour-range-input {
   #tab-financeiro .data-table td:nth-child(5)::before { content: "Pendente"; }
   #tab-financeiro .data-table td:nth-child(6)::before { content: "Pago"; }
   #tab-financeiro .data-table td:nth-child(7)::before { content: "Status"; }
+
+  /* Status aparecia como texto solto, destoando das pílulas coloridas
+     (Total/Pendente/Pago) logo acima — vira uma pílula igual, só que
+     neutra, pra manter a mesma linguagem visual do cartão. */
+  #tab-financeiro .data-table td:nth-child(7) .finance-status-link {
+    background: #eef1f6;
+    color: #33415a;
+    font-weight: 700;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+  }
 
   #tab-financeiro .data-table td:last-child {
     justify-content: flex-start;
@@ -4411,6 +4430,16 @@ input[type="time"].agenda-hour-range-input {
     padding-top: 0.7rem;
     margin-top: 0.2rem;
     border-top: 1px solid rgba(15, 23, 42, 0.1);
+  }
+
+  /* Com 1-2 botões só, a linha de ações ficava com um botão pequeno
+     isolado do lado esquerdo, sobrando espaço vazio à direita. Os
+     botões crescem pra preencher a linha de forma equilibrada. */
+  #tab-clientes .data-table td:last-child .btn,
+  #tab-financeiro .data-table td:last-child .btn,
+  #tab-despesas .data-table td:last-child .btn {
+    flex: 1 1 0;
+    justify-content: center;
   }
 }
 

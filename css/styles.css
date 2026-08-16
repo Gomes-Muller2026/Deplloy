@@ -4415,8 +4415,11 @@ input[type="time"].agenda-hour-range-input {
     color: #1e293b;
   }
 
+  /* O título mantém o verde musgo da marca (antes era #d9f1b8 sobre fundo
+     escuro) mesmo com o card agora claro — só escurece o tom pra manter
+     contraste legível sobre fundo branco. */
   .header-title h1 {
-    color: #1e293b;
+    color: #4d6b32;
   }
 
   .header-title p {

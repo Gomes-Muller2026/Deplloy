@@ -318,18 +318,6 @@ img {
   height: 20px;
 }
 
-.btn-mobile-menu-toggle .icon-back {
-  display: none;
-}
-
-.btn-mobile-menu-toggle.is-back .icon-menu {
-  display: none;
-}
-
-.btn-mobile-menu-toggle.is-back .icon-back {
-  display: inline-flex;
-}
-
 .sidebar-nav {
   display: flex;
   flex-direction: row;
@@ -8136,6 +8124,20 @@ textarea.form-control,
      mesma linha. */
   .top-date-picker {
     display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem;
+  }
+
+  /* Na aba Agenda, uma regra bem mais específica e com !important
+     (body.agenda-view .header-actions .top-date-picker, lá em cima no
+     arquivo) força display:inline-flex pra virar barra rolável — isso
+     sempre vencia o grid acima, então o "conserto" nunca surtia efeito
+     nessa aba especificamente. Precisa da mesma especificidade +
+     !important pra realmente sobrepor. */
+  body.agenda-view .header-actions .top-date-picker {
+    display: grid !important;
     grid-template-columns: 1fr auto;
     align-items: center;
     gap: 0.5rem;

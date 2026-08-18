@@ -14213,17 +14213,48 @@ class ConsultorioApp {
     this.renderFinanceComparisonChart();
   }
 
+  // Cabeçalho superior (.top-header) e o badge "Financeiro" da sidebar
+  // aparecem em TODAS as abas (ver comentário em CLAUDE.md/styles.css),
+  // então precisam se manter atualizados mesmo quando a aba visível não é
+  // Dashboard/Financeiro. É só um filter/reduce sobre os arrays em
+  // memória — nada de reconstruir listas de DOM, por isso roda sempre.
+  updateSharedHeaderSummary() {
+    const periodAppointments = this.filterItemsByTopRange(this.appointments, 'date');
+    const periodPendingAppointments = periodAppointments.filter((appointment) => this.getEffectiveAppointmentPrice(appointment) - toNumber(appointment.amountPaid) > 0);
+    const periodPendingClients = new Set(periodPendingAppointments.map((appointment) => this.getFinanceGroupingKey(appointment))).size;
+
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = String(value);
+    };
+
+    setText('header-total-clients', this.getPatientClients().length);
+    setText('header-current-user-name', `Usuário: ${this.getSignatureName()}`);
+    setText('nav-pending-badge', periodPendingClients);
+  }
+
   render() {
     this.applyConfigAccessControl();
     this.renderVersionBadge();
-    this.renderDashboard();
-    this.renderAgendaTable();
-    this.renderClientsTable();
-    this.renderFinanceiroTable();
-    this.renderDespesasTable();
+    this.updateSharedHeaderSummary();
+    this.updateHeaderFinanceKpiPills();
+
+    // Cada renderXTable/renderXTab reconstrói a lista inteira daquela aba
+    // do zero (innerHTML), custando de dezenas a mais de 100ms cada com
+    // muitos registros. render() é chamado ~27 vezes no app inteiro (abrir
+    // modal, salvar, sincronizar etc.), então reconstruir as 8 abas toda
+    // vez — mesmo as 7 que estão escondidas via display:none — deixava
+    // QUALQUER ação lenta, não só a da aba atual. Só a aba visível
+    // realmente precisa de DOM fresco agora; as outras recebem o seu ao
+    // trocar de aba (switchTab já chama render() de novo).
+    if (this.currentTab === 'panil') this.renderDashboard();
+    if (this.currentTab === 'agenda') this.renderAgendaTable();
+    if (this.currentTab === 'clientes') this.renderClientsTable();
+    if (this.currentTab === 'financeiro') this.renderFinanceiroTable();
+    if (this.currentTab === 'despesas') this.renderDespesasTable();
     this.renderWhatsAppTab();
-    this.renderGraficosTab();
-    this.renderRegisteredUsersCards();
+    if (this.currentTab === 'graficos') this.renderGraficosTab();
+    if (this.currentTab === 'senha') this.renderRegisteredUsersCards();
     this.populateClientSelectOptions();
     this.updateReminderAlertUI();
     this.renderSyncAuditPanel();

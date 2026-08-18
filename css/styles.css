@@ -4353,12 +4353,34 @@ input[type="time"].agenda-hour-range-input {
   #tab-clientes .data-table td:nth-child(7)::before { content: "Cadastro"; }
 
   #tab-clientes .data-table td:last-child {
-    justify-content: flex-start;
+    justify-content: center;
     flex-wrap: wrap;
     border: none;
     padding-top: 0.7rem;
     margin-top: 0.2rem;
     border-top: 1px solid rgba(15, 23, 42, 0.1);
+  }
+
+  /* As 3 ações (Imprimir/Editar/Excluir) usavam a mesma pílula cinza —
+     indistinguíveis à primeira vista. Cada uma ganha uma cor própria,
+     no mesmo espírito das pílulas de valor do Financeiro: neutra pra
+     ação utilitária, azul pra edição, vermelha pra exclusão. */
+  #tab-clientes .data-table td:last-child .btn-client-print {
+    background: #ffffff;
+    color: #334155;
+    border: 1px solid rgba(15, 23, 42, 0.16);
+  }
+
+  #tab-clientes .data-table td:last-child .btn-client-edit {
+    background: rgba(37, 99, 235, 0.12);
+    color: #1d4ed8;
+    border: 1px solid rgba(37, 99, 235, 0.4);
+  }
+
+  #tab-clientes .data-table td:last-child .btn-client-delete {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c !important;
+    border: 1px solid rgba(239, 68, 68, 0.4);
   }
 
   /* Financeiro: mesma ideia — checkbox vira selo, Cliente é o cabeçalho. */

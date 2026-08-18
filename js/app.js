@@ -11052,9 +11052,9 @@ class ConsultorioApp {
         <td>${formatDateBR(c.dob || '')}</td>
         <td>${formatDateBR(c.createdAt || '')}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="app.printClientIndividualReport('${c.id}')">Imprimir</button>
-          <button class="btn btn-sm btn-secondary" onclick="app.openClientModal('${c.id}')">Editar</button>
-          <button class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="app.deleteClient('${c.id}')">Excluir</button>
+          <button class="btn btn-sm btn-secondary btn-client-print" onclick="app.printClientIndividualReport('${c.id}')">Imprimir</button>
+          <button class="btn btn-sm btn-secondary btn-client-edit" onclick="app.openClientModal('${c.id}')">Editar</button>
+          <button class="btn btn-sm btn-ghost btn-client-delete" style="color:var(--danger);" onclick="app.deleteClient('${c.id}')">Excluir</button>
         </td>
       </tr>
     `).join('');

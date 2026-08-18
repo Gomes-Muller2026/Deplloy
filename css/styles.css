@@ -5509,10 +5509,15 @@ button.badge:active {
   text-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
 }
 
-#tab-financeiro .data-table td:nth-child(3) .money-pill,
-#tab-financeiro .data-table td:nth-child(4) .money-pill,
-#tab-financeiro .data-table td:nth-child(5) .money-pill {
-  margin: 0 auto;
+/* Só no desktop: no mobile essas mesmas colunas viram cards
+   label/valor (space-between) e centralizar aqui desalinha a pílula
+   em relação a Pago/Qtd/Status, que ficam colados à direita. */
+@media (min-width: 761px) {
+  #tab-financeiro .data-table td:nth-child(3) .money-pill,
+  #tab-financeiro .data-table td:nth-child(4) .money-pill,
+  #tab-financeiro .data-table td:nth-child(5) .money-pill {
+    margin: 0 auto;
+  }
 }
 
 /* Letra 20% maior na aba Financeiro (busca, filtros, tabela e botões) */

@@ -4410,6 +4410,15 @@ input[type="time"].agenda-hour-range-input {
     border-top: 1px solid rgba(15, 23, 42, 0.1);
   }
 
+  /* No desktop, ".money-pill" de Total/Pendente centraliza sob a coluna
+     (margin:0 auto). No cartão mobile isso descentraliza a fileira
+     label/valor (space-between): Total e Pendente ficavam flutuando no
+     meio enquanto Pago, Qtd e Status ficavam colados à direita. Zera a
+     margem aqui pra todas as pílulas alinharem no mesmo lugar. */
+  #tab-financeiro .data-table td .money-pill {
+    margin: 0;
+  }
+
   /* Despesas: sem checkbox — Descrição já é o primeiro filho/cabeçalho. */
   #tab-despesas .data-table td:first-child {
     justify-content: flex-start;

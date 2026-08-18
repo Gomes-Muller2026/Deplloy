@@ -5077,13 +5077,7 @@ class ConsultorioApp {
     const sidebarNav = document.querySelector('.sidebar-nav');
 
     if (openBtn) {
-      openBtn.addEventListener('click', () => {
-        if (openBtn.classList.contains('is-back')) {
-          this.switchTab('panil');
-        } else {
-          this.openMobileNav();
-        }
-      });
+      openBtn.addEventListener('click', () => this.openMobileNav());
     }
     if (closeBtn) {
       closeBtn.addEventListener('click', () => this.closeMobileNav());

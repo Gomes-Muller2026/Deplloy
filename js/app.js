@@ -5778,6 +5778,7 @@ class ConsultorioApp {
     const connectGoogleCalendarBtn = document.getElementById('btn-connect-google-calendar');
     const importGoogleCalendarEventsBtn = document.getElementById('btn-import-google-calendar-events');
     const disconnectGoogleCalendarBtn = document.getElementById('btn-disconnect-google-calendar');
+    const agendaUpdateGoogleBtn = document.getElementById('btn-agenda-update-google');
     const resetLocalAppointmentsBtn = document.getElementById('btn-reset-local-appointments-google');
     const exportSyncAuditBtn = document.getElementById('btn-export-sync-audit');
     const copySyncDiagnosticBtn = document.getElementById('btn-copy-sync-diagnostic');
@@ -5963,6 +5964,12 @@ class ConsultorioApp {
     if (importGoogleCalendarEventsBtn) {
       importGoogleCalendarEventsBtn.addEventListener('click', () => {
         void this.importGoogleCalendarIntoLocalAgenda();
+      });
+    }
+
+    if (agendaUpdateGoogleBtn) {
+      agendaUpdateGoogleBtn.addEventListener('click', () => {
+        void this.updateAgendaFromGoogleCalendar();
       });
     }
 
@@ -7954,12 +7961,39 @@ class ConsultorioApp {
     };
   }
 
+  // Eventos do Google costumam ter só o primeiro nome no título (ex.: "Hellana"), enquanto
+  // o cadastro no app tem o nome completo (ex.: "Hellana Acadrolli") — por isso, além do
+  // match exato, tenta casar por prefixo de palavras nos dois sentidos (nome curto é prefixo
+  // do completo, ou vice-versa). Só aplica o match se houver exatamente UM candidato: na
+  // dúvida entre "Hellana Acadrolli" e "Hellana Souza", por exemplo, não arrisca vincular ao
+  // cliente errado — cai para criar um cliente novo, como antes.
+  findClientByFuzzyGoogleCalendarName(clientName) {
+    const incomingTokens = this.normalizeIdentityName(clientName || '').split(' ').filter(Boolean);
+    if (!incomingTokens.length) return null;
+
+    const candidates = this.clients.filter((client) => {
+      const candidateTokens = this.normalizeIdentityName((client && client.name) || '').split(' ').filter(Boolean);
+      if (!candidateTokens.length) return false;
+      const shorter = incomingTokens.length <= candidateTokens.length ? incomingTokens : candidateTokens;
+      const longer = incomingTokens.length <= candidateTokens.length ? candidateTokens : incomingTokens;
+      return shorter.every((token, index) => longer[index] === token);
+    });
+
+    return candidates.length === 1 ? candidates[0] : null;
+  }
+
   ensureClientForGoogleCalendarName(clientName) {
     const normalizedName = this.normalizeIdentityName(clientName || '');
     if (!normalizedName) return null;
 
     const existing = this.clients.find((client) => this.normalizeIdentityName((client && client.name) || '') === normalizedName) || null;
     if (existing) return existing;
+
+    const fuzzyMatch = this.findClientByFuzzyGoogleCalendarName(clientName);
+    if (fuzzyMatch) {
+      this.logSyncAudit('info', `Google -> Agenda: "${clientName}" vinculado ao cadastro existente "${fuzzyMatch.name}" por nome parcial.`);
+      return fuzzyMatch;
+    }
 
     const generatedId = `client-gcal-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     const created = {
@@ -8189,6 +8223,30 @@ class ConsultorioApp {
       insertedAppointments,
       updatedAppointments
     };
+  }
+
+  // Botão "Atualizar do Google" na própria Agenda — a conexão/importação com o Google
+  // Calendar sempre existiu, mas só era acessível em Configurações, que é restrita ao
+  // usuário master (ver MASTER_CONFIG_USERNAME). Isso deixava a Patricia (usuária real do
+  // dia a dia) sem forma de atualizar a própria agenda a partir do Google. O Client ID do
+  // OAuth já é fixo no código (normalizeGoogleCalendarClientId sempre retorna
+  // GOOGLE_CALENDAR_REQUIRED_CLIENT_ID), então não há nada de Configurações que falte aqui
+  // além da autorização em si — que é por navegador/dispositivo, não por usuário do login.
+  async updateAgendaFromGoogleCalendar() {
+    const initialized = await this.initGoogleCalendarClient();
+    if (!initialized) {
+      this.showToast('Não foi possível iniciar a conexão com o Google Calendar. Tente novamente.', 'warning');
+      return;
+    }
+
+    if (!this.googleCalendarAuthorized) {
+      this.showToast('Escolha sua conta do Google na janela que vai abrir para autorizar o acesso à agenda.', 'info');
+      await this.connectGoogleCalendar();
+      return;
+    }
+
+    this.showToast('Atualizando a agenda com os eventos do Google...', 'info');
+    await this.importGoogleCalendarIntoLocalAgenda();
   }
 
   async importGoogleCalendarIntoLocalAgenda(options = {}) {
